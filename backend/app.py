@@ -156,11 +156,14 @@ def startup_event():
     except Exception as e:
         print(f"Error initializing tables on startup: {e}")
         
-    thread1 = threading.Thread(target=auto_sync_loop, daemon=True)
-    thread1.start()
-    
-    thread2 = threading.Thread(target=telegram_polling_loop, daemon=True)
-    thread2.start()
+    if not os.getenv("VERCEL"):
+        thread1 = threading.Thread(target=auto_sync_loop, daemon=True)
+        thread1.start()
+        
+        thread2 = threading.Thread(target=telegram_polling_loop, daemon=True)
+        thread2.start()
+    else:
+        print("Running on Vercel: background threads disabled.")
 
 # (get_db_connection already imported at top)
 
