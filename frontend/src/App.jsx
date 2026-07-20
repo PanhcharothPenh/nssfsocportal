@@ -242,7 +242,7 @@ export default function App() {
       : '';
 
     let template = dbSettings.telegram_leave_template || 
-      'សូមគោរព: {recipients}\n\nតាងនាមខ្ញុំបាទ/នាងខ្ញុំ៖ {name}\n\nកម្មវត្ថុ: {subject}\n\nមូលហេតុ: {reason}\n\n{closing}\n\nសូមអរគុណ។';
+      '{recipients}\n\n{name} {position}\n\nកម្មវត្ថុ: {subject}\n\nមូលហេតុ: {reason}\n\n{closing}\n\nសូមអរគុណ។';
 
     return template
       .replace(/{recipients}/g, salutation)

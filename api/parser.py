@@ -212,7 +212,7 @@ def create_tables(conn):
     if cursor.fetchone()[0] == 0:
         cursor.execute("""
         INSERT INTO settings (key, value) VALUES ('telegram_leave_template', 
-        'សូមគោរព: {recipients}\n\nតាងនាមខ្ញុំបាទ/នាងខ្ញុំ៖ {name} ({position})\n\nកម្មវត្ថុ: {subject}\n\nមូលហេតុ: {reason}\n\n{closing}\n\nសូមអរគុណ។')
+        '{recipients}\n\n{name} {position}\n\nកម្មវត្ថុ: {subject}\n\nមូលហេតុ: {reason}\n\n{closing}\n\nសូមអរគុណ។')
         """)
     cursor.execute("SELECT COUNT(*) FROM settings WHERE key = 'telegram_alert_template'")
     if cursor.fetchone()[0] == 0:
