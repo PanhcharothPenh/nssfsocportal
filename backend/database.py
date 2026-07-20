@@ -55,9 +55,9 @@ class PostgresCursorWrapper:
         elif 'INSERT OR REPLACE INTO' in sql:
             sql = sql.replace('INSERT OR REPLACE INTO', 'INSERT INTO')
             if 'branch_ips' in sql:
-                sql += " ON CONFLICT (id) DO NOTHING"
+                sql += " ON CONFLICT (ip) DO NOTHING"
             elif 'hq_ips' in sql:
-                sql += " ON CONFLICT (id) DO NOTHING"
+                sql += " ON CONFLICT (ip) DO NOTHING"
             elif 'settings' in sql:
                 sql += " ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value"
 

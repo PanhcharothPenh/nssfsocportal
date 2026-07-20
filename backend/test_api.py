@@ -4,6 +4,7 @@ import json
 import os
 import openpyxl
 import traceback
+import glob
 
 WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
 
@@ -156,7 +157,8 @@ def run_tests():
             assert res_data["status"] == "success"
             
         # Verify in Excel directly
-        file_path = os.path.join(WORKSPACE, "តារាងមន្ទីរពេទ្យឯកជន-PRIVATE-HOSPITAL-VPN-2025.xlsx")
+        files = glob.glob(os.path.join(WORKSPACE, "*PRIVATE-HOSPITAL-VPN*.xlsx"))
+        file_path = files[0] if files else os.path.join(WORKSPACE, "PRIVATE-HOSPITAL-VPN-2025.xlsx")
         wb = openpyxl.load_workbook(file_path, data_only=True)
         sheet_name = "VPN-HOS-Close"
         sheet = wb[sheet_name]
@@ -164,7 +166,8 @@ def run_tests():
         found = False
         for r in range(2, sheet.max_row + 1):
             name_val = str(sheet.cell(row=r, column=2).value or '').strip()
-            if "សហមេត្រី" in name_val:
+            row_no = sheet.cell(row=r, column=1).value
+            if "សហមេត្រី" in name_val and str(row_no).strip() == str(target_hos.get("no", "")).strip():
                 other_val = str(sheet.cell(row=r, column=6).value or '').strip()
                 print("OK: Excel direct verify closed hospital successful.")
                 print(f"DEBUG other_val matches assertions: {'បើកវិញបណ្តោះអាសន្ន' in other_val and 'លិខិតយោងលេខ ៩៩៩' in other_val}")
