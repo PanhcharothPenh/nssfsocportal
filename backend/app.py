@@ -15,7 +15,7 @@ from syncer import (
     sync_hospital_vpn_to_excel
 )
 
-WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(WORKSPACE, ".env"))
 DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
