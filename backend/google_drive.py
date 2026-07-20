@@ -1,10 +1,10 @@
-import os
+﻿import os
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 from googleapiclient.http import MediaIoBaseUpload
 from dotenv import load_dotenv
 
-WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(WORKSPACE, ".env"))
 
 def get_drive_service():

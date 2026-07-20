@@ -1,8 +1,8 @@
-import os
+﻿import os
 import requests
 from dotenv import load_dotenv
 
-WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(WORKSPACE, ".env"))
 
 def get_onedrive_access_token():

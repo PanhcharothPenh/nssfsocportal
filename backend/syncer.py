@@ -1,9 +1,9 @@
-import os
+﻿import os
 import openpyxl
 import sqlite3
 import glob
 
-WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from database import get_db_connection
 

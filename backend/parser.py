@@ -1,9 +1,9 @@
-import os
+﻿import os
 import sqlite3
 import pandas as pd
 import numpy as np
 
-WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
 from database import get_db_connection

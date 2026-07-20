@@ -1,4 +1,4 @@
-import os
+﻿import os
 import time
 import gspread
 import pandas as pd
@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def get_gspread_client():
     """
