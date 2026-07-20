@@ -382,11 +382,12 @@ export default function App() {
           }
         }, 2000);
       } else {
-        setTelegramLoginError('មិនអាចបង្កើត Login Session បានឡើយ!');
+        const errData = await res.json().catch(() => ({}));
+        setTelegramLoginError(errData.detail || 'មិនអាចបង្កើត Login Session បានឡើយ!');
         setTelegramPollingActive(false);
       }
     } catch (err) {
-      setTelegramLoginError('Server connection error');
+      setTelegramLoginError('Server connection error: ' + err.message);
       setTelegramPollingActive(false);
     }
   };
