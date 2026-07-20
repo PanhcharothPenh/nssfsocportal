@@ -1,0 +1,36 @@
+# React Build output
+frontend/dist
+frontend/node_modules
+
+# Python / Flask / FastAPI
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.venv/
+venv/
+ENV/
+
+# Databases
+*.db
+*.db-journal
+*.sqlite
+
+# Environment variables & secrets
+.env
+.env.*
+.secrets
+backend/google_credentials.json
+
+# Temporary and log files
+*.log
+*.tmp
+*.txt
+scratch/
+check_*.py
+search_*.py
+find_*.txt
+
+# Large Excel data files (containing private IP details)
+*.xlsx
