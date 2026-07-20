@@ -1,7 +1,8 @@
 import sys
 import os
 
-# Add backend directory to system path
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'backend'))
+# All backend files are co-located in the api/ directory for Vercel deployment
+# (They are copied from backend/ during build)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app import app
