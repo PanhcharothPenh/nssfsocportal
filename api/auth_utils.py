@@ -1,4 +1,4 @@
-﻿import hashlib
+import hashlib
 import secrets
 
 def hash_password(password: str) -> str:

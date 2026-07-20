@@ -1,8 +1,9 @@
 import os
 import sqlite3
-# pandas and numpy are imported lazily inside functions to avoid serverless cold-start issues
+import pandas as pd
+import numpy as np
 
-WORKSPACE = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
 from database import get_db_connection
@@ -246,26 +247,41 @@ def create_tables(conn):
         VALUES ('admin', ?, 'admin', 'System Administrator', ?)
         """, (admin_pass, admin_perms))
         
+    # Helper to add columns only if they do not exist
+    def add_column_if_not_exists(table_name, column_name, column_type):
+        is_postgres = (conn.__class__.__name__ == 'PostgresConnectionWrapper')
+        if is_postgres:
+            cursor.execute("""
+                SELECT EXISTS (
+                    SELECT 1 
+                    FROM information_schema.columns 
+                    WHERE table_name = %s AND column_name = %s
+                );
+            """, (table_name, column_name))
+            exists = cursor.fetchone()[0]
+        else:
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = [row[1] for row in cursor.fetchall()]
+            exists = column_name in columns
+            
+        if not exists:
+            try:
+                cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {column_type}")
+                conn.commit()
+                print(f"Added column {column_name} to table {table_name}.")
+            except Exception as e:
+                print(f"Failed to add column {column_name} to {table_name}: {e}")
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+
     # Migration: add permissions column to users if not exists
-    try:
-        cursor.execute("ALTER TABLE users ADD COLUMN permissions TEXT")
-        conn.commit()
-    except Exception:
-        try:
-            conn.rollback()
-        except Exception:
-            pass
+    add_column_if_not_exists("users", "permissions", "TEXT")
 
     # Migration: add profile columns to users if they do not exist
     for col in ["email", "phone", "department", "language", "timezone", "date_format", "theme", "client_ip", "last_login", "telegram_chat_id", "telegram_username"]:
-        try:
-            cursor.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
-            conn.commit()
-        except Exception:
-            try:
-                conn.rollback()
-            except Exception:
-                pass
+        add_column_if_not_exists("users", col, "TEXT")
 
     # Ensure admin has permissions seeded if not set
     cursor.execute("SELECT id, permissions FROM users WHERE username = 'admin'")

@@ -2,7 +2,7 @@
 import requests
 from dotenv import load_dotenv
 
-WORKSPACE = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(WORKSPACE, ".env"))
 
 def send_telegram_message(message: str):

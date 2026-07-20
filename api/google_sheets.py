@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-WORKSPACE = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def get_gspread_client():
     """

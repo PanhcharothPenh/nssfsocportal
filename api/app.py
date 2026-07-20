@@ -1,4 +1,4 @@
-﻿import os
+import os
 import sqlite3
 import time
 from dotenv import load_dotenv
@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 
-WORKSPACE = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(WORKSPACE, ".env"))
 DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
