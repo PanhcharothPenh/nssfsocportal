@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const API_BASE = 'http://127.0.0.1:8000/api';
+const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
+  ? 'http://127.0.0.1:8000/api'
+  : '/api';
 
 const NSSF_BRANCHES_LIST = [
   { name_kh: "ខណ្ឌដង្កោ", name_en: "Dangkor" },
