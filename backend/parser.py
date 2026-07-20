@@ -206,6 +206,7 @@ def create_tables(conn):
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+    conn.commit()
     
     # Insert default settings templates if not exist
     cursor.execute("SELECT COUNT(*) FROM settings WHERE key = 'telegram_leave_template'")
@@ -249,15 +250,23 @@ def create_tables(conn):
     # Migration: add permissions column to users if not exists
     try:
         cursor.execute("ALTER TABLE users ADD COLUMN permissions TEXT")
-    except sqlite3.OperationalError:
-        pass  # Column already exists
+        conn.commit()
+    except Exception:
+        try:
+            conn.rollback()
+        except Exception:
+            pass
 
     # Migration: add profile columns to users if they do not exist
     for col in ["email", "phone", "department", "language", "timezone", "date_format", "theme", "client_ip", "last_login", "telegram_chat_id", "telegram_username"]:
         try:
             cursor.execute(f"ALTER TABLE users ADD COLUMN {col} TEXT")
-        except sqlite3.OperationalError:
-            pass
+            conn.commit()
+        except Exception:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
 
     # Ensure admin has permissions seeded if not set
     cursor.execute("SELECT id, permissions FROM users WHERE username = 'admin'")

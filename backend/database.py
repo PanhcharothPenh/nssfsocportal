@@ -1,5 +1,10 @@
 import os
 import sqlite3
+from dotenv import load_dotenv
+
+# Resolve workspace path and load environment variables immediately
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(WORKSPACE, ".env"))
 
 try:
     import psycopg2
@@ -8,7 +13,6 @@ except ImportError:
 else:
     psgres_available = True
 
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
 class RowWrapper(dict):
@@ -104,6 +108,9 @@ class PostgresConnectionWrapper:
     def commit(self):
         self.pg_conn.commit()
 
+    def rollback(self):
+        self.pg_conn.rollback()
+
     def close(self):
         self.pg_conn.close()
 
@@ -116,6 +123,8 @@ def get_db_connection():
             raise RuntimeError("PostgreSQL URL is configured in the environment, but 'psycopg2' module is not installed!")
         if url.startswith("postgres://"):
             url = url.replace("postgres://", "postgresql://", 1)
+        if "?" in url:
+            url = url.split("?")[0]
         pg_conn = psycopg2.connect(url)
         return PostgresConnectionWrapper(pg_conn)
     else:
