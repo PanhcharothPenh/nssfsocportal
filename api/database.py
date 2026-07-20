@@ -1,9 +1,9 @@
-import os
+﻿import os
 import sqlite3
 from dotenv import load_dotenv
 
 # Resolve workspace path and load environment variables immediately
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 load_dotenv(os.path.join(WORKSPACE, ".env"))
 
 try:

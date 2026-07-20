@@ -1,9 +1,8 @@
-﻿import os
+import os
 import sqlite3
-import pandas as pd
-import numpy as np
+# pandas and numpy are imported lazily inside functions to avoid serverless cold-start issues
 
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+WORKSPACE = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
 from database import get_db_connection
