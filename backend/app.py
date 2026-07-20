@@ -94,9 +94,7 @@ def telegram_polling_loop():
                         token = text.split(" ")[1].strip()
                         if token:
                             # Let's verify and authorize the token!
-                            db_path = os.path.join(WORKSPACE, "soc_network.db")
-                            conn = sqlite3.connect(db_path)
-                            conn.row_factory = sqlite3.Row
+                            conn = get_db_connection()
                             cursor = conn.cursor()
                             
                             # Find matched user by telegram_username (case-insensitive) or username
@@ -117,11 +115,6 @@ def telegram_polling_loop():
                                     f"Hello <b>{user['full_name'] or user['username']}</b>,\n"
                                     f"You have successfully authenticated via Telegram. Your browser tab has been unlocked!"
                                 )
-                                payload = {
-                                    'chat_id': chat_id,
-                                    'text': msg,
-                                    'parse_mode': 'HTML'
-                                }
                                 requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
                                     'chat_id': chat_id,
                                     'text': msg,
@@ -1484,15 +1477,102 @@ class TelegramLoginPayload(BaseModel):
     telegram_username: Optional[str] = None
 
 @app.post("/api/auth/telegram_session/create")
-def telegram_session_create():
+def telegram_session_create(request: Request):
     import uuid
     token = str(uuid.uuid4())
+    
+    # Setup webhook dynamically in Vercel/Production environments
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if bot_token:
+        host = request.url.netloc
+        if "localhost" not in host and "127.0.0.1" not in host:
+            proto = "https"
+            webhook_url = f"{proto}://{host}/api/telegram/webhook"
+            try:
+                import requests
+                requests.post(f"https://api.telegram.org/bot{bot_token}/setWebhook", json={
+                    "url": webhook_url
+                }, timeout=5)
+            except Exception as e:
+                print(f"Failed to set Telegram webhook: {e}")
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("INSERT INTO login_sessions (token, status) VALUES (?, ?)", (token, 'pending'))
     conn.commit()
     conn.close()
     return {"status": "success", "token": token}
+
+@app.post("/api/telegram/webhook")
+def telegram_webhook(payload: dict):
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        return {"status": "skipped"}
+        
+    message = payload.get("message", {})
+    text = message.get("text", "")
+    chat = message.get("chat", {})
+    chat_id = chat.get("id")
+    from_user = message.get("from", {})
+    username = from_user.get("username", "")
+    
+    if text and text.startswith("/start "):
+        token = text.split(" ")[1].strip()
+        if token:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            try:
+                # Find matched user by telegram_username (case-insensitive) or username
+                cursor.execute("SELECT * FROM users WHERE LOWER(telegram_username) = LOWER(?) OR LOWER(username) = LOWER(?)", (username, username))
+                user = cursor.fetchone()
+                
+                if user:
+                    # Update user's telegram_chat_id in users table to link it automatically if not linked!
+                    cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (str(chat_id), user['id']))
+                    
+                    # Update login session status to authorized
+                    cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status, username) VALUES (?, ?, ?)", (token, 'authorized', user['username']))
+                    conn.commit()
+                    
+                    # Send confirmation message to user on Telegram
+                    msg = (
+                        f"✅ <b>Authentication Successful!</b>\n\n"
+                        f"Hello <b>{user['full_name'] or user['username']}</b>,\n"
+                        f"You have successfully authenticated via Telegram. Your browser tab has been unlocked!"
+                    )
+                    import requests
+                    requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
+                        'chat_id': chat_id,
+                        'text': msg,
+                        'parse_mode': 'HTML'
+                    }, timeout=5)
+                else:
+                    # Reject
+                    cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status) VALUES (?, ?)", (token, 'rejected'))
+                    conn.commit()
+                    
+                    # Send error message
+                    msg = (
+                        f"❌ <b>Authentication Failed</b>\n\n"
+                        f"Your Telegram username (<code>@{username}</code>) is not linked to any user in the NSSF SOC Portal.\n"
+                        f"Please contact your Administrator or link your Telegram username inside your Profile Settings first."
+                    )
+                    import requests
+                    requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
+                        'chat_id': chat_id,
+                        'text': msg,
+                        'parse_mode': 'HTML'
+                    }, timeout=5)
+                    
+                conn.close()
+            except Exception as e:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                conn.close()
+                print(f"Error in Telegram Webhook: {e}")
+    return {"status": "ok"}
 
 @app.get("/api/auth/telegram_session/status/{token}")
 def telegram_session_status(token: str, request: Request):
