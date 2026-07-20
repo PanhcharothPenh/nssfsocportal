@@ -27,6 +27,8 @@ backend/google_credentials.json
 *.log
 *.tmp
 *.txt
+!requirements.txt
+!**/requirements.txt
 scratch/
 check_*.py
 search_*.py
