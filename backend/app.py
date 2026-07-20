@@ -169,10 +169,7 @@ def startup_event():
     thread2 = threading.Thread(target=telegram_polling_loop, daemon=True)
     thread2.start()
 
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+from database import get_db_connection
 
 # Request models
 class BranchCreate(BaseModel):

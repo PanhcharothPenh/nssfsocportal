@@ -5,11 +5,7 @@ import glob
 
 WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
 
-def get_db_connection():
-    DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+from database import get_db_connection
 
 def sync_branch_ip_to_excel(branch_id, ip_address, updates):
     """

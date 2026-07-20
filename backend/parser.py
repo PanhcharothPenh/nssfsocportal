@@ -6,10 +6,7 @@ import numpy as np
 WORKSPACE = r"c:\Users\Miller\Documents\SOC-Work-WebAPP"
 DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
-def get_db_connection():
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
+from database import get_db_connection
 
 def create_tables(conn):
     cursor = conn.cursor()
