@@ -244,13 +244,30 @@ export default function App() {
     let template = dbSettings.telegram_leave_template || 
       '{recipients}\n\n{name} {position}\n\nកម្មវត្ថុ: {subject}\n\nមូលហេតុ: {reason}\n\n{closing}\n\nសូមអរគុណ។';
 
-    return template
+    const rawResult = template
       .replace(/{recipients}/g, salutation)
       .replace(/{name}/g, nameLine)
       .replace(/{position}/g, leaveStaffPosition || '')
       .replace(/{subject}/g, subject)
       .replace(/{reason}/g, leaveReason)
       .replace(/{closing}/g, closing);
+
+    // Trim lines and collapse duplicate empty lines
+    const lines = rawResult.split('\n').map(l => l.trim());
+    const collapsedLines = [];
+    let prevEmpty = false;
+    for (const line of lines) {
+      if (line === '') {
+        if (!prevEmpty) {
+          collapsedLines.push('');
+          prevEmpty = true;
+        }
+      } else {
+        collapsedLines.push(line);
+        prevEmpty = false;
+      }
+    }
+    return collapsedLines.join('\n');
   };
 
   const handleSignatureUpload = (e) => {
