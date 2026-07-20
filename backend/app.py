@@ -7,6 +7,13 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 
+WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+load_dotenv(os.path.join(WORKSPACE, ".env"))
+DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
+
+# Import database connection - must be before any function that uses it
+from database import get_db_connection
+
 # Import our syncer module
 from syncer import (
     sync_branch_ip_to_excel,
@@ -14,10 +21,6 @@ from syncer import (
     sync_vpn_user_to_excel,
     sync_hospital_vpn_to_excel
 )
-
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-load_dotenv(os.path.join(WORKSPACE, ".env"))
-DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
 app = FastAPI(title="NSSF SOC Network API", version="1.0.0")
 
@@ -61,10 +64,7 @@ def auto_sync_loop():
         time.sleep(300)
 
 def telegram_polling_loop():
-    import time
     import requests
-    import os
-    import sqlite3
     
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not bot_token:
@@ -162,7 +162,7 @@ def startup_event():
     thread2 = threading.Thread(target=telegram_polling_loop, daemon=True)
     thread2.start()
 
-from database import get_db_connection
+# (get_db_connection already imported at top)
 
 # Request models
 class BranchCreate(BaseModel):
