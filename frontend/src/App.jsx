@@ -184,7 +184,9 @@ export default function App() {
   const [profileConfirmPassword, setProfileConfirmPassword] = useState('');
   const [telegramTemplatesForm, setTelegramTemplatesForm] = useState({
     telegram_leave_template: '',
-    telegram_alert_template: ''
+    telegram_alert_template: '',
+    telegram_bot_token: '',
+    telegram_chat_id: ''
   });
   const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
   const [dbSettings, setDbSettings] = useState({
@@ -647,7 +649,9 @@ export default function App() {
         if (data.status === 'success') {
           setTelegramTemplatesForm({
             telegram_leave_template: data.settings.telegram_leave_template || '',
-            telegram_alert_template: data.settings.telegram_alert_template || ''
+            telegram_alert_template: data.settings.telegram_alert_template || '',
+            telegram_bot_token: data.settings.telegram_bot_token || '',
+            telegram_chat_id: data.settings.telegram_chat_id || ''
           });
         }
       }
@@ -7544,6 +7548,35 @@ export default function App() {
                       </div>
                     ) : (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                        <div style={{ display: 'flex', gap: '16px' }}>
+                          <div className="form-group" style={{ margin: 0, flex: 1 }}>
+                            <label className="form-label" style={{ fontWeight: '700', fontSize: '12px', color: '#0088cc' }}>
+                              🤖 Telegram Bot Token
+                            </label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                              value={telegramTemplatesForm.telegram_bot_token}
+                              onChange={(e) => setTelegramTemplatesForm({ ...telegramTemplatesForm, telegram_bot_token: e.target.value })}
+                              placeholder="e.g. 8621517870:AAFah..."
+                            />
+                          </div>
+                          <div className="form-group" style={{ margin: 0, flex: 1 }}>
+                            <label className="form-label" style={{ fontWeight: '700', fontSize: '12px', color: '#0088cc' }}>
+                              💬 Target Telegram Chat ID
+                            </label>
+                            <input
+                              type="text"
+                              className="form-input"
+                              style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                              value={telegramTemplatesForm.telegram_chat_id}
+                              onChange={(e) => setTelegramTemplatesForm({ ...telegramTemplatesForm, telegram_chat_id: e.target.value })}
+                              placeholder="e.g. -100xxxxxxxxxx or 366357620"
+                            />
+                          </div>
+                        </div>
+
                         <div className="form-group" style={{ margin: 0 }}>
                           <label className="form-label" style={{ fontWeight: '700', fontSize: '12px', color: '#0088cc', display: 'flex', justifyContent: 'space-between' }}>
                             <span>📋 Leave Request Message Template</span>
