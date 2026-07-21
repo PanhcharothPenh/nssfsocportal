@@ -1266,3 +1266,139 @@ body {
 }
 .status-gateway .ip-node-status { color: var(--color-info); }
 .status-gateway .ip-node-status::before { background-color: var(--color-info); box-shadow: 0 0 4px var(--color-info); }
+
+/* Mobile Menu Toggle Button (hidden on desktop) */
+.mobile-menu-toggle {
+  display: none;
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-primary);
+  margin-right: 12px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: background-color var(--transition-fast);
+}
+
+.mobile-menu-toggle:hover {
+  background-color: var(--bg-tertiary);
+}
+
+/* Responsive Layout for Mobile and Telegram MiniApp */
+@media (max-width: 768px) {
+  /* Sidebar Drawer styling */
+  .sidebar {
+    position: fixed !important;
+    top: 0;
+    bottom: 0;
+    left: -270px !important;
+    width: 270px;
+    z-index: 1000 !important;
+    transition: left var(--transition-normal) !important;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.15);
+  }
+  
+  .sidebar.mobile-open {
+    left: 0 !important;
+  }
+  
+  .sidebar-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(15, 23, 42, 0.35);
+    backdrop-filter: blur(2px);
+    z-index: 999;
+  }
+
+  .mobile-menu-toggle {
+    display: block !important;
+  }
+
+  .main-content {
+    margin-left: 0 !important;
+    padding: 16px !important;
+    padding-top: 76px !important; /* space for fixed navbar header */
+  }
+
+  .navbar {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background-color: var(--bg-secondary) !important;
+    border-bottom: 1px solid var(--border-color) !important;
+    padding: 0 16px !important;
+    z-index: 98 !important;
+    box-shadow: var(--shadow-sm);
+    justify-content: flex-start !important;
+  }
+
+  .page-title h1 {
+    font-size: 14px !important;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 180px;
+  }
+
+  .page-title p {
+    display: none !important; /* hide descriptions on mobile */
+  }
+
+  .search-container {
+    margin-left: auto;
+    width: 130px !important;
+  }
+
+  /* Metric cards adapt to 2 columns */
+  .dashboard-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .stat-card {
+    padding: 12px 14px !important;
+  }
+
+  .stat-value {
+    font-size: 20px !important;
+  }
+
+  /* Hospital Card Grids collapse to single column */
+  .vpn-card-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+
+  /* Form action headers wrap */
+  .subnet-actions-bar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+
+  .subnet-inner-search {
+    width: 100% !important;
+  }
+
+  /* Stretch modals nicely */
+  .modal-content {
+    width: 95% !important;
+    max-width: 95% !important;
+  }
+}
+
+/* Extra small mobile viewport constraints */
+@media (max-width: 480px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .search-container {
+    width: 110px !important;
+  }
+}

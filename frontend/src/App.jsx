@@ -147,6 +147,7 @@ export default function App() {
   const [loginError, setLoginError] = useState(null);
   const [loginLoading, setLoginLoading] = useState(false);
   const [activeLoginTab, setActiveLoginTab] = useState('credentials');
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
   // User management states (Admin only)
   const [usersList, setUsersList] = useState([]);
@@ -435,6 +436,63 @@ export default function App() {
         clearInterval(telegramLoginPollInterval.current);
       }
     };
+  }, []);
+
+  const handleAutoTelegramLogin = async (chatId, username) => {
+    try {
+      const payload = {};
+      if (chatId) {
+        payload.telegram_chat_id = String(chatId);
+      } else if (username) {
+        payload.telegram_username = username.replace(/^@/, '');
+      }
+
+      const res = await fetch(`${API_BASE}/auth/telegram_login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentLoginUser(data.user);
+        localStorage.setItem('currentLoginUser', JSON.stringify(data.user));
+        
+        const savedSig = localStorage.getItem('sig_' + data.user.username);
+        if (savedSig) {
+          setSignatureImage(savedSig);
+        } else {
+          setSignatureImage('');
+        }
+      }
+    } catch (e) {
+      console.error('Auto Telegram WebApp Login failed:', e);
+    }
+  };
+
+  useEffect(() => {
+    if (window.Telegram && window.Telegram.WebApp) {
+      const tg = window.Telegram.WebApp;
+      tg.ready();
+      
+      // Expand WebApp on startup for full height
+      try {
+        tg.expand();
+      } catch (err) {
+        console.error('Could not expand Telegram WebApp:', err);
+      }
+      
+      const user = tg.initDataUnsafe?.user;
+      if (user) {
+        const username = user.username || '';
+        const chatId = user.id ? String(user.id) : '';
+        if (chatId || username) {
+          handleAutoTelegramLogin(chatId, username);
+        }
+      }
+    }
   }, []);
 
   const handleTelegramLogin = async (e) => {
@@ -3073,10 +3131,20 @@ export default function App() {
     );
   }
 
+  const handleMenuClick = (tab) => {
+    setActiveTab(tab);
+    setSelectedBranch(null);
+    setSelectedDept(null);
+    setMobileSidebarOpen(false);
+  };
+
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
-      <aside className="sidebar">
+      {mobileSidebarOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileSidebarOpen(false)} />
+      )}
+      <aside className={`sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 8px', marginBottom: '28px' }}>
           <img src="/Nssf_Resize_Logo.png" alt="NSSF Logo" style={{ width: '34px', height: '34px', objectFit: 'contain' }} />
           <div className="logo-text" style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a', letterSpacing: '0.1px', lineHeight: '1.25', textAlign: 'left' }}>មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)</div>
@@ -3084,17 +3152,17 @@ export default function App() {
         
         <ul className="sidebar-menu">
           {hasPermission('dashboard', 'read') && (
-            <li className={`menu-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => { setActiveTab('dashboard'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleMenuClick('dashboard')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📊</span> Dashboard
             </li>
           )}
           {hasPermission('ipam', 'read') && (
-            <li className={`menu-item ${activeTab === 'ipam' ? 'active' : ''}`} onClick={() => { setActiveTab('ipam'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'ipam' ? 'active' : ''}`} onClick={() => handleMenuClick('ipam')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>🏢</span> IPAM / IP Address
             </li>
           )}
           {hasPermission('vpn_remote', 'read') && (
-            <li className={`menu-item ${activeTab === 'vpn' ? 'active' : ''}`} onClick={() => { setActiveTab('vpn'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'vpn' ? 'active' : ''}`} onClick={() => handleMenuClick('vpn')}>
               <span className="menu-icon" style={{ fontSize: '15px', display: 'flex', alignItems: 'center' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
@@ -3104,37 +3172,37 @@ export default function App() {
             </li>
           )}
           {hasPermission('hospital_vpn', 'read') && (
-            <li className={`menu-item ${activeTab === 's2s' ? 'active' : ''}`} onClick={() => { setActiveTab('s2s'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 's2s' ? 'active' : ''}`} onClick={() => handleMenuClick('s2s')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>🏥</span> Hospital VPNs
             </li>
           )}
           {hasPermission('bank_vpn', 'read') && (
-            <li className={`menu-item ${activeTab === 'banks' ? 'active' : ''}`} onClick={() => { setActiveTab('banks'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'banks' ? 'active' : ''}`} onClick={() => handleMenuClick('banks')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>🏦</span> Bank VPNs
             </li>
           )}
           {hasPermission('public_ip', 'read') && (
-            <li className={`menu-item ${activeTab === 'public' ? 'active' : ''}`} onClick={() => { setActiveTab('public'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'public' ? 'active' : ''}`} onClick={() => handleMenuClick('public')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>🌐</span> Public IP & DNS
             </li>
           )}
           {hasPermission('switches', 'read') && (
-            <li className={`menu-item ${activeTab === 'switches' ? 'active' : ''}`} onClick={() => { setActiveTab('switches'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'switches' ? 'active' : ''}`} onClick={() => handleMenuClick('switches')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>🔌</span> Switches List
             </li>
           )}
           {hasPermission('storage', 'read') && (
-            <li className={`menu-item ${activeTab === 'storage' ? 'active' : ''}`} onClick={() => { setActiveTab('storage'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'storage' ? 'active' : ''}`} onClick={() => handleMenuClick('storage')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
             </li>
           )}
           {hasPermission('leave', 'read') && (
-            <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => { setActiveTab('leave'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => handleMenuClick('leave')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
             </li>
           )}
           {hasPermission('user_management', 'read') && (
-            <li className={`menu-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => { setActiveTab('users'); setSelectedBranch(null); setSelectedDept(null); }}>
+            <li className={`menu-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => handleMenuClick('users')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>👥</span> គ្រប់គ្រងអ្នកប្រើប្រាស់
             </li>
           )}
@@ -3174,6 +3242,12 @@ export default function App() {
       <main className="main-content">
         {/* Top Navbar */}
         <header className="navbar">
+          <button 
+            className="mobile-menu-toggle" 
+            onClick={() => setMobileSidebarOpen(!mobileSidebarOpen)}
+          >
+            ☰
+          </button>
           <div className="page-title">
             <h1>
               {activeTab === 'dashboard' && 'មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)'}
