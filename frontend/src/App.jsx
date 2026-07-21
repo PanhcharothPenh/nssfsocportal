@@ -1847,7 +1847,10 @@ export default function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ message: plainText }),
+        body: JSON.stringify({ 
+          message: plainText,
+          username: currentLoginUser ? currentLoginUser.username : null
+        }),
       });
       if (res.ok) {
         setTelegramStatus({ loading: false, error: null, success: true });

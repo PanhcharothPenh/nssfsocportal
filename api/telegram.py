@@ -5,13 +5,12 @@ from dotenv import load_dotenv
 WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 load_dotenv(os.path.join(WORKSPACE, ".env"))
 
-def send_telegram_message(message: str):
+def send_telegram_message(message: str, chat_id: str = None):
     """
     Sends a formatted message to a Telegram group or channel using Telegram Bot API.
     """
     # 1. Try reading from Database settings first
     bot_token = None
-    chat_id = None
     try:
         from database import get_db_connection
         conn = get_db_connection()
@@ -21,10 +20,11 @@ def send_telegram_message(message: str):
         if row and row['value']:
             bot_token = row['value']
             
-        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
-        row = cursor.fetchone()
-        if row and row['value']:
-            chat_id = row['value']
+        if not chat_id:
+            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
+            row = cursor.fetchone()
+            if row and row['value']:
+                chat_id = row['value']
         conn.close()
     except Exception as db_err:
         print(f"Error reading telegram config from DB: {db_err}")

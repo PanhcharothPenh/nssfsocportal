@@ -1433,11 +1433,26 @@ def download_local_file(filename: str):
 
 class TelegramSendMessagePayload(BaseModel):
     message: str
+    username: Optional[str] = None
 
 @app.post("/api/telegram/send")
 def send_telegram(payload: TelegramSendMessagePayload):
     from telegram import send_telegram_message
-    success, msg = send_telegram_message(payload.message)
+    
+    chat_id = None
+    if payload.username:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT telegram_chat_id FROM users WHERE LOWER(username) = LOWER(?)", (payload.username.strip(),))
+        row = cursor.fetchone()
+        conn.close()
+        if row and row['telegram_chat_id']:
+            chat_id = str(row['telegram_chat_id']).strip()
+            
+    if payload.username and not chat_id:
+        raise HTTPException(status_code=400, detail="សូមភ្ជាប់គណនីតេឡេក្រាមរបស់អ្នកនៅក្នុងការកំណត់គណនីជាមុនសិន! (Please link your Telegram account in Settings first!)")
+        
+    success, msg = send_telegram_message(payload.message, chat_id=chat_id)
     if not success:
         raise HTTPException(status_code=500, detail=msg)
     return {"status": "success", "message": msg}
