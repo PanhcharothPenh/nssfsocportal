@@ -115,10 +115,32 @@ def telegram_polling_loop():
                                     f"Hello <b>{user['full_name'] or user['username']}</b>,\n"
                                     f"You have successfully authenticated via Telegram. Your browser tab has been unlocked!"
                                 )
+                                web_portal_url = "https://nssfsocportal.vercel.app"
+                                if os.getenv("VERCEL_URL"):
+                                    web_portal_url = f"https://{os.getenv('VERCEL_URL')}"
+                                
                                 requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
                                     'chat_id': chat_id,
                                     'text': msg,
-                                    'parse_mode': 'HTML'
+                                    'parse_mode': 'HTML',
+                                    'reply_markup': {
+                                        'inline_keyboard': [
+                                            [
+                                                {
+                                                    'text': '🌐 បើកវេបសាយ (Open Web Portal)',
+                                                    'url': web_portal_url
+                                                }
+                                            ],
+                                            [
+                                                {
+                                                    'text': '📱 បើកក្នុង Telegram (Open Mini App)',
+                                                    'web_app': {
+                                                        'url': web_portal_url
+                                                    }
+                                                }
+                                            ]
+                                        ]
+                                    }
                                 })
                             else:
                                 # Reject
@@ -1549,11 +1571,33 @@ def telegram_webhook(payload: dict):
                         f"Hello <b>{user['full_name'] or user['username']}</b>,\n"
                         f"You have successfully authenticated via Telegram. Your browser tab has been unlocked!"
                     )
+                    web_portal_url = "https://nssfsocportal.vercel.app"
+                    if os.getenv("VERCEL_URL"):
+                        web_portal_url = f"https://{os.getenv('VERCEL_URL')}"
+                    
                     import requests
                     requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
                         'chat_id': chat_id,
                         'text': msg,
-                        'parse_mode': 'HTML'
+                        'parse_mode': 'HTML',
+                        'reply_markup': {
+                            'inline_keyboard': [
+                                [
+                                    {
+                                        'text': '🌐 បើកវេបសាយ (Open Web Portal)',
+                                        'url': web_portal_url
+                                    }
+                                ],
+                                [
+                                    {
+                                        'text': '📱 បើកក្នុង Telegram (Open Mini App)',
+                                        'web_app': {
+                                            'url': web_portal_url
+                                        }
+                                    }
+                                ]
+                            ]
+                        }
                     }, timeout=5)
                 else:
                     # Reject
