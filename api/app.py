@@ -287,27 +287,31 @@ def get_dashboard_stats():
         # Subnet list with utilization
         cursor.execute("SELECT id, name_kh, name_en, subnet, gateway FROM branches")
         branches = [dict(r) for r in cursor.fetchall()]
+        
+        cursor.execute("""
+            SELECT branch_id, COUNT(*) FROM branch_ips 
+            WHERE (user_name IS NOT NULL AND user_name != '' AND user_name != 'None')
+               OR (position IS NOT NULL AND position != '' AND position != 'None')
+            GROUP BY branch_id
+        """)
+        branch_counts = {row[0]: row[1] for row in cursor.fetchall()}
         for b in branches:
-            cursor.execute("""
-                SELECT COUNT(*) FROM branch_ips 
-                WHERE branch_id = ? 
-                  AND ((user_name IS NOT NULL AND user_name != '' AND user_name != 'None')
-                       OR (position IS NOT NULL AND position != '' AND position != 'None'))
-            """, (b['id'],))
-            b['used_ips'] = cursor.fetchone()[0]
+            b['used_ips'] = branch_counts.get(b['id'], 0)
             b['total_ips'] = 254
             
         cursor.execute("SELECT id, name_en, vlan_id, subnet, gateway FROM hq_departments")
         depts = [dict(r) for r in cursor.fetchall()]
+        
+        cursor.execute("""
+            SELECT dept_id, COUNT(*) FROM hq_ips 
+            WHERE (user_name_kh IS NOT NULL AND user_name_kh != '' AND user_name_kh != 'None')
+               OR (user_name_en IS NOT NULL AND user_name_en != '' AND user_name_en != 'None')
+               OR (position IS NOT NULL AND position != '' AND position != 'None')
+            GROUP BY dept_id
+        """)
+        dept_counts = {row[0]: row[1] for row in cursor.fetchall()}
         for d in depts:
-            cursor.execute("""
-                SELECT COUNT(*) FROM hq_ips 
-                WHERE dept_id = ? 
-                  AND ((user_name_kh IS NOT NULL AND user_name_kh != '' AND user_name_kh != 'None')
-                       OR (user_name_en IS NOT NULL AND user_name_en != '' AND user_name_en != 'None')
-                       OR (position IS NOT NULL AND position != '' AND position != 'None'))
-            """, (d['id'],))
-            d['used_ips'] = cursor.fetchone()[0]
+            d['used_ips'] = dept_counts.get(d['id'], 0)
             d['total_ips'] = 254
 
         # Active VPN users count (approx based on Status)
@@ -449,15 +453,16 @@ def get_branches():
         cursor.execute("SELECT * FROM branches ORDER BY no ASC")
         branches = [dict(row) for row in cursor.fetchall()]
         
-        # Calculate used IPs
+        # Calculate used IPs in batch with 1 GROUP BY query
+        cursor.execute("""
+            SELECT branch_id, COUNT(*) FROM branch_ips 
+            WHERE (user_name IS NOT NULL AND user_name != '' AND user_name != 'None')
+               OR (position IS NOT NULL AND position != '' AND position != 'None')
+            GROUP BY branch_id
+        """)
+        branch_counts = {row[0]: row[1] for row in cursor.fetchall()}
         for b in branches:
-            cursor.execute("""
-                SELECT COUNT(*) FROM branch_ips 
-                WHERE branch_id = ? 
-                  AND ((user_name IS NOT NULL AND user_name != '' AND user_name != 'None')
-                       OR (position IS NOT NULL AND position != '' AND position != 'None'))
-            """, (b['id'],))
-            b['used_ips'] = cursor.fetchone()[0]
+            b['used_ips'] = branch_counts.get(b['id'], 0)
             b['total_ips'] = 254
             
         conn.close()
@@ -778,16 +783,17 @@ def get_hq_depts():
         cursor.execute("SELECT * FROM hq_departments ORDER BY no ASC")
         depts = [dict(row) for row in cursor.fetchall()]
         
-        # Calculate used IPs
+        # Calculate used IPs in batch with 1 GROUP BY query
+        cursor.execute("""
+            SELECT dept_id, COUNT(*) FROM hq_ips 
+            WHERE (user_name_kh IS NOT NULL AND user_name_kh != '' AND user_name_kh != 'None')
+               OR (user_name_en IS NOT NULL AND user_name_en != '' AND user_name_en != 'None')
+               OR (position IS NOT NULL AND position != '' AND position != 'None')
+            GROUP BY dept_id
+        """)
+        dept_counts = {row[0]: row[1] for row in cursor.fetchall()}
         for d in depts:
-            cursor.execute("""
-                SELECT COUNT(*) FROM hq_ips 
-                WHERE dept_id = ? 
-                  AND ((user_name_kh IS NOT NULL AND user_name_kh != '' AND user_name_kh != 'None')
-                       OR (user_name_en IS NOT NULL AND user_name_en != '' AND user_name_en != 'None')
-                       OR (position IS NOT NULL AND position != '' AND position != 'None'))
-            """, (d['id'],))
-            d['used_ips'] = cursor.fetchone()[0]
+            d['used_ips'] = dept_counts.get(d['id'], 0)
             d['total_ips'] = 254
             
         conn.close()
