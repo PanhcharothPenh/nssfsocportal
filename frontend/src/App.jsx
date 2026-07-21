@@ -890,13 +890,27 @@ export default function App() {
       return true;
     }
     const perms = currentLoginUser.permissions || {};
-    const userVal = perms[moduleName] || 'none';
-    if (level === 'read') {
-      return userVal === 'read' || userVal === 'readwrite';
+    const userVal = perms[moduleName];
+    
+    // Respect explicit permissions override if defined
+    if (userVal && userVal !== 'none') {
+      if (level === 'read') {
+        return userVal === 'read' || userVal === 'readwrite';
+      }
+      if (level === 'write') {
+        return userVal === 'readwrite';
+      }
     }
-    if (level === 'write') {
-      return userVal === 'readwrite';
+    
+    // Default role permissions fallback
+    const role = (currentLoginUser.role || '').toLowerCase();
+    if (role === 'staff') {
+      return true; // Staff has readwrite by default
     }
+    if (role === 'viewer') {
+      return level === 'read'; // Viewer has read-only by default
+    }
+    
     return false;
   };
 

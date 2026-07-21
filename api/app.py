@@ -1808,7 +1808,7 @@ def auth_login(payload: UserLoginPayload, request: Request):
     import datetime
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT * FROM users WHERE username = ?", (payload.username.strip(),))
+    cursor.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (payload.username.strip(),))
     user = cursor.fetchone()
     
     if not user or not verify_password(payload.password, user['password_hash']):
