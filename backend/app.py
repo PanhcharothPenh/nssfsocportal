@@ -1640,6 +1640,49 @@ def telegram_webhook(payload: dict):
                     pass
                 conn.close()
                 print(f"Error in Telegram Webhook: {e}")
+    elif username and chat_id:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("SELECT * FROM users WHERE LOWER(telegram_username) = LOWER(?) OR LOWER(username) = LOWER(?)", (username, username))
+            user = cursor.fetchone()
+            if user:
+                cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (str(chat_id), user['id']))
+                conn.commit()
+                
+                web_portal_url = "https://nssfsocportal.vercel.app"
+                if os.getenv("VERCEL_URL"):
+                    web_portal_url = f"https://{os.getenv('VERCEL_URL')}"
+                    
+                msg = (
+                    f"✅ <b>Telegram Account Linked Automatically!</b>\n\n"
+                    f"Hello <b>{user['full_name'] or user['username']}</b>,\n"
+                    f"Your Telegram Chat ID (<code>{chat_id}</code>) has been automatically saved and linked to your portal account!"
+                )
+                import requests
+                requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
+                    'chat_id': chat_id,
+                    'text': msg,
+                    'parse_mode': 'HTML',
+                    'reply_markup': {
+                        'inline_keyboard': [
+                            [
+                                {
+                                    'text': '🌐 បើកវេបសាយ (Open Web Portal)',
+                                    'url': web_portal_url
+                                }
+                            ]
+                        ]
+                    }
+                }, timeout=5)
+            conn.close()
+        except Exception as ex:
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+            conn.close()
+            print(f"Error in Telegram Webhook auto-link: {ex}")
     return {"status": "ok"}
 
 @app.get("/api/auth/telegram_session/status/{token}")
