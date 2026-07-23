@@ -214,7 +214,8 @@ export default function App() {
     telegram_leave_template: '',
     telegram_alert_template: '',
     telegram_bot_token: '',
-    telegram_chat_id: ''
+    telegram_chat_id: '',
+    uptime_kuma_url: ''
   });
   const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
   const [dbSettings, setDbSettings] = useState({
@@ -1000,7 +1001,8 @@ export default function App() {
             telegram_leave_template: data.settings.telegram_leave_template || '',
             telegram_alert_template: data.settings.telegram_alert_template || '',
             telegram_bot_token: data.settings.telegram_bot_token || '',
-            telegram_chat_id: data.settings.telegram_chat_id || ''
+            telegram_chat_id: data.settings.telegram_chat_id || '',
+            uptime_kuma_url: data.settings.uptime_kuma_url || ''
           });
         }
       }
@@ -2143,6 +2145,80 @@ export default function App() {
     const plainText = getFormattedLeaveMessage().replace(/<[^>]*>/g, '');
     const encoded = encodeURIComponent(plainText);
     window.open(`https://t.me/share/url?url=&text=${encoded}`, '_blank');
+  };
+
+  const renderMonitoringTab = () => {
+    const uptimeUrl = dbSettings.uptime_kuma_url;
+    if (uptimeUrl && uptimeUrl.trim() !== '') {
+      return (
+        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)', width: '100%', gap: '12px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <span style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>
+              📊 Uptime Kuma Status Page ៖ <a href={uptimeUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0088cc', textDecoration: 'none' }}>{uptimeUrl} ↗</a>
+            </span>
+            <button 
+              className="btn btn-secondary"
+              onClick={() => window.open(uptimeUrl, '_blank')}
+              style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+            >
+              Open Status Page in New Tab ↗
+            </button>
+          </div>
+          <iframe 
+            src={uptimeUrl}
+            title="Uptime Kuma Status Page"
+            style={{ width: '100%', height: '100%', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#fff' }}
+          />
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 20px', height: 'calc(100vh - 200px)' }}>
+        <div className="card" style={{ maxWidth: '640px', padding: '32px 40px', borderRadius: '16px', backgroundColor: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
+          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(56, 189, 248, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', color: '#0284c7' }}>
+            📊
+          </div>
+          <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
+            Uptime Kuma Monitoring Dashboard
+          </h2>
+          <p style={{ fontSize: '13px', color: '#475569', lineHeight: '1.6', margin: 0 }}>
+            Keep track of all your local and cloud services (VPNs, subnets, routers, websites, databases) in real time. 
+            Integrate your <b>Uptime Kuma Status Page</b> to display its live metrics directly inside this portal tab!
+          </p>
+          
+          <div style={{
+            alignSelf: 'stretch',
+            padding: '16px',
+            borderRadius: '12px',
+            backgroundColor: '#f8fafc',
+            border: '1px dashed #cbd5e1',
+            textAlign: 'left',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '8px'
+          }}>
+            <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#1e293b' }}>
+              🛠️ How to configure ៖
+            </span>
+            <ol style={{ fontSize: '12px', color: '#475569', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
+              <li>Go to your <b>Profile Settings</b> modal by clicking your avatar in the top right.</li>
+              <li>Switch to the <b>Templates ⚙️</b> tab.</li>
+              <li>Configure your <b>Uptime Kuma Status Page URL</b> under the Uptime Kuma section.</li>
+              <li>Save templates, and the live status dashboard will show up right here!</li>
+            </ol>
+          </div>
+          
+          <button 
+            className="btn btn-primary"
+            onClick={() => handleMenuClick('dashboard')}
+            style={{ padding: '10px 24px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', marginTop: '8px' }}
+          >
+            Back to Dashboard
+          </button>
+        </div>
+      </div>
+    );
   };
 
   const renderLeaveTab = () => {
@@ -3736,6 +3812,11 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>🔌</span> Switches List
             </li>
           )}
+          {hasPermission('dashboard', 'read') && (
+            <li className={`menu-item ${activeTab === 'monitoring' ? 'active' : ''}`} onClick={() => handleMenuClick('monitoring')}>
+              <span className="menu-icon" style={{ fontSize: '15px' }}>🖥️</span> Uptime Kuma
+            </li>
+          )}
           {hasPermission('storage', 'read') && (
             <li className={`menu-item ${activeTab === 'storage' ? 'active' : ''}`} onClick={() => handleMenuClick('storage')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
@@ -3810,6 +3891,7 @@ export default function App() {
               {activeTab === 'storage' && 'ប្រព័ន្ធផ្ទុកឯកសាររួម Google Drive'}
               {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
               {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
+              {activeTab === 'monitoring' && 'ប្រព័ន្ធតាមដានស្ថានភាពសេវាកម្ម (Uptime Kuma)'}
             </h1>
             <p>
               {activeTab === 'dashboard' && 'Security Operations Center (SOC)'}
@@ -3826,6 +3908,7 @@ export default function App() {
               {activeTab === 'storage' && 'Upload, view, and organize files in the shared Google Drive folder'}
               {activeTab === 'tickets' && 'បង្កើត ពិនិត្យតាមដាន និងអនុម័តសំណើការងារអេឡិចត្រូនិកតាមលំដាប់ថ្នាក់រដ្ឋបាល'}
               {activeTab === 'leave' && 'Generate formatted Khmer requests and post them automatically to the Telegram group'}
+              {activeTab === 'monitoring' && 'Live uptime monitoring status page and service metrics'}
             </p>
           </div>
 
@@ -6137,6 +6220,9 @@ export default function App() {
         {/* Leave Requests Tab */}
         {activeTab === 'leave' && renderLeaveTab()}
 
+        {/* Uptime Kuma Tab */}
+        {activeTab === 'monitoring' && renderMonitoringTab()}
+
         {/* User Management Tab */}
         {activeTab === 'users' && hasPermission('user_management', 'read') && renderUsersTab()}
       </main>
@@ -8250,6 +8336,20 @@ export default function App() {
                             value={telegramTemplatesForm.telegram_alert_template}
                             onChange={(e) => setTelegramTemplatesForm({ ...telegramTemplatesForm, telegram_alert_template: e.target.value })}
                             required
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label className="form-label" style={{ fontWeight: '700', fontSize: '12px', color: '#0284c7' }}>
+                            📊 Uptime Kuma Status Page URL
+                          </label>
+                          <input
+                            type="text"
+                            className="form-input"
+                            style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                            value={telegramTemplatesForm.uptime_kuma_url}
+                            onChange={(e) => setTelegramTemplatesForm({ ...telegramTemplatesForm, uptime_kuma_url: e.target.value })}
+                            placeholder="e.g. https://status.yourdomain.com/status/soc-services"
                           />
                         </div>
                         
