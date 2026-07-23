@@ -1,0 +1,7 @@
+# Exclude heavy binary files and raw Excel datasets from Vercel function zips
+*.xlsx
+*.db
+scratch/
+node_modules/
+.git/
+.vercel/
