@@ -1,4 +1,4 @@
-﻿import os
+import os
 from googleapiclient.discovery import build
 from google.oauth2.service_account import Credentials
 from googleapiclient.http import MediaIoBaseUpload
@@ -9,20 +9,64 @@ load_dotenv(os.path.join(WORKSPACE, ".env"))
 
 def get_drive_service():
     """
-    Authenticates using the Service Account credentials file specified in .env
+    Authenticates using User OAuth Credentials (if available) or Service Account credentials
     and returns a Google Drive v3 service client.
     """
-    credentials_file = os.getenv("GOOGLE_CREDENTIALS_FILE", "backend/google_credentials.json")
-    if not os.path.isabs(credentials_file):
-        credentials_file = os.path.join(WORKSPACE, credentials_file)
-        
-    if not os.path.exists(credentials_file):
-        print(f"Credentials file not found: {credentials_file}")
+    scopes = ["https://www.googleapis.com/auth/drive"]
+
+    # 0. Check User OAuth 2.0 Refresh Token (for Personal Google Drive storage)
+    client_id = os.getenv("GOOGLE_CLIENT_ID")
+    client_secret = os.getenv("GOOGLE_CLIENT_SECRET")
+    refresh_token = os.getenv("GOOGLE_REFRESH_TOKEN")
+    
+    if client_id and client_secret and refresh_token:
+        try:
+            from google.oauth2.credentials import Credentials as UserCredentials
+            import google.auth.transport.requests
+            creds = UserCredentials(
+                None,
+                refresh_token=refresh_token,
+                token_uri="https://oauth2.googleapis.com/token",
+                client_id=client_id,
+                client_secret=client_secret,
+                scopes=scopes
+            )
+            req = google.auth.transport.requests.Request()
+            creds.refresh(req)
+            return build('drive', 'v3', credentials=creds)
+        except Exception as oauth_err:
+            print("OAuth User Credentials refresh failed (falling back to Service Account):", oauth_err)
+
+    # 1. Check GOOGLE_CREDENTIALS_JSON environment variable next
+    creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+    if creds_json:
+        try:
+            import json
+            info = json.loads(creds_json)
+            credentials = Credentials.from_service_account_info(info, scopes=scopes)
+            return build('drive', 'v3', credentials=credentials)
+        except Exception as e:
+            print("Failed to authenticate from GOOGLE_CREDENTIALS_JSON:", e)
+            
+    # 2. Check credentials file locations
+    possible_paths = [
+        os.getenv("GOOGLE_CREDENTIALS_FILE", ""),
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), "google_credentials.json"),
+        os.path.join(WORKSPACE, "backend", "google_credentials.json"),
+        os.path.join(WORKSPACE, "api", "google_credentials.json"),
+        os.path.join(WORKSPACE, "google_credentials.json")
+    ]
+    
+    credentials_file = None
+    for p in possible_paths:
+        if p and os.path.exists(p):
+            credentials_file = p
+            break
+            
+    if not credentials_file:
+        print("Google Drive credentials file not found in any path")
         return None
         
-    scopes = [
-        "https://www.googleapis.com/auth/drive"
-    ]
     try:
         credentials = Credentials.from_service_account_file(credentials_file, scopes=scopes)
         service = build('drive', 'v3', credentials=credentials)
@@ -53,6 +97,17 @@ def upload_file_to_drive(file_stream, filename, mime_type, folder_id):
             fields='id, name, webViewLink, webContentLink',
             supportsAllDrives=True
         ).execute()
+        
+        # Set public read permission so all portal users can view & download without permission error
+        try:
+            service.permissions().create(
+                fileId=file.get('id'),
+                body={'type': 'anyone', 'role': 'reader'},
+                supportsAllDrives=True
+            ).execute()
+        except Exception as perm_err:
+            print("Failed to set public permission on uploaded file:", perm_err)
+
         return file, None
     except Exception as e:
         return None, str(e)

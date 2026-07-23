@@ -1,4 +1,5 @@
-# React Build output
+# Node / React Build output
+node_modules/
 frontend/dist
 frontend/node_modules
 
@@ -22,6 +23,8 @@ ENV/
 .env.*
 .secrets
 backend/google_credentials.json
+api/google_credentials.json
+get_token.py
 
 # Temporary and log files
 *.log
@@ -36,3 +39,6 @@ find_*.txt
 
 # Large Excel data files (containing private IP details)
 *.xlsx
+
+.vercel
+.env*

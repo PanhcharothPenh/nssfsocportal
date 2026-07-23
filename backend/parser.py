@@ -205,6 +205,48 @@ def create_tables(conn):
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
+
+    # 13. Tickets Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS tickets (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ticket_code TEXT UNIQUE,
+        title TEXT NOT NULL,
+        category TEXT DEFAULT 'Incident',
+        priority TEXT DEFAULT 'Medium',
+        description TEXT,
+        requester_name TEXT,
+        department TEXT,
+        assignee_name TEXT,
+        approval_level_required INTEGER DEFAULT 1,
+        current_approval_level INTEGER DEFAULT 1,
+        status TEXT DEFAULT 'pending_l1',
+        rejection_reason TEXT,
+        l1_approver TEXT,
+        l1_approved_at TEXT,
+        l1_comment TEXT,
+        l2_approver TEXT,
+        l2_approved_at TEXT,
+        l2_comment TEXT,
+        created_at TEXT,
+        updated_at TEXT,
+        completed_at TEXT
+    )
+    # 14. Approval Profiles Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS approval_profiles (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name_kh TEXT NOT NULL,
+        name_en TEXT,
+        doc_type TEXT DEFAULT 'ឯកសារផ្ទៃក្នុង',
+        letter_format TEXT DEFAULT 'កំណត់បង្ហាញរឿង',
+        salutation TEXT DEFAULT 'អគ្គនាយក ប.ស.ស.',
+        sequence_count INTEGER DEFAULT 5,
+        hierarchy_json TEXT NOT NULL,
+        created_at TEXT,
+        updated_at TEXT
+    )
+    """)
     conn.commit()
     
     # Insert default settings templates if not exist
@@ -279,7 +321,7 @@ def create_tables(conn):
     add_column_if_not_exists("users", "permissions", "TEXT")
 
     # Migration: add profile columns to users if they do not exist
-    for col in ["email", "phone", "department", "language", "timezone", "date_format", "theme", "client_ip", "last_login", "telegram_chat_id", "telegram_username"]:
+    for col in ["email", "phone", "department", "language", "timezone", "date_format", "theme", "client_ip", "last_login", "telegram_chat_id", "telegram_username", "notify_telegram"]:
         add_column_if_not_exists("users", col, "TEXT")
 
     # Ensure admin has permissions seeded if not set
@@ -313,9 +355,12 @@ def to_khmer_number(num):
     return ''.join(khmer_digits[d] for d in str(num))
 
 def parse_branches(conn):
-    file_path = os.path.join(WORKSPACE, "IP Address Branch.xlsx")
+    import tempfile
+    file_path = os.path.join(tempfile.gettempdir(), "IP Address Branch.xlsx")
     if not os.path.exists(file_path):
-        print(f"Branch Excel not found: {file_path}")
+        file_path = os.path.join(WORKSPACE, "IP Address Branch.xlsx")
+    if not os.path.exists(file_path):
+        print(f"Branch Excel not found in tempdir or workspace: {file_path}")
         return
     
     print("Parsing Branch IP mappings...")
@@ -336,8 +381,8 @@ def parse_branches(conn):
     df_main = df_main.iloc[header_idx+1:]
     
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM branches")
     cursor.execute("DELETE FROM branch_ips")
+    cursor.execute("DELETE FROM branches")
     
     # Map sheets to main subnet
     sheet_names = xl.sheet_names
@@ -467,9 +512,12 @@ def parse_branches(conn):
     print("Branch IP mappings parsed successfully.")
 
 def parse_hq(conn):
-    file_path = os.path.join(WORKSPACE, "NSSF HQ Users IP Address 2024.xlsx")
+    import tempfile
+    file_path = os.path.join(tempfile.gettempdir(), "NSSF HQ Users IP Address 2024.xlsx")
     if not os.path.exists(file_path):
-        print(f"HQ Users Excel not found: {file_path}")
+        file_path = os.path.join(WORKSPACE, "NSSF HQ Users IP Address 2024.xlsx")
+    if not os.path.exists(file_path):
+        print(f"HQ Users Excel not found in tempdir or workspace: {file_path}")
         return
     
     print("Parsing HQ IP mappings...")
@@ -489,9 +537,9 @@ def parse_hq(conn):
     df_main = df_main.iloc[header_idx+1:]
     
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM hq_departments")
     cursor.execute("DELETE FROM hq_ips")
     cursor.execute("DELETE FROM switches")
+    cursor.execute("DELETE FROM hq_departments")
     
     sheet_names = xl.sheet_names
     

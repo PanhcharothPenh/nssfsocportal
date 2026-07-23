@@ -17,7 +17,17 @@ DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
 class RowWrapper(dict):
     def __init__(self, row_dict, row_tuple):
-        super().__init__(row_dict)
+        import datetime
+        from decimal import Decimal
+        cleaned = {}
+        for k, v in row_dict.items():
+            if isinstance(v, (datetime.date, datetime.datetime)):
+                cleaned[k] = v.isoformat()
+            elif isinstance(v, Decimal):
+                cleaned[k] = float(v)
+            else:
+                cleaned[k] = v
+        super().__init__(cleaned)
         self.row_tuple = row_tuple
 
     def __getitem__(self, key):
@@ -125,7 +135,7 @@ def get_db_connection():
             url = url.replace("postgres://", "postgresql://", 1)
         if "?" in url:
             url = url.split("?")[0]
-        pg_conn = psycopg2.connect(url)
+        pg_conn = psycopg2.connect(url, sslmode='require')
         return PostgresConnectionWrapper(pg_conn)
     else:
         conn = sqlite3.connect(DB_PATH)

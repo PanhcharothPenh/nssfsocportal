@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import nssfLogo from './assets/nssf_logo.png';
 
 const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
   ? 'http://127.0.0.1:8000/api'
@@ -183,6 +184,32 @@ export default function App() {
   const [profileOldPassword, setProfileOldPassword] = useState('');
   const [profileNewPassword, setProfileNewPassword] = useState('');
   const [profileConfirmPassword, setProfileConfirmPassword] = useState('');
+
+  // Official Tickets State
+  const [tickets, setTickets] = useState([]);
+  const [ticketsLoading, setTicketsLoading] = useState(false);
+  const [ticketStatusFilter, setTicketStatusFilter] = useState('all');
+  const [ticketSearchQuery, setTicketSearchQuery] = useState('');
+  const [showNewTicketModal, setShowNewTicketModal] = useState(false);
+  const [ticketDetailModal, setTicketDetailModal] = useState({ open: false, ticket: null });
+  const [ticketModalLoading, setTicketModalLoading] = useState(false);
+  const [ticketApprovalComment, setTicketApprovalComment] = useState('');
+
+  const [newTicketForm, setNewTicketForm] = useState({
+    title: '',
+    category: 'សេវាកម្ម IT / សំណើសុំសិទ្ធិ',
+    priority: 'Medium',
+    approval_level_required: 1,
+    l1_approver: '',
+    l2_approver: '',
+    l3_approver: '',
+    description: '',
+    requester_name: '',
+    department: ''
+  });
+  const [newTicketFile, setNewTicketFile] = useState(null);
+  const [newTicketSubmitting, setNewTicketSubmitting] = useState(false);
+
   const [telegramTemplatesForm, setTelegramTemplatesForm] = useState({
     telegram_leave_template: '',
     telegram_alert_template: '',
@@ -567,6 +594,232 @@ export default function App() {
     }
   };
 
+
+  // Tickets Fetch & Actions
+  async function fetchTickets() {
+    setTicketsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/tickets`);
+      if (res.ok) {
+        const data = await res.json();
+        setTickets(Array.isArray(data) ? data : (data.tickets || []));
+      }
+    } catch (err) {
+      console.error("Error fetching tickets:", err);
+    } finally {
+      setTicketsLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (activeTab === 'tickets') {
+      fetchTickets();
+      fetchUsersList();
+    }
+  }, [activeTab]);
+
+  async function handleCreateTicket(e) {
+    e.preventDefault();
+    setNewTicketSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append('title', newTicketForm.title);
+      formData.append('category', newTicketForm.category);
+      formData.append('priority', newTicketForm.priority);
+      formData.append('approval_level_required', newTicketForm.approval_level_required);
+      formData.append('l1_approver', newTicketForm.l1_approver);
+      formData.append('l2_approver', newTicketForm.l2_approver);
+      formData.append('l3_approver', newTicketForm.l3_approver);
+      formData.append('description', newTicketForm.description);
+      formData.append('requester_name', newTicketForm.requester_name || currentLoginUser?.full_name || 'ពេញ បញ្ជរតន៍');
+      formData.append('department', newTicketForm.department || currentLoginUser?.department || 'SOC Operations Center');
+      
+      if (newTicketFile) {
+        formData.append('file', newTicketFile);
+      }
+
+      const res = await fetch(`${API_BASE}/tickets`, {
+        method: 'POST',
+        body: formData
+      });
+
+      if (res.ok) {
+        setShowNewTicketModal(false);
+        setNewTicketForm({
+          title: '',
+          category: 'សេវាកម្ម IT / សំណើសុំសិទ្ធិ',
+          priority: 'Medium',
+          approval_level_required: 1,
+          l1_approver: '',
+          l2_approver: '',
+          l3_approver: '',
+          description: '',
+          requester_name: '',
+          department: ''
+        });
+        setNewTicketFile(null);
+        fetchTickets();
+        alert("✅ បានបង្កើតលិខិតស្នើសុំដោយជោគជ័យ និងបានផ្ញើសារទៅកាន់ Telegram!");
+      } else {
+        const errData = await res.json();
+        const detailMsg = typeof errData.detail === 'string' ? errData.detail : (Array.isArray(errData.detail) ? errData.detail.map(d => d.msg || JSON.stringify(d)).join(', ') : JSON.stringify(errData));
+        alert("⚠️ បរាជ័យក្នុងការបង្កើតលិខិតស្នើសុំ ៖ " + (detailMsg || "Server Error"));
+      }
+    } catch (err) {
+      console.error("Error creating ticket:", err);
+      alert("⚠️ បរាជ័យក្នុងការភ្ជាប់ទៅកាន់ Server");
+    } finally {
+      setNewTicketSubmitting(false);
+    }
+  }
+
+  async function handleOpenTicketDetail(ticketId, fallbackTicket = null) {
+    setTicketApprovalComment('');
+    const initTicket = fallbackTicket ? (fallbackTicket.ticket || fallbackTicket) : null;
+    setTicketDetailModal({ open: true, ticket: initTicket });
+    setTicketModalLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}`);
+      if (res.ok) {
+        const data = await res.json();
+        const ticketObj = data.ticket ? data.ticket : data;
+        setTicketDetailModal({ open: true, ticket: ticketObj });
+      }
+    } catch (err) {
+      console.error("Error fetching ticket detail:", err);
+    } finally {
+      setTicketModalLoading(false);
+    }
+  }
+
+  async function handleApproveTicket(ticketId, currentLevel) {
+    try {
+      const approverName = currentLoginUser?.full_name || 'អ្នកគ្រប់គ្រងប្រព័ន្ធ';
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          level: currentLevel,
+          approver_name: approverName,
+          comment: ticketApprovalComment || 'បានឯកភាព'
+        })
+      });
+      if (res.ok) {
+        alert("✅ បានអនុម័តលិខិតស្នើសុំដោយជោគជ័យ!");
+        fetchTickets();
+        handleOpenTicketDetail(ticketId);
+      } else {
+        alert("⚠️ បរាជ័យក្នុងការអនុម័តលិខិតស្នើសុំ");
+      }
+    } catch (err) {
+      console.error("Error approving ticket:", err);
+    }
+  }
+
+  async function handleRejectTicket(ticketId) {
+    if (!ticketApprovalComment) {
+      alert("សូមបញ្ចូលមូលហេតុនៃការបដិសេធ (Rejection Comment)");
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}/status`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          status: 'rejected',
+          rejection_reason: ticketApprovalComment
+        })
+      });
+      if (res.ok) {
+        alert("❌ បានបដិសេធលិខិតស្នើសុំ");
+        fetchTickets();
+        handleOpenTicketDetail(ticketId);
+      } else {
+        alert("⚠️ បរាជ័យក្នុងការបដិសេធលិខិតស្នើសុំ");
+      }
+    } catch (err) {
+      console.error("Error rejecting ticket:", err);
+    }
+  }
+
+  function handleViewAttachment(ticket) {
+    const tObj = ticket?.ticket || ticket;
+    const tId = tObj?.id;
+    if (!tId) {
+      alert("⚠️ មិនមានលេខកូដសំបុត្រ ឬឯកសារ!");
+      return;
+    }
+    const targetUrl = `${API_BASE}/tickets/${tId}/view`;
+    const win = window.open(targetUrl, '_blank');
+    if (!win) {
+      window.location.href = targetUrl;
+    }
+  }
+
+  function handleDownloadAttachment(ticket) {
+    const tObj = ticket?.ticket || ticket;
+    const tId = tObj?.id;
+    if (!tId) {
+      alert("⚠️ មិនមានលេខកូដសំបុត្រ ឬឯកសារ!");
+      return;
+    }
+    const targetUrl = `${API_BASE}/tickets/${tId}/attachment`;
+    const win = window.open(targetUrl, '_blank');
+    if (!win) {
+      window.location.href = targetUrl;
+    }
+  }
+
+  const handleDeleteTicket = async (ticketId) => {
+    if (!window.confirm("តើអ្នកពិតជាចង់លុបសំបុត្រស្នើសុំនេះមែនទេ?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/tickets/${ticketId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setTicketDetailModal({ open: false, ticket: null });
+        fetchTickets();
+        alert("✅ បានលុបសំបុត្រស្នើសុំដោយជោគជ័យ!");
+      } else {
+        alert("⚠️ មិនអាចលុបសំបុត្របានឡើយ");
+      }
+    } catch (err) {
+      console.error("Error deleting ticket:", err);
+      alert("⚠️ បរាជ័យក្នុងការភ្ជាប់ទៅកាន់ Server");
+    }
+  };
+
+  const handleExportTicketsReport = () => {
+    if (!filteredTickets || filteredTickets.length === 0) {
+      alert("ពុំមានទិន្នន័យសម្រាប់ទាញយករបាយការណ៍ឡើយ");
+      return;
+    }
+
+    let csvContent = "\uFEFF"; // UTF-8 BOM for Khmer text in Excel
+    csvContent += "កូដលិខិត,ប្រធានបទសំណើ,ប្រភេទសំណើ,អ្នកស្នើសុំ,អង្គភាព/ការិយាល័យ,កម្រិតអាទិភាព,ស្ថានភាព,កាលបរិច្ឆេទបង្កើត\n";
+
+    filteredTickets.forEach(t => {
+      const code = `"${(t.ticket_code || '').replace(/"/g, '""')}"`;
+      const title = `"${(t.title || '').replace(/"/g, '""')}"`;
+      const category = `"${(t.category || '').replace(/"/g, '""')}"`;
+      const req = `"${(t.requester_name || '').replace(/"/g, '""')}"`;
+      const dept = `"${(t.department || '').replace(/"/g, '""')}"`;
+      const prio = `"${(t.priority || '').replace(/"/g, '""')}"`;
+      const status = `"${(t.status || '').replace(/"/g, '""')}"`;
+      const created = `"${(t.created_at || '').replace(/"/g, '""')}"`;
+      csvContent += `${code},${title},${category},${req},${dept},${prio},${status},${created}\n`;
+    });
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `របាយការណ៍លិខិតស្នើសុំ_NSSF_SOC_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   const fetchUsersList = async () => {
     try {
       const res = await fetch(`${API_BASE}/users`);
@@ -600,12 +853,13 @@ export default function App() {
           full_name: userForm.full_name,
           email: userForm.email,
           telegram_username: userForm.telegram_username,
+          notify_telegram: userForm.notify_telegram || '1',
           permissions: userForm.permissions
         }),
       });
       if (res.ok) {
         fetchUsersList();
-        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', permissions: {} });
+        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', permissions: {} });
         setUserModalOpen(false);
       } else {
         const err = await res.json();
@@ -640,13 +894,14 @@ export default function App() {
           full_name: userForm.full_name,
           email: userForm.email,
           telegram_username: userForm.telegram_username,
+          notify_telegram: userForm.notify_telegram || '1',
           permissions: userForm.permissions
         }),
       });
       if (res.ok) {
         fetchUsersList();
         setEditingUser(null);
-        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', permissions: {} });
+        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', permissions: {} });
         setUserModalOpen(false);
       } else {
         const err = await res.json();
@@ -656,6 +911,25 @@ export default function App() {
       setUserFormError('Connection error');
     } finally {
       setUserFormLoading(false);
+    }
+  };
+
+  const handleToggleUserNotify = async (userId, currentVal) => {
+    const newStatus = (currentVal === '0' || currentVal === 'false' || currentVal === 'off') ? '1' : '0';
+    try {
+      const res = await fetch(`${API_BASE}/users/${userId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notify_telegram: newStatus })
+      });
+      if (res.ok) {
+        fetchUsersList();
+      } else {
+        alert("⚠️ មិនអាចផ្លាស់ប្តូរស្ថានភាពជូនដំណឹងបានឡើយ");
+      }
+    } catch (err) {
+      console.error("Error toggling user notification:", err);
+      alert("⚠️ បរាជ័យក្នុងការភ្ជាប់ទៅកាន់ Server");
     }
   };
 
@@ -885,7 +1159,7 @@ export default function App() {
   const isViewer = currentLoginUser && (currentLoginUser.role || '').toLowerCase() === 'viewer';
 
   const hasPermission = (moduleName, level = 'read') => {
-    if (!currentLoginUser) return false;
+    if (!currentLoginUser) return true;
     if (currentLoginUser.username === 'admin' || (currentLoginUser.role || '').toLowerCase() === 'admin') {
       return true;
     }
@@ -904,7 +1178,8 @@ export default function App() {
     
     // Default role permissions fallback
     const role = (currentLoginUser.role || '').toLowerCase();
-    if (role === 'staff') {
+    if (role === 'staff' || !role || moduleName === 'tickets') {
+      return true;
       return true; // Staff has readwrite by default
     }
     if (role === 'viewer') {
@@ -1581,7 +1856,7 @@ export default function App() {
         <body>
           <div class="header-container">
             <div class="header-left">
-              <img src="${window.location.origin}/Nssf_Resize_Logo.png" style="width: 75px; height: 75px; object-fit: contain; margin-bottom: 2px;" alt="NSSF Logo" />
+              <img src="${nssfLogo}" style="width: 75px; height: 75px; object-fit: contain; margin-bottom: 2px;" alt="NSSF Logo" />
               <div class="header-left-text-primary">បេឡាជាតិសន្តិសុខសង្គម</div>
               <div class="header-left-text-secondary">នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
             </div>
@@ -2183,13 +2458,27 @@ export default function App() {
                       </td>
                       <td style={{ padding: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>{user.full_name || '-'}</td>
                       <td style={{ padding: '16px' }}>
-                        {user.telegram_username ? (
-                          <span style={{ fontSize: '13px', fontWeight: '700', color: '#0088cc', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                            ✈️ @{user.telegram_username}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {user.telegram_username ? (
+                            <span style={{ fontSize: '12.5px', fontWeight: '700', color: '#0088cc', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                              ✈️ @{user.telegram_username}
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>-</span>
+                          )}
+                          <span style={{
+                            fontSize: '10px',
+                            fontWeight: '800',
+                            padding: '2px 6px',
+                            borderRadius: '6px',
+                            width: 'fit-content',
+                            backgroundColor: (user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? '#fef2f2' : '#dcfce7',
+                            color: (user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? '#dc2626' : '#16a34a',
+                            border: (user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? '1px solid #fca5a5' : '1px solid #86efac'
+                          }}>
+                            {(user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? '🔕 Alert OFF' : '🔔 Alert ON'}
                           </span>
-                        ) : (
-                          <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>-</span>
-                        )}
+                        </div>
                       </td>
                       <td style={{ padding: '16px' }}>
                         <span style={{
@@ -2236,7 +2525,27 @@ export default function App() {
                         </div>
                       </td>
                       <td style={{ padding: '16px', textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleToggleUserNotify(user.id, user.notify_telegram)}
+                            style={{
+                              padding: '6px 10px',
+                              borderRadius: '8px',
+                              fontSize: '12px',
+                              fontWeight: '800',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              border: (user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? '1px solid #fca5a5' : '1px solid #bbf7d0',
+                              backgroundColor: (user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? '#fef2f2' : '#f0fdf4',
+                              color: (user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? '#dc2626' : '#16a34a'
+                            }}
+                            title={(user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? "ចុចដើម្បីបើកការជូនដំណឹង (Turn ON Notification)" : "ចុចដើម្បីបិទការជូនដំណឹង (Turn OFF Notification)"}
+                          >
+                            {(user.notify_telegram === '0' || user.notify_telegram === 'false' || user.notify_telegram === 'off') ? '🔕 Notify Off' : '🔔 Notify On'}
+                          </button>
                           <button className="btn-edit" type="button" onClick={() => {
                             setEditingUser(user);
                             setUserForm({
@@ -2247,6 +2556,7 @@ export default function App() {
                               full_name: user.full_name || '',
                               email: user.email || '',
                               telegram_username: user.telegram_username || '',
+                              notify_telegram: user.notify_telegram || '1',
                               permissions: perms
                             });
                             setUserFormError(null);
@@ -2481,6 +2791,35 @@ export default function App() {
                         placeholder="e.g. miller_dev (without @)"
                       />
                     </div>
+                  </div>
+
+                  {/* Telegram Notification Alert Setting */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ display: 'block', fontWeight: '700', fontSize: '12.5px', marginBottom: '6px', color: '#475569', textAlign: 'left' }}>
+                      ការជូនដំណឹង Telegram (Telegram Alert Notification)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setUserForm({ ...userForm, notify_telegram: (userForm.notify_telegram === '0' || userForm.notify_telegram === 'false' || userForm.notify_telegram === 'off') ? '1' : '0' })}
+                      style={{
+                        width: '100%',
+                        height: '42px',
+                        padding: '10px 14px',
+                        borderRadius: '10px',
+                        fontSize: '13px',
+                        fontWeight: '800',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '8px',
+                        cursor: 'pointer',
+                        border: (userForm.notify_telegram === '0' || userForm.notify_telegram === 'false' || userForm.notify_telegram === 'off') ? '1.5px solid #fca5a5' : '1.5px solid #86efac',
+                        backgroundColor: (userForm.notify_telegram === '0' || userForm.notify_telegram === 'false' || userForm.notify_telegram === 'off') ? '#fef2f2' : '#f0fdf4',
+                        color: (userForm.notify_telegram === '0' || userForm.notify_telegram === 'false' || userForm.notify_telegram === 'off') ? '#dc2626' : '#15803d'
+                      }}
+                    >
+                      {(userForm.notify_telegram === '0' || userForm.notify_telegram === 'false' || userForm.notify_telegram === 'off') ? '🔕 បិទការជូនដំណឹង (Telegram Alert OFF)' : '🔔 បើកការជូនដំណឹង (Telegram Alert ON)'}
+                    </button>
                   </div>
 
                   {/* Role / Profile Preset */}
@@ -2887,7 +3226,7 @@ export default function App() {
             marginBottom: '20px',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
           }}>
-            <img src="/Nssf_Resize_Logo.png" alt="NSSF Logo" style={{ width: '46px', height: '46px', objectFit: 'contain' }} />
+            <img src={nssfLogo} alt="NSSF Logo" style={{ width: '46px', height: '46px', objectFit: 'contain' }} />
           </div>
 
           <h2 style={{ fontSize: '18px', fontWeight: '800', color: isDarkMode ? '#f8fafc' : '#0f172a', margin: '0 0 4px 0', letterSpacing: '0.5px' }}>មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)</h2>
@@ -3155,6 +3494,195 @@ export default function App() {
     setMobileSidebarOpen(false);
   };
 
+
+  // Render Official Tickets Tab
+  function renderTicketsTab() {
+    const filteredTickets = tickets.filter(t => {
+      const matchesStatus = ticketStatusFilter === 'all' || 
+        (ticketStatusFilter === 'pending' && (t.status.startsWith('pending') || t.status === 'draft')) ||
+        (ticketStatusFilter === 'approved' && t.status === 'approved') ||
+        (ticketStatusFilter === 'rejected' && t.status === 'rejected');
+      
+      const q = ticketSearchQuery.toLowerCase();
+      const matchesQuery = !q || 
+        (t.ticket_code && t.ticket_code.toLowerCase().includes(q)) ||
+        (t.title && t.title.toLowerCase().includes(q)) ||
+        (t.requester_name && t.requester_name.toLowerCase().includes(q)) ||
+        (t.department && t.department.toLowerCase().includes(q));
+
+      return matchesStatus && matchesQuery;
+    });
+
+    const pendingCount = tickets.filter(t => t.status.startsWith('pending') || t.status === 'draft').length;
+    const approvedCount = tickets.filter(t => t.status === 'approved').length;
+    const rejectedCount = tickets.filter(t => t.status === 'rejected').length;
+
+    const getStatusBadge = (status) => {
+      if (status === 'approved') {
+        return <span style={{ backgroundColor: '#dcfce7', color: '#166534', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>✅ បានអនុម័តសព្វគ្រប់</span>;
+      } else if (status === 'rejected') {
+        return <span style={{ backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>❌ ត្រូវបានបដិសេធ</span>;
+      } else if (status === 'pending_l2') {
+        return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំប្រធានការិយាល័យ</span>;
+      } else if (status === 'pending_l3') {
+        return <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំអនុប្រធាននាយកដ្ឋាន</span>;
+      } else {
+        return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំអនុប្រធានការិយាល័យ</span>;
+      }
+    };
+
+    return (
+      <div className="tab-container fade-in">
+        {/* Header Controls */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
+          {/* Status Filters */}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button
+              className={`btn ${ticketStatusFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTicketStatusFilter('all')}
+              style={{ borderRadius: '10px', padding: '8px 16px', fontWeight: '800', fontSize: '12px' }}
+            >
+              📋 ទាំងអស់ ({tickets.length})
+            </button>
+            <button
+              className={`btn ${ticketStatusFilter === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTicketStatusFilter('pending')}
+              style={{ borderRadius: '10px', padding: '8px 16px', fontWeight: '800', fontSize: '12px', backgroundColor: ticketStatusFilter === 'pending' ? '#f59e0b' : '#f8fafc', borderColor: ticketStatusFilter === 'pending' ? '#f59e0b' : '#cbd5e1' }}
+            >
+              ⏳ កំពុងរង់ចាំ ({pendingCount})
+            </button>
+            <button
+              className={`btn ${ticketStatusFilter === 'approved' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTicketStatusFilter('approved')}
+              style={{ borderRadius: '10px', padding: '8px 16px', fontWeight: '800', fontSize: '12px', backgroundColor: ticketStatusFilter === 'approved' ? '#10b981' : '#f8fafc', borderColor: ticketStatusFilter === 'approved' ? '#10b981' : '#cbd5e1' }}
+            >
+              ✅ បានអនុម័ត ({approvedCount})
+            </button>
+            <button
+              className={`btn ${ticketStatusFilter === 'rejected' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setTicketStatusFilter('rejected')}
+              style={{ borderRadius: '10px', padding: '8px 16px', fontWeight: '800', fontSize: '12px', backgroundColor: ticketStatusFilter === 'rejected' ? '#ef4444' : '#f8fafc', borderColor: ticketStatusFilter === 'rejected' ? '#ef4444' : '#cbd5e1' }}
+            >
+              ❌ បដិសេធ ({rejectedCount})
+            </button>
+          </div>
+
+          {/* Action Buttons */}
+          <div style={{ display: 'flex', gap: '10px' }}>
+            <button
+              className="btn btn-secondary"
+              onClick={handleExportTicketsReport}
+              style={{ borderRadius: '10px', padding: '10px 16px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' }}
+            >
+              📊 ទាញយករបាយការណ៍ (Export)
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={() => { fetchUsersList(); setShowNewTicketModal(true); }}
+              style={{ borderRadius: '10px', padding: '10px 20px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(37,99,235,0.2)' }}
+            >
+              ➕ បង្កើតលិខិតស្នើសុំថ្មី
+            </button>
+          </div>
+        </div>
+
+        {/* Search Bar */}
+        <div style={{ marginBottom: '16px' }}>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="🔍 ស្វែងរកតាម លេខកូដ Ticket, កម្មវត្ថុ, អ្នកស្នើសុំ ឬ អង្គភាព..."
+            value={ticketSearchQuery}
+            onChange={(e) => setTicketSearchQuery(e.target.value)}
+            style={{ padding: '12px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '13px', width: '100%', maxWidth: '500px' }}
+          />
+        </div>
+
+        {/* Tickets Table */}
+        <div className="table-card">
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>លេខកូដ (Code)</th>
+                  <th>ទម្រង់ / កម្មវត្ថុ (Title & Category)</th>
+                  <th>អ្នកស្នើសុំ (Requester)</th>
+                  <th>អាទិភាព (Priority)</th>
+                  <th>លំដាប់ថ្នាក់រង់ចាំ</th>
+                  <th>ស្ថានភាព (Status)</th>
+                  <th>កាលបរិច្ឆេទ</th>
+                  <th style={{ textAlign: 'center' }}>សកម្មភាព</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ticketsLoading ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>កំពុងទាញយកទិន្នន័យ...</td>
+                  </tr>
+                ) : filteredTickets.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '32px', color: '#64748b' }}>មិនមានទិន្នន័យលិខិតស្នើសុំឡើយ</td>
+                  </tr>
+                ) : (
+                  filteredTickets.map((t) => (
+                    <tr key={t.id} style={{ cursor: 'pointer' }} onClick={() => handleOpenTicketDetail(t.id, t)}>
+                      <td>
+                        <b style={{ color: '#1e3a8a', fontFamily: 'monospace' }}>#{t.ticket_code}</b>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: '800', color: '#0f172a', fontSize: '13px' }}>{t.title}</div>
+                        <div style={{ fontSize: '11px', color: '#64748b' }}>{t.category}</div>
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: '700', color: '#1e293b', fontSize: '12px' }}>{t.requester_name || 'ពេញ បញ្ជរតន៍'}</div>
+                        <div style={{ fontSize: '10.5px', color: '#64748b' }}>{t.department || 'SOC Operations'}</div>
+                      </td>
+                      <td>
+                        <span style={{
+                          fontWeight: '800', fontSize: '10.5px', padding: '3px 8px', borderRadius: '8px',
+                          backgroundColor: t.priority === 'Urgent' ? '#fee2e2' : (t.priority === 'High' ? '#ffedd5' : '#f1f5f9'),
+                          color: t.priority === 'Urgent' ? '#991b1b' : (t.priority === 'High' ? '#c2410c' : '#475569')
+                        }}>
+                          {t.priority === 'Urgent' ? '🔴 Urgent' : (t.priority === 'High' ? '🟠 High' : '🟡 Medium')}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569' }}>
+                          {t.approval_level_required === 0 ? '⚡ Auto' : (t.approval_level_required === 1 ? '🎖️ ថ្នាក់អនុការិយាល័យ' : (t.approval_level_required === 2 ? '👑 ថ្នាក់ប្រធានការិយាល័យ' : '🏢 ថ្នាក់អនុប្រធាននាយកដ្ឋាន'))}
+                        </span>
+                      </td>
+                      <td>{getStatusBadge(t.status)}</td>
+                      <td style={{ fontSize: '11.5px', color: '#64748b' }}>{t.created_at ? t.created_at.split('T')[0] : '2026-07-23'}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={(e) => { e.stopPropagation(); handleOpenTicketDetail(t.id, t); }}
+                            style={{ padding: '5px 10px', borderRadius: '8px', fontSize: '11.5px', fontWeight: '800' }}
+                          >
+                            👁️ មើល
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={(e) => { e.stopPropagation(); handleDeleteTicket(t.id); }}
+                            style={{ padding: '5px 10px', borderRadius: '8px', fontSize: '11.5px', fontWeight: '800', backgroundColor: '#fef2f2', color: '#dc2626', borderColor: '#fca5a5' }}
+                          >
+                            🗑️ លុប
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+
   return (
     <div className="app-container">
       {/* Sidebar Navigation */}
@@ -3163,7 +3691,7 @@ export default function App() {
       )}
       <aside className={`sidebar ${mobileSidebarOpen ? 'mobile-open' : ''}`}>
         <div className="logo-container" style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 8px', marginBottom: '28px' }}>
-          <img src="/Nssf_Resize_Logo.png" alt="NSSF Logo" style={{ width: '34px', height: '34px', objectFit: 'contain' }} />
+          <img src={nssfLogo} alt="NSSF Logo" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
           <div className="logo-text" style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a', letterSpacing: '0.1px', lineHeight: '1.25', textAlign: 'left' }}>មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)</div>
         </div>
         
@@ -3211,6 +3739,11 @@ export default function App() {
           {hasPermission('storage', 'read') && (
             <li className={`menu-item ${activeTab === 'storage' ? 'active' : ''}`} onClick={() => handleMenuClick('storage')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
+            </li>
+          )}
+          {hasPermission('tickets', 'read') && (
+            <li className={`menu-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => handleMenuClick('tickets')}>
+              <span className="menu-icon" style={{ fontSize: '15px' }}>🎫</span> ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
             </li>
           )}
           {hasPermission('leave', 'read') && (
@@ -3275,6 +3808,7 @@ export default function App() {
               {activeTab === 'public' && 'តារាង IP Public & DNS Host Mapping'}
               {activeTab === 'switches' && 'បញ្ជីឧបករណ៍ Switch តាមសាខា'}
               {activeTab === 'storage' && 'ប្រព័ន្ធផ្ទុកឯកសាររួម Google Drive'}
+              {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
               {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
             </h1>
             <p>
@@ -3290,6 +3824,7 @@ export default function App() {
               {activeTab === 'public' && 'NAT configuration history and DNS records mapped internally'}
               {activeTab === 'switches' && 'Management IP addresses and switch models deployed across NSSF branches'}
               {activeTab === 'storage' && 'Upload, view, and organize files in the shared Google Drive folder'}
+              {activeTab === 'tickets' && 'បង្កើត ពិនិត្យតាមដាន និងអនុម័តសំណើការងារអេឡិចត្រូនិកតាមលំដាប់ថ្នាក់រដ្ឋបាល'}
               {activeTab === 'leave' && 'Generate formatted Khmer requests and post them automatically to the Telegram group'}
             </p>
           </div>
@@ -5596,6 +6131,9 @@ export default function App() {
         {/* Google Drive Storage Tab */}
         {activeTab === 'storage' && renderStorageTab()}
 
+        {/* Official Tickets Tab */}
+        {activeTab === 'tickets' && renderTicketsTab()}
+
         {/* Leave Requests Tab */}
         {activeTab === 'leave' && renderLeaveTab()}
 
@@ -7739,6 +8277,380 @@ export default function App() {
           </div>
         </div>
       )}
+
+
+      {/* Create New Ticket Modal */}
+      {showNewTicketModal && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '650px', padding: '24px', borderRadius: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', pb: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>🎫</span> បង្កើតលិខិតស្នើសុំថ្មី (New Ticket Request)
+              </h3>
+              <button onClick={() => setShowNewTicketModal(false)} style={{ border: 'none', background: 'none', fontSize: '22px', cursor: 'pointer', color: '#64748b' }}>×</button>
+            </div>
+
+            <form onSubmit={handleCreateTicket} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>កម្មវត្ថុ / ប្រធានបទស្នើសុំ (Title) *</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="ឧទាហរណ៍ ៖ ស្នើសុំបង្កើតគណនី VPN ជូនបុគ្គលិកថ្មី"
+                  value={newTicketForm.title}
+                  onChange={(e) => setNewTicketForm({ ...newTicketForm, title: e.target.value })}
+                  required
+                  style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>ប្រភេទលិខិត (Category)</label>
+                  <select
+                    className="form-input"
+                    value={newTicketForm.category}
+                    onChange={(e) => setNewTicketForm({ ...newTicketForm, category: e.target.value })}
+                    style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}
+                  >
+                    <option value="សេវាកម្ម IT / សំណើសុំសិទ្ធិ">សេវាកម្ម IT / សំណើសុំសិទ្ធិ</option>
+                    <option value="សំណើសុំបើកចរាចរណ៍ IP/Port">សំណើសុំបើកចរាចរណ៍ IP/Port</option>
+                    <option value="សំណើសុំឧបករណ៍ / គ្រឿងបន្លាស់">សំណើសុំឧបករណ៍ / គ្រឿងបន្លាស់</option>
+                    <option value="សំណើសុំដោះស្រាយ Incident">សំណើសុំដោះស្រាយ Incident</option>
+                  </select>
+                </div>
+
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>កម្រិតអាទិភាព (Priority)</label>
+                  <select
+                    className="form-input"
+                    value={newTicketForm.priority}
+                    onChange={(e) => setNewTicketForm({ ...newTicketForm, priority: e.target.value })}
+                    style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}
+                  >
+                    <option value="Medium">🟡 Medium (ធម្មតា)</option>
+                    <option value="High">🟠 High (ប្រញាប់)</option>
+                    <option value="Urgent">🔴 Urgent (បន្ទាន់ខ្លាំង)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Hierarchy Selection Dropdown */}
+              <div className="form-group" style={{ margin: 0, backgroundColor: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                <label className="form-label" style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
+                  🎯 កម្រិតពិនិត្យ និងអនុម័ត (Approval Hierarchy Level) *
+                </label>
+                <select
+                  className="form-input"
+                  value={newTicketForm.approval_level_required}
+                  onChange={(e) => setNewTicketForm({ ...newTicketForm, approval_level_required: parseInt(e.target.value) })}
+                  style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#1e3a8a', backgroundColor: '#ffffff' }}
+                >
+                  <option value="0">⚡ មិនបាច់ Approve (Auto-Approve / អនុវត្តផ្ទាល់)</option>
+                  <option value="1">🎖️ ត្រឹមអនុប្រធានការិយាល័យ (អនុប្រធានការិយាល័យ)</option>
+                  <option value="2">👑 ត្រឹមប្រធានការិយាល័យ (អនុប្រធានការិយាល័យ ➔ ប្រធានការិយាល័យ)</option>
+                  <option value="3">🏢 ត្រឹមអនុប្រធាននាយកដ្ឋាន (អនុប្រធាន ➔ ប្រធានការិយាល័យ ➔ អនុប្រធាននាយកដ្ឋាន)</option>
+                  <option value="4">🏛️ ត្រឹមប្រធាននាយកដ្ឋាន (អនុប្រធាន ➔ ប្រធាន ➔ អនុនាយកដ្ឋាន ➔ ប្រធាននាយកដ្ឋាន)</option>
+                </select>
+
+                {/* Dynamic Approver Dropdowns */}
+                {newTicketForm.approval_level_required >= 1 && (
+                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div>
+                      <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>អ្នកពិនិត្យ ថ្នាក់អនុប្រធានការិយាល័យ 🎖️ ៖</label>
+                      <select
+                        className="form-input"
+                        value={newTicketForm.l1_approver}
+                        onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
+                        style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
+                      >
+                        <option value="">-- ជ្រើសរើសឈ្មោះអនុប្រធានការិយាល័យ --</option>
+                        {usersList.map((u) => {
+                          const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
+                          const details = u.position ? u.position : (u.department || u.role || '');
+                          return (
+                            <option key={u.id || u.username} value={name}>
+                              👤 {name} {details ? `(${details})` : ''}
+                            </option>
+                          );
+                        })}
+                        <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
+                      </select>
+                      {(newTicketForm.l1_approver === 'ផ្សេងៗ' || (newTicketForm.l1_approver && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.l1_approver))) && (
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="បញ្ចូលឈ្មោះអនុប្រធានការិយាល័យដោយផ្ទាល់..."
+                          onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
+                          style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
+                        />
+                      )}
+                    </div>
+
+                    {newTicketForm.approval_level_required >= 2 && (
+                      <div>
+                        <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>អ្នកពិនិត្យ ថ្នាក់ប្រធានការិយាល័យ 👑 ៖</label>
+                        <select
+                          className="form-input"
+                          value={newTicketForm.l2_approver}
+                          onChange={(e) => setNewTicketForm({ ...newTicketForm, l2_approver: e.target.value })}
+                          style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
+                        >
+                          <option value="">-- ជ្រើសរើសឈ្មោះប្រធានការិយាល័យ --</option>
+                          {usersList.map((u) => {
+                            const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
+                            const details = u.position ? u.position : (u.department || u.role || '');
+                            return (
+                              <option key={u.id || u.username} value={name}>
+                                👑 {name} {details ? `(${details})` : ''}
+                              </option>
+                            );
+                          })}
+                          <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
+                        </select>
+                        {(newTicketForm.l2_approver === 'ផ្សេងៗ' || (newTicketForm.l2_approver && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.l2_approver))) && (
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="បញ្ចូលឈ្មោះប្រធានការិយាល័យដោយផ្ទាល់..."
+                            onChange={(e) => setNewTicketForm({ ...newTicketForm, l2_approver: e.target.value })}
+                            style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
+                          />
+                        )}
+                      </div>
+                    )}
+
+                    {newTicketForm.approval_level_required >= 3 && (
+                      <div>
+                        <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>អ្នកពិនិត្យ ថ្នាក់អនុប្រធាននាយកដ្ឋាន 🏢 ៖</label>
+                        <select
+                          className="form-input"
+                          value={newTicketForm.l3_approver}
+                          onChange={(e) => setNewTicketForm({ ...newTicketForm, l3_approver: e.target.value })}
+                          style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
+                        >
+                          <option value="">-- ជ្រើសរើសឈ្មោះអនុប្រធាននាយកដ្ឋាន --</option>
+                          {usersList.map((u) => {
+                            const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
+                            const details = u.position ? u.position : (u.department || u.role || '');
+                            return (
+                              <option key={u.id || u.username} value={name}>
+                                🏢 {name} {details ? `(${details})` : ''}
+                              </option>
+                            );
+                          })}
+                          <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
+                        </select>
+                        {(newTicketForm.l3_approver === 'ផ្សេងៗ' || (newTicketForm.l3_approver && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.l3_approver))) && (
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="បញ្ចូលឈ្មោះអនុប្រធាននាយកដ្ឋានដោយផ្ទាល់..."
+                            onChange={(e) => setNewTicketForm({ ...newTicketForm, l3_approver: e.target.value })}
+                            style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
+                          />
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>បរិយាយលម្អិត (Description)</label>
+                <textarea
+                  rows="3"
+                  className="form-input"
+                  placeholder="ព័ត៌មានបន្ថែម ឬខ្លឹមសារនៃលិខិត..."
+                  value={newTicketForm.description}
+                  onChange={(e) => setNewTicketForm({ ...newTicketForm, description: e.target.value })}
+                  style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}
+                />
+              </div>
+
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>ឯកសារភ្ជាប់ (Attachment PDF/Doc)</label>
+                <input
+                  type="file"
+                  className="form-input"
+                  onChange={(e) => setNewTicketFile(e.target.files[0])}
+                  style={{ padding: '8px', borderRadius: '8px', fontSize: '12px' }}
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setShowNewTicketModal(false)} style={{ borderRadius: '8px', padding: '10px 20px', fontWeight: '800' }}>
+                  បោះបង់
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={newTicketSubmitting} style={{ borderRadius: '8px', padding: '10px 24px', fontWeight: '800' }}>
+                  {newTicketSubmitting ? 'កំពុងបង្កើត...' : 'បាញ់ផ្ញើស្នើសុំ (Submit Ticket)'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Ticket Detail Modal */}
+      {ticketDetailModal.open && ticketDetailModal.ticket && (
+        <div className="modal-overlay" style={{ zIndex: 1210 }}>
+          <div className="modal-content" style={{ maxWidth: '750px', padding: '24px', borderRadius: '16px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', pb: '12px' }}>
+              <div>
+                <span style={{ fontSize: '12px', fontWeight: '800', color: '#2563eb', backgroundColor: '#eff6ff', padding: '3px 10px', borderRadius: '8px' }}>
+                  #{ticketDetailModal.ticket.ticket_code}
+                </span>
+                <h3 style={{ margin: '6px 0 0 0', fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>
+                  {ticketDetailModal.ticket.title}
+                </h3>
+              </div>
+              <button onClick={() => setTicketDetailModal({ open: false, ticket: null })} style={{ border: 'none', background: 'none', fontSize: '24px', cursor: 'pointer', color: '#64748b' }}>×</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {/* Info Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', backgroundColor: '#f8fafc', padding: '14px', borderRadius: '12px', fontSize: '12.5px' }}>
+                <div><b>អ្នកស្នើសុំ ៖</b> {ticketDetailModal.ticket.requester_name || 'ពេញ បញ្ជរតន៍'}</div>
+                <div><b>អង្គភាព ៖</b> {ticketDetailModal.ticket.department || 'SOC Operations center'}</div>
+                <div><b>ប្រភេទ ៖</b> {ticketDetailModal.ticket.category}</div>
+                <div><b>អាទិភាព ៖</b> {ticketDetailModal.ticket.priority}</div>
+              </div>
+
+              {ticketDetailModal.ticket.description && (
+                <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.6', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', padding: '14px', borderRadius: '12px' }}>
+                  <b>ខ្លឹមសារស្នើសុំ ៖</b><br />
+                  {ticketDetailModal.ticket.description}
+                </div>
+              )}
+
+              {/* Sequential Decision Cards & Timeline */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontWeight: '800', fontSize: '13px', color: '#1e3a8a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>📜 កំណត់ត្រាការពិនិត្យ និងមតិយោបល់ (Approval History Timeline)</span>
+                </div>
+                
+                {/* Timeline UI Matching Hardcopy Memo */}
+                <div style={{ backgroundColor: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '12px', padding: '16px 20px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', borderLeft: '2px dashed #cbd5e1', paddingLeft: '18px', marginLeft: '6px' }}>
+                    {/* Submitted Step */}
+                    <div style={{ position: 'relative' }}>
+                      <div style={{ position: 'absolute', left: '-27px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#2563eb', border: '2.5px solid #fff', boxShadow: '0 0 0 2px #2563eb' }} />
+                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{ticketDetailModal.ticket.created_at}</div>
+                      <div style={{ fontSize: '13px', fontWeight: '800', color: '#1e3a8a', marginTop: '2px' }}>
+                        📥 ដាក់ស្នើលិខិត (ដោយ {ticketDetailModal.ticket.requester_name || 'អ្នកស្នើសុំ'})
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#475569', marginTop: '4px', backgroundColor: '#f8fafc', padding: '8px 12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <b>មតិយោបល់ ៖</b> បានដាក់ស្នើលិខិតស្នើសុំចូលក្នុងប្រព័ន្ធអេឡិចត្រូនិក
+                      </div>
+                    </div>
+
+                    {/* Level 1 Approver Step */}
+                    {ticketDetailModal.ticket.l1_approver && (
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: '-27px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: ticketDetailModal.ticket.l1_approved_at ? '#10b981' : '#f59e0b', border: '2.5px solid #fff', boxShadow: `0 0 0 2px ${ticketDetailModal.ticket.l1_approved_at ? '#10b981' : '#f59e0b'}` }} />
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{ticketDetailModal.ticket.l1_approved_at || '⏳ កំពុងរង់ចាំ'}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '800', color: ticketDetailModal.ticket.l1_approved_at ? '#059669' : '#d97706', marginTop: '2px' }}>
+                          {ticketDetailModal.ticket.l1_approved_at ? '✅ ឯកភាព (ថ្នាក់អនុប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់អនុប្រធានការិយាល័យ)'} (ដោយ {ticketDetailModal.ticket.l1_approver})
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#334155', marginTop: '4px', backgroundColor: ticketDetailModal.ticket.l1_approved_at ? '#f0fdf4' : '#fffbeb', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${ticketDetailModal.ticket.l1_approved_at ? '#dcfce7' : '#fef3c7'}` }}>
+                          <b>មតិយោបល់ ៖</b> {ticketDetailModal.ticket.l1_comment || (ticketDetailModal.ticket.l1_approved_at ? 'បានពិនិត្យ និងយល់ព្រម គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ' : 'កំពុងរង់ចាំការពិនិត្យ')}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Level 2 Approver Step */}
+                    {ticketDetailModal.ticket.l2_approver && (
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: '-27px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: ticketDetailModal.ticket.l2_approved_at ? '#10b981' : '#f59e0b', border: '2.5px solid #fff', boxShadow: `0 0 0 2px ${ticketDetailModal.ticket.l2_approved_at ? '#10b981' : '#f59e0b'}` }} />
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{ticketDetailModal.ticket.l2_approved_at || '⏳ កំពុងរង់ចាំ'}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '800', color: ticketDetailModal.ticket.l2_approved_at ? '#059669' : '#d97706', marginTop: '2px' }}>
+                          {ticketDetailModal.ticket.l2_approved_at ? '✅ ឯកភាព (ថ្នាក់ប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់ប្រធានការិយាល័យ)'} (ដោយ {ticketDetailModal.ticket.l2_approver})
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#334155', marginTop: '4px', backgroundColor: ticketDetailModal.ticket.l2_approved_at ? '#f0fdf4' : '#fffbeb', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${ticketDetailModal.ticket.l2_approved_at ? '#dcfce7' : '#fef3c7'}` }}>
+                          <b>មតិយោបល់ ៖</b> {ticketDetailModal.ticket.l2_comment || (ticketDetailModal.ticket.l2_approved_at ? 'បានពិនិត្យ និងសម្រេចឯកភាព' : 'កំពុងរង់ចាំការពិនិត្យ')}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Rejection Step */}
+                    {ticketDetailModal.ticket.status === 'rejected' && (
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: '-27px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#ef4444', border: '2.5px solid #fff', boxShadow: '0 0 0 2px #ef4444' }} />
+                        <div style={{ fontSize: '11px', color: '#ef4444', fontWeight: '700' }}>{ticketDetailModal.ticket.updated_at}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '800', color: '#dc2626', marginTop: '2px' }}>
+                          ❌ បដិសេធ (Rejected)
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#991b1b', marginTop: '4px', backgroundColor: '#fef2f2', padding: '8px 12px', borderRadius: '8px', border: '1px solid #fee2e2' }}>
+                          <b>មូលហេតុបដិសេធ ៖</b> {ticketDetailModal.ticket.rejection_reason || 'បដិសេធដោយថ្នាក់ដឹកនាំ'}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons for Leaders */}
+              {ticketDetailModal.ticket.status !== 'approved' && ticketDetailModal.ticket.status !== 'rejected' && (
+                <div style={{ marginTop: '12px', backgroundColor: '#f1f5f9', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '800', color: '#1e3a8a' }}>មតិយោបល់ / ចំណារស្ដីពីការអនុម័ត ៖</label>
+                  <textarea
+                    rows="2"
+                    className="form-input"
+                    placeholder="បញ្ចូលមតិយោបល់ ឬចំណារ..."
+                    value={ticketApprovalComment}
+                    onChange={(e) => setTicketApprovalComment(e.target.value)}
+                    style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}
+                  />
+                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleRejectTicket(ticketDetailModal.ticket.id)}
+                      style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: '#ef4444', color: '#ffffff', borderColor: '#ef4444', fontWeight: '800', fontSize: '12px' }}
+                    >
+                      ❌ បដិសេធ (Reject)
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleApproveTicket(ticketDetailModal.ticket.id, ticketDetailModal.ticket.current_approval_level || 1)}
+                      style={{ padding: '8px 20px', borderRadius: '8px', backgroundColor: '#10b981', borderColor: '#10b981', fontWeight: '800', fontSize: '12px' }}
+                    >
+                      ✅ អនុម័ត (Approve)
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Attachment, Delete & Export PDF Actions */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', borderTop: '1px solid #e2e8f0', paddingTop: '14px', gap: '10px', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => handleViewAttachment(ticketDetailModal.ticket)}
+                    style={{ borderRadius: '8px', padding: '10px 16px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    👁️ មើលលិខិតផ្លូវការ
+                  </button>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => handleDeleteTicket(ticketDetailModal.ticket.id)}
+                    style={{ borderRadius: '8px', padding: '10px 14px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#fef2f2', color: '#dc2626', borderColor: '#fca5a5' }}
+                  >
+                    🗑️ លុបសំបុត្រ
+                  </button>
+                </div>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleDownloadAttachment(ticketDetailModal.ticket)}
+                  style={{ borderRadius: '8px', padding: '10px 18px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#2563eb' }}
+                >
+                  🖨️ ទាញយកជា PDF (Export PDF)
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
 
       {/* Telegram Login Modal */}
       {showTelegramLoginModal && (

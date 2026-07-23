@@ -1,7 +1,10 @@
 {
   "name": "nssfsocportal-root",
   "version": "1.0.0",
+  "workspaces": [
+    "frontend"
+  ],
   "scripts": {
-    "build": "node sync-backend.js && cd frontend && npm install && npm run build"
+    "build": "node sync-backend.js && npm --prefix frontend install --include=dev && npm --prefix frontend run build"
   }
 }

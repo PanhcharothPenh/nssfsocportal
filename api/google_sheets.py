@@ -1,4 +1,4 @@
-﻿import os
+import os
 import time
 import gspread
 import pandas as pd
@@ -11,26 +11,39 @@ WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 def get_gspread_client():
     """
-    Authenticates using the Service Account credentials file specified in .env
+    Authenticates using the Service Account credentials file or GOOGLE_CREDENTIALS_JSON env var.
     """
-    credentials_file = os.getenv("GOOGLE_CREDENTIALS_FILE", "backend/google_credentials.json")
-    if not os.path.isabs(credentials_file):
-        credentials_file = os.path.join(WORKSPACE, credentials_file)
-        
-    if not os.path.exists(credentials_file):
-        return None
-        
     scopes = [
         "https://www.googleapis.com/auth/spreadsheets",
         "https://www.googleapis.com/auth/drive"
     ]
-    try:
-        credentials = Credentials.from_service_account_file(credentials_file, scopes=scopes)
-        gc = gspread.authorize(credentials)
-        return gc
-    except Exception as e:
-        print(f"Failed to authenticate with Google Sheets: {e}")
-        return None
+    
+    # 1. Try environment variable GOOGLE_CREDENTIALS_JSON
+    creds_json = os.getenv("GOOGLE_CREDENTIALS_JSON")
+    if creds_json:
+        try:
+            import json
+            info = json.loads(creds_json)
+            credentials = Credentials.from_service_account_info(info, scopes=scopes)
+            gc = gspread.authorize(credentials)
+            return gc
+        except Exception as e:
+            print(f"Failed to authenticate from GOOGLE_CREDENTIALS_JSON: {e}")
+            
+    # 2. Try physical credentials file
+    credentials_file = os.getenv("GOOGLE_CREDENTIALS_FILE", "backend/google_credentials.json")
+    if not os.path.isabs(credentials_file):
+        credentials_file = os.path.join(WORKSPACE, credentials_file)
+        
+    if os.path.exists(credentials_file):
+        try:
+            credentials = Credentials.from_service_account_file(credentials_file, scopes=scopes)
+            gc = gspread.authorize(credentials)
+            return gc
+        except Exception as e:
+            print(f"Failed to authenticate from google_credentials.json file: {e}")
+            
+    return None
 
 def call_gspread_with_retry(func, *args, **kwargs):
     import time
@@ -184,14 +197,14 @@ def download_google_sheet_to_local_excel(sheet_type, local_file_name):
     if not client:
         return False, "Google credentials file not found or invalid"
 
-    local_path = os.path.join(WORKSPACE, local_file_name)
+    import tempfile
+    temp_dir = tempfile.gettempdir()
+    local_path = os.path.join(temp_dir, local_file_name)
 
     try:
-        import tempfile
         sh = call_gspread_with_retry(client.open_by_key, spreadsheet_id)
         
         # Write to a temp file first to ensure atomic write
-        temp_dir = os.path.dirname(local_path) or WORKSPACE
         fd, temp_path = tempfile.mkstemp(suffix=".xlsx", dir=temp_dir)
         os.close(fd) # Close file descriptor to allow pandas to open it
         
@@ -199,7 +212,6 @@ def download_google_sheet_to_local_excel(sheet_type, local_file_name):
             with pd.ExcelWriter(temp_path, engine='openpyxl') as writer:
                 worksheets = call_gspread_with_retry(sh.worksheets)
                 for worksheet in worksheets:
-                    time.sleep(0.5)  # Safe delay between sheets
                     data = call_gspread_with_retry(worksheet.get_all_values)
                     if not data:
                         continue
@@ -208,11 +220,21 @@ def download_google_sheet_to_local_excel(sheet_type, local_file_name):
             
             # Atomic replacement
             if os.path.exists(local_path):
-                os.remove(local_path)
+                try: os.remove(local_path)
+                except Exception: pass
             os.rename(temp_path, local_path)
+            
+            # Also attempt to copy to WORKSPACE if writable
+            try:
+                ws_path = os.path.join(WORKSPACE, local_file_name)
+                import shutil
+                shutil.copy2(local_path, ws_path)
+            except Exception:
+                pass
         except Exception as write_err:
             if os.path.exists(temp_path):
-                os.remove(temp_path)
+                try: os.remove(temp_path)
+                except Exception: pass
             raise write_err
             
         return True, f"Successfully downloaded '{sh.title}' to {local_file_name}"
@@ -419,5 +441,77 @@ def sync_hospital_vpn_to_google_sheet(sheet_name, vpn_type, vpn_no, vpn_name, up
             return True, "Synced successfully"
         return True, "No fields matched for updates"
         
+    except Exception as e:
+        return False, str(e)
+
+def delete_vpn_user_from_google_sheet(vpn_no, username=None):
+    """
+    Deletes a VPN user row from Google Sheets.
+    """
+    use_gs = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
+    if not use_gs:
+        return False, "Google Sheets sync disabled"
+        
+    spreadsheet_id = os.getenv("BRANCH_SPREADSHEET_ID")
+    if not spreadsheet_id:
+        return False, "Spreadsheet ID not configured"
+        
+    client = get_gspread_client()
+    if not client:
+        return False, "Google client unavailable"
+        
+    try:
+        sh = call_gspread_with_retry(client.open_by_key, spreadsheet_id)
+        worksheet = call_gspread_with_retry(sh.worksheet, "VPN Remote Access")
+        all_values = call_gspread_with_retry(worksheet.get_all_values)
+        
+        target_row = None
+        for r_idx, row in enumerate(all_values[1:], start=2):
+            r_no = row[0].strip() if len(row) > 0 else ""
+            r_user = row[3].strip() if len(row) > 3 else ""
+            if (vpn_no and r_no == str(vpn_no)) or (username and r_user.lower() == str(username).lower()):
+                target_row = r_idx
+                break
+                
+        if target_row:
+            call_gspread_with_retry(worksheet.delete_rows, target_row)
+            return True, f"Deleted row {target_row} from Google Sheets"
+        return True, "Row not found in Google Sheets"
+    except Exception as e:
+        return False, str(e)
+
+def delete_hospital_vpn_from_google_sheet(sheet_name, vpn_no, vpn_name=None):
+    """
+    Deletes a Hospital VPN row from Google Sheets.
+    """
+    use_gs = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
+    if not use_gs:
+        return False, "Google Sheets sync disabled"
+        
+    spreadsheet_id = os.getenv("HOSPITAL_SPREADSHEET_ID")
+    if not spreadsheet_id:
+        return False, "Hospital Spreadsheet ID not configured"
+        
+    client = get_gspread_client()
+    if not client:
+        return False, "Google client unavailable"
+        
+    try:
+        sh = call_gspread_with_retry(client.open_by_key, spreadsheet_id)
+        worksheet = call_gspread_with_retry(sh.worksheet, sheet_name)
+        all_values = call_gspread_with_retry(worksheet.get_all_values)
+        
+        target_row = None
+        for r_idx, row in enumerate(all_values[1:], start=2):
+            r_no = row[0].strip() if len(row) > 0 else ""
+            r_name = row[1].strip() if len(row) > 1 else ""
+            if (vpn_no and r_no == str(vpn_no)) or (vpn_name and r_name.lower() == str(vpn_name).lower()):
+                target_row = r_idx
+                break
+                
+        if target_row:
+            call_gspread_with_retry(worksheet.delete_rows, target_row)
+            return True, f"Deleted row {target_row} from Google Sheets"
+        return True, "Row not found in Google Sheets"
     except Exception as e:
         return False, str(e)

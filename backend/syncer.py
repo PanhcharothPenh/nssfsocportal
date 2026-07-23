@@ -1,4 +1,4 @@
-﻿import os
+import os
 import openpyxl
 import sqlite3
 import glob
@@ -23,11 +23,17 @@ def sync_branch_ip_to_excel(branch_id, ip_address, updates):
         return False, "Branch sheet not found"
         
     sheet_name = branch['sheet_name']
+    conn.close()
+    
+    use_gs = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
     file_path = os.path.join(WORKSPACE, "IP Address Branch.xlsx")
     
-    if not os.path.exists(file_path):
-        conn.close()
-        return False, "Branch Excel file not found"
+    if use_gs or not os.path.exists(file_path):
+        try:
+            from google_sheets import sync_ip_to_google_sheet
+            return sync_ip_to_google_sheet('branch', sheet_name, ip_address, updates)
+        except Exception as gs_err:
+            return False, f"Google Sheets Sync Error: {gs_err}"
         
     try:
         wb = openpyxl.load_workbook(file_path)
@@ -149,11 +155,17 @@ def sync_hq_ip_to_excel(dept_id, ip_address, updates):
         return False, "Department sheet not found"
         
     sheet_name = dept['sheet_name']
+    conn.close()
+    
+    use_gs = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
     file_path = os.path.join(WORKSPACE, "NSSF HQ Users IP Address 2024.xlsx")
     
-    if not os.path.exists(file_path):
-        conn.close()
-        return False, "HQ Excel file not found"
+    if use_gs or not os.path.exists(file_path):
+        try:
+            from google_sheets import sync_ip_to_google_sheet
+            return sync_ip_to_google_sheet('hq', sheet_name, ip_address, updates)
+        except Exception as gs_err:
+            return False, f"Google Sheets Sync Error: {gs_err}"
         
     try:
         wb = openpyxl.load_workbook(file_path)
@@ -301,9 +313,15 @@ def sync_vpn_user_to_excel(vpn_id, updates):
     db_name = user['name']
     conn.close()
     
+    use_gs = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
     files = glob.glob(os.path.join(WORKSPACE, "*VPN Remote Access*.xlsx"))
-    if not files:
-        return False, "VPN Excel file not found"
+    
+    if use_gs or not files:
+        try:
+            from google_sheets import sync_vpn_user_to_google_sheet
+            return sync_vpn_user_to_google_sheet(vpn_id, updates)
+        except Exception as gs_err:
+            return False, f"Google Sheets VPN Sync Error: {gs_err}"
     file_path = files[0]
     
     try:
@@ -415,9 +433,15 @@ def sync_hospital_vpn_to_excel(vpn_id, updates):
     db_type = vpn['vpn_type']
     conn.close()
     
+    use_gs = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
     files = glob.glob(os.path.join(WORKSPACE, "*PRIVATE-HOSPITAL-VPN*.xlsx"))
-    if not files:
-        return False, "Hospital VPN Excel file not found"
+    
+    if use_gs or not files:
+        try:
+            from google_sheets import sync_hospital_vpn_to_google_sheet
+            return sync_hospital_vpn_to_google_sheet(db_no, db_name, updates)
+        except Exception as gs_err:
+            return False, f"Google Sheets Hospital Sync Error: {gs_err}"
     file_path = files[0]
     
     # Map database vpn_type to Sheet name
