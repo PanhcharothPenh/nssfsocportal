@@ -8252,6 +8252,40 @@ export default function App() {
                             required
                           />
                         </div>
+                        
+                        {/* Uptime Kuma Integration Helper */}
+                        <div style={{
+                          marginTop: '8px',
+                          padding: '12px 16px',
+                          borderRadius: '8px',
+                          background: '#f8fafc',
+                          border: '1px dashed #38bdf8',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '6px'
+                        }}>
+                          <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            🟢 Uptime Kuma Webhook Integration
+                          </span>
+                          <p style={{ fontSize: '11px', color: '#475569', margin: 0, lineHeight: '1.5' }}>
+                            To integrate with <b>Uptime Kuma</b>, create a new <b>Webhook</b> notification type in your Uptime Kuma dashboard and configure it with the following URL:
+                          </p>
+                          <code style={{
+                            padding: '6px 8px',
+                            background: '#e2e8f0',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            fontFamily: 'monospace',
+                            color: '#0f172a',
+                            wordBreak: 'break-all'
+                          }}>
+                            {window.location.origin}/api/webhooks/uptime-kuma
+                          </code>
+                          <span style={{ fontSize: '10px', color: '#64748b' }}>
+                            Alerts will be automatically formatted using the <i>System Log Alert Template</i> above and sent to your Telegram channel.
+                          </span>
+                        </div>
                       </div>
                     )}
 

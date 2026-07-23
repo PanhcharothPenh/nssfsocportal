@@ -1707,6 +1707,94 @@ def google_sheets_webhook(payload: GoogleSheetWebhookPayload):
             conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.post("/api/webhooks/uptime-kuma")
+def uptime_kuma_webhook(payload: dict):
+    msg_str = payload.get("msg")
+    heartbeat = payload.get("heartbeat")
+    monitor = payload.get("monitor")
+    
+    # 1. Format alert details
+    if heartbeat and monitor:
+        # It is a real monitoring update
+        monitor_name = monitor.get("name", "Unknown Monitor")
+        monitor_url = monitor.get("url") or monitor.get("hostname") or "N/A"
+        status_code = heartbeat.get("status") # 0 = DOWN, 1 = UP, 2 = PENDING
+        err_msg = heartbeat.get("msg") or "No error detail"
+        ping_time = heartbeat.get("ping")
+        hb_time = heartbeat.get("time")
+        
+        if status_code == 0:
+            status_label = "🔴 Down"
+        elif status_code == 1:
+            status_label = "🟢 Up"
+        else:
+            status_label = f"⏳ Pending ({status_code})"
+            
+        alert_text = (
+            f"🔔 <b>[UPTIME KUMA ALERT]</b>\n\n"
+            f"🖥️ <b>Service:</b> <code>{monitor_name}</code>\n"
+            f"🌐 <b>URL/Host:</b> {monitor_url}\n"
+            f"📊 <b>Status:</b> {status_label}\n"
+            f"⚠️ <b>Detail:</b> <code>{err_msg}</code>\n"
+            f"⚡ <b>Response Time:</b> {ping_time} ms\n"
+            f"🕒 <b>Time:</b> {hb_time} (UTC)\n"
+        )
+    else:
+        # Fall back to generic message, e.g. test notification
+        raw_msg = msg_str or "Test ping notification from Uptime Kuma"
+        alert_text = (
+            f"🔔 <b>[UPTIME KUMA ALERT]</b>\n\n"
+            f"📝 <b>Message:</b> {raw_msg}\n"
+        )
+
+    # 2. Retrieve dynamic template from DB if configured, and substitute values if appropriate
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_alert_template'")
+        row = cursor.fetchone()
+        conn.close()
+        
+        if row and row['value']:
+            template = row['value']
+            # Placeholders: {alert_type}, {host}, {ip}, {status}, {time}
+            alert_type = "Uptime Kuma Webhook Alert"
+            host = monitor.get("name", "Unknown Monitor") if monitor else "Uptime Kuma"
+            ip = (monitor.get("url") or monitor.get("hostname") or "N/A") if monitor else "N/A"
+            
+            if heartbeat and monitor:
+                status_code = heartbeat.get("status")
+                err_msg = heartbeat.get("msg") or ""
+                if status_code == 0:
+                    status = f"🔴 Down ({err_msg})"
+                elif status_code == 1:
+                    status = "🟢 Up"
+                else:
+                    status = f"⏳ Pending ({status_code})"
+            else:
+                status = msg_str or "Test Notification"
+                
+            import datetime
+            time_val = heartbeat.get("time") if (heartbeat and heartbeat.get("time")) else (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
+            
+            # Format using placeholders
+            formatted_text = template.replace("{alert_type}", alert_type)\
+                                     .replace("{host}", host)\
+                                     .replace("{ip}", ip)\
+                                     .replace("{status}", status)\
+                                     .replace("{time}", time_val)
+            alert_text = formatted_text
+    except Exception as e:
+        print(f"Error formatting Uptime Kuma alert with custom template: {e}")
+
+    # 3. Send Telegram notification using send_telegram_message function from telegram
+    try:
+        from telegram import send_telegram_message
+        success, info = send_telegram_message(alert_text)
+        return {"status": "success", "sent": success, "detail": info}
+    except Exception as e:
+        return {"status": "error", "detail": str(e)}
+
 # Local Document Storage Endpoints (Bypassing cloud quota limitations)
 import tempfile
 
