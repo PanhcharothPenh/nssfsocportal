@@ -4131,28 +4131,28 @@ export default function App() {
   // Render Bitrix Task Management & Interactive Kanban Board Tab
   function renderKanbanTab() {
     const columns = [
-      { id: 'todo', title: 'TO DO', label: '📝 To Do', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)', border: '#3b82f6', accent: 'linear-gradient(90deg, #2563eb, #60a5fa)' },
-      { id: 'in_progress', title: 'IN PROGRESS', label: '⚡ In Progress', color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)', border: '#f59e0b', accent: 'linear-gradient(90deg, #d97706, #fbbf24)' },
-      { id: 'review', title: 'IN REVIEW', label: '👀 In Review', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)', border: '#8b5cf6', accent: 'linear-gradient(90deg, #7c3aed, #a78bfa)' },
-      { id: 'testing', title: 'TESTING', label: '🧪 Testing', color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.08)', border: '#6366f1', accent: 'linear-gradient(90deg, #4f46e5, #818cf8)' },
-      { id: 'completed', title: 'COMPLETED', label: '✅ Completed', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)', border: '#10b981', accent: 'linear-gradient(90deg, #16a34a, #34d399)' },
-      { id: 'on_hold', title: 'ON HOLD', label: '⏸️ On Hold', color: '#e11d48', bg: 'rgba(225, 29, 72, 0.08)', border: '#f43f5e', accent: 'linear-gradient(90deg, #e11d48, #fb7185)' }
+      { id: 'todo', title: 'TO DO', label: '📝 ត្រូវធ្វើ (To Do)', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)', border: '#3b82f6', accent: 'linear-gradient(90deg, #2563eb, #60a5fa)' },
+      { id: 'in_progress', title: 'IN PROGRESS', label: '⚡ កំពុងធ្វើ (In Progress)', color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)', border: '#f59e0b', accent: 'linear-gradient(90deg, #d97706, #fbbf24)' },
+      { id: 'review', title: 'IN REVIEW', label: '👀 កំពុងពិនិត្យ (In Review)', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)', border: '#8b5cf6', accent: 'linear-gradient(90deg, #7c3aed, #a78bfa)' },
+      { id: 'testing', title: 'TESTING', label: '🧪 ធ្វើតេស្ត (Testing)', color: '#4f46e5', bg: 'rgba(79, 70, 229, 0.08)', border: '#6366f1', accent: 'linear-gradient(90deg, #4f46e5, #818cf8)' },
+      { id: 'completed', title: 'COMPLETED', label: '✅ បានបញ្ចប់ (Completed)', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)', border: '#10b981', accent: 'linear-gradient(90deg, #16a34a, #34d399)' },
+      { id: 'on_hold', title: 'ON HOLD', label: '⏸️ រង់ចាំ (On Hold)', color: '#e11d48', bg: 'rgba(225, 29, 72, 0.08)', border: '#f43f5e', accent: 'linear-gradient(90deg, #e11d48, #fb7185)' }
     ];
 
-    // Seed sample tasks if backend list is empty so user immediately sees rich task cards matching design
+    // NSSF SOC official sample tasks dataset
     const defaultSampleTasks = [
-      { id: 101, title: 'Set up VPN connection for Branch Office', description: 'Configure IPsec tunnel and routing rules for Siem Reap branch office.', status: 'todo', priority: 'Medium', assignee_name: 'Chantha', due_date: 'Jul 31, 2026', task_code: 'TK-20260728-001', tag: 'Network', department: 'SOC', progress: 0, comment_count: 2, attachment_count: 1 },
-      { id: 102, title: 'Firewall Policy Review & Optimization', description: 'Audit core perimeter firewall rules and eliminate redundant port forwarding.', status: 'in_progress', priority: 'High', assignee_name: 'Miller', due_date: 'Jul 30, 2026', task_code: 'TK-20260728-002', tag: 'Firewall', department: 'SOC', progress: 60, comment_count: 3, attachment_count: 2 },
-      { id: 103, title: 'User Access Request Approval', description: 'Validate supervisor signatures and grant access to SOC database server.', status: 'review', priority: 'Medium', assignee_name: 'Kusial', due_date: 'Jul 29, 2026', task_code: 'TK-20260728-003', tag: 'Access', department: 'IT', progress: 80, comment_count: 1, attachment_count: 0 },
-      { id: 104, title: 'Test VPN Failover Configuration', description: 'Simulate primary ISP outage to verify automatic tunnel switching.', status: 'testing', priority: 'High', assignee_name: 'Samach', due_date: 'Jul 28, 2026', task_code: 'TK-20260728-004', tag: 'Network', department: 'SOC', progress: 50, comment_count: 2, attachment_count: 1 },
-      { id: 105, title: 'Update Antivirus Signatures', description: 'Deploy latest endpoint security definitions to all workstation endpoints.', status: 'todo', priority: 'Low', assignee_name: 'Sambo', due_date: 'Aug 02, 2026', task_code: 'TK-20260728-005', tag: 'Security', department: 'IT', progress: 0, comment_count: 0, attachment_count: 0 },
-      { id: 106, title: 'Server Patch Deployment', description: 'Apply critical OS security patches to Linux web application clusters.', status: 'in_progress', priority: 'Low', assignee_name: 'Sophal', due_date: 'Aug 01, 2026', task_code: 'TK-20260728-006', tag: 'Server', department: 'Server', progress: 40, comment_count: 1, attachment_count: 1 },
-      { id: 107, title: 'Review Network Documentation', description: 'Update topology diagrams for newly added core switches and VLANs.', status: 'review', priority: 'Low', assignee_name: 'Linheng', due_date: 'Aug 03, 2026', task_code: 'TK-20260728-007', tag: 'Documentation', department: 'SOC', progress: 30, comment_count: 0, attachment_count: 2 },
-      { id: 108, title: 'Application Security Scanning', description: 'Execute SAST/DAST security scan on internal SOC web portal code.', status: 'testing', priority: 'Medium', assignee_name: 'Kimhak', due_date: 'Aug 04, 2026', task_code: 'TK-20260728-008', tag: 'Security', department: 'SOC', progress: 20, comment_count: 1, attachment_count: 0 },
-      { id: 109, title: 'Backup Verification Completed', description: 'Test bare-metal restore from disaster recovery tape backups.', status: 'completed', priority: 'Medium', assignee_name: 'Bonthon', due_date: 'Jul 25, 2026', task_code: 'TK-20260728-009', tag: 'Hardware', department: 'Server', progress: 100, comment_count: 0, attachment_count: 1 },
-      { id: 110, title: 'Email Server Health Check', description: 'Verify SMTP queue and DKIM/DMARC SPF authentication records.', status: 'completed', priority: 'Low', assignee_name: 'Sophron', due_date: 'Jul 24, 2026', task_code: 'TK-20260728-010', tag: 'Project', department: 'IT', progress: 100, comment_count: 0, attachment_count: 0 },
-      { id: 111, title: 'Hardware Upgrade Project', description: 'Replace aging SAN storage array controllers with SSD expansion shelves.', status: 'on_hold', priority: 'High', assignee_name: 'Miller', due_date: 'Aug 10, 2026', task_code: 'TK-20260728-011', tag: 'Hardware', department: 'Server', progress: 10, comment_count: 2, attachment_count: 0 },
-      { id: 112, title: 'New System Implementation', description: 'Prepare architectural proposal for central identity directory integration.', status: 'on_hold', priority: 'Medium', assignee_name: 'Chantha', due_date: 'Aug 15, 2026', task_code: 'TK-20260728-012', tag: 'Project', department: 'SOC', progress: 0, comment_count: 1, attachment_count: 2 }
+      { id: 101, title: 'រៀបចំកំណត់រចនាសម្ព័ន្ធ VPN Connection សម្រាប់ សាខាសៀមរាប', description: 'Configure IPsec tunnel and routing rules for Siem Reap branch office.', status: 'todo', priority: 'Medium', assignee_name: 'Chantha', due_date: 'Jul 31, 2026', task_code: 'TK-20260728-001', tag: 'Network', department: 'SOC', progress: 0, comment_count: 2, attachment_count: 1 },
+      { id: 102, title: 'ពិនិត្យ និងកែសម្រួលគោលការណ៍ Firewall លើ Core Perimeter', description: 'Audit core perimeter firewall rules and eliminate redundant port forwarding.', status: 'in_progress', priority: 'High', assignee_name: 'Miller', due_date: 'Jul 30, 2026', task_code: 'TK-20260728-002', tag: 'Firewall', department: 'SOC', progress: 60, comment_count: 3, attachment_count: 2 },
+      { id: 103, title: 'ពិនិត្យអនុម័តសំណើសិទ្ធិចូលប្រើប្រាស់ (User Access Request)', description: 'Validate supervisor signatures and grant access to SOC database server.', status: 'review', priority: 'Medium', assignee_name: 'Kusial', due_date: 'Jul 29, 2026', task_code: 'TK-20260728-003', tag: 'Access', department: 'IT', progress: 80, comment_count: 1, attachment_count: 0 },
+      { id: 104, title: 'ធ្វើតេស្តប្រព័ន្ធ VPN Failover ស្វ័យប្រវត្តិ', description: 'Simulate primary ISP outage to verify automatic tunnel switching.', status: 'testing', priority: 'High', assignee_name: 'Samach', due_date: 'Jul 28, 2026', task_code: 'TK-20260728-004', tag: 'Network', department: 'SOC', progress: 50, comment_count: 2, attachment_count: 1 },
+      { id: 105, title: 'ធ្វើបច្ចុប្បន្នភាព Antivirus Signatures លើកុំព្យូទ័របុគ្គលិក', description: 'Deploy latest endpoint security definitions to all workstation endpoints.', status: 'todo', priority: 'Low', assignee_name: 'Sambo', due_date: 'Aug 02, 2026', task_code: 'TK-20260728-005', tag: 'Security', department: 'IT', progress: 0, comment_count: 0, attachment_count: 0 },
+      { id: 106, title: 'ដំឡើង OS Patch ប្រព័ន្ធ Linux Web Application Server', description: 'Apply critical OS security patches to Linux web application clusters.', status: 'in_progress', priority: 'Low', assignee_name: 'Sophal', due_date: 'Aug 01, 2026', task_code: 'TK-20260728-006', tag: 'Server', department: 'Server', progress: 40, comment_count: 1, attachment_count: 1 },
+      { id: 107, title: 'ពិនិត្យ និងធ្វើបច្ចុប្បន្នភាព ឯកសារបណ្តាញ (Network Documentation)', description: 'Update topology diagrams for newly added core switches and VLANs.', status: 'review', priority: 'Low', assignee_name: 'Linheng', due_date: 'Aug 03, 2026', task_code: 'TK-20260728-007', tag: 'Documentation', department: 'SOC', progress: 30, comment_count: 0, attachment_count: 2 },
+      { id: 108, title: 'ស្កេនស្វែងរកចន្លោះប្រហោងសន្តិសុខ App Security Scanning', description: 'Execute SAST/DAST security scan on internal SOC web portal code.', status: 'testing', priority: 'Medium', assignee_name: 'Kimhak', due_date: 'Aug 04, 2026', task_code: 'TK-20260728-008', tag: 'Security', department: 'SOC', progress: 20, comment_count: 1, attachment_count: 0 },
+      { id: 109, title: 'ផ្ទៀងផ្ទាត់ និងធ្វើតេស្តសង្គ្រោះ Backup (Disaster Recovery)', description: 'Test bare-metal restore from disaster recovery tape backups.', status: 'completed', priority: 'Medium', assignee_name: 'Bonthon', due_date: 'Jul 25, 2026', task_code: 'TK-20260728-009', tag: 'Hardware', department: 'Server', progress: 100, comment_count: 0, attachment_count: 1 },
+      { id: 110, title: 'ពិនិត្យសុខភាព Email Server (DKIM/DMARC SPF)', description: 'Verify SMTP queue and DKIM/DMARC SPF authentication records.', status: 'completed', priority: 'Low', assignee_name: 'Sophron', due_date: 'Jul 24, 2026', task_code: 'TK-20260728-010', tag: 'Project', department: 'IT', progress: 100, comment_count: 0, attachment_count: 0 },
+      { id: 111, title: 'គម្រោងលើកកម្ពស់គ្រឿងបន្លាស់ SAN Storage SSD Shelf', description: 'Replace aging SAN storage array controllers with SSD expansion shelves.', status: 'on_hold', priority: 'High', assignee_name: 'Miller', due_date: 'Aug 10, 2026', task_code: 'TK-20260728-011', tag: 'Hardware', department: 'Server', progress: 10, comment_count: 2, attachment_count: 0 },
+      { id: 112, title: 'រៀបចំសំណើស្ថាបត្យកម្មប្រព័ន្ធ Identity Central Directory', description: 'Prepare architectural proposal for central identity directory integration.', status: 'on_hold', priority: 'Medium', assignee_name: 'Chantha', due_date: 'Aug 15, 2026', task_code: 'TK-20260728-012', tag: 'Project', department: 'SOC', progress: 0, comment_count: 1, attachment_count: 2 }
     ];
 
     const activeTaskList = kanbanTasks && kanbanTasks.length > 0 ? kanbanTasks : defaultSampleTasks;
@@ -4210,9 +4210,9 @@ export default function App() {
           {/* TOTAL TASKS */}
           <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '18px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TOTAL TASKS</span>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>សរុប TASKS</span>
               <div style={{ fontSize: '26px', fontWeight: '900', color: 'var(--text-primary)', marginTop: '2px' }}>{totalCount}</div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>All Tasks</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>កិច្ចការងារសរុប</span>
             </div>
             <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
               📊
@@ -4222,9 +4222,9 @@ export default function App() {
           {/* TO DO */}
           <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '18px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '3px solid #2563eb' }}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>TO DO</span>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>📝 ត្រូវធ្វើ (TO DO)</span>
               <div style={{ fontSize: '26px', fontWeight: '900', color: '#2563eb', marginTop: '2px' }}>{todoCount}</div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Tasks to start</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>ត្រៀមចាប់ផ្តើម</span>
             </div>
             <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '900' }}>
               📝
@@ -4234,9 +4234,9 @@ export default function App() {
           {/* IN PROGRESS */}
           <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '18px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '3px solid #d97706' }}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>IN PROGRESS</span>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>⚡ កំពុងធ្វើ (IN PROGRESS)</span>
               <div style={{ fontSize: '26px', fontWeight: '900', color: '#d97706', marginTop: '2px' }}>{inProgressCount}</div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Tasks in progress</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>កំពុងដំណើរការ</span>
             </div>
             <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#fff7ed', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '900' }}>
               ⚡
@@ -4246,9 +4246,9 @@ export default function App() {
           {/* IN REVIEW */}
           <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '18px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '3px solid #7c3aed' }}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px' }}>IN REVIEW</span>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px' }}>👀 កំពុងពិនិត្យ (IN REVIEW)</span>
               <div style={{ fontSize: '26px', fontWeight: '900', color: '#7c3aed', marginTop: '2px' }}>{reviewCount}</div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Tasks to review</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>រង់ចាំការពិនិត្យ</span>
             </div>
             <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#faf5ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '900' }}>
               👀
@@ -4258,9 +4258,9 @@ export default function App() {
           {/* COMPLETED */}
           <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '18px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '3px solid #16a34a' }}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>COMPLETED</span>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>✅ បានបញ្ចប់ (COMPLETED)</span>
               <div style={{ fontSize: '26px', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>{completedCount}</div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>Tasks done</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '600' }}>បានរៀបចំរួចរាល់</span>
             </div>
             <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '900' }}>
               ✅
@@ -4270,9 +4270,9 @@ export default function App() {
           {/* OVERDUE */}
           <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '18px', border: '1px solid #fca5a5', boxShadow: '0 4px 12px rgba(239,68,68,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '3px solid #ef4444' }}>
             <div>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>OVERDUE</span>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#ef4444', textTransform: 'uppercase', letterSpacing: '0.5px' }}>⚠️ ហួសកាលកំណត់ (OVERDUE)</span>
               <div style={{ fontSize: '26px', fontWeight: '900', color: '#ef4444', marginTop: '2px' }}>{overdueCount}</div>
-              <span style={{ fontSize: '11px', color: '#f87171', fontWeight: '600' }}>Tasks overdue</span>
+              <span style={{ fontSize: '11px', color: '#f87171', fontWeight: '600' }}>ហួសកាលកំណត់</span>
             </div>
             <div style={{ width: '42px', height: '42px', borderRadius: '14px', backgroundColor: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '900' }}>
               ⚠️
@@ -4292,15 +4292,15 @@ export default function App() {
               </div>
             </div>
             <div>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>Completion Rate</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>ភាគរយបញ្ចប់ (Completion Rate)</span>
               <div style={{ fontSize: '16px', fontWeight: '900', color: 'var(--text-primary)' }}>{completionRate}%</div>
-              <span style={{ fontSize: '10.5px', color: '#16a34a', fontWeight: '700' }}>↑ +12% vs last month</span>
+              <span style={{ fontSize: '10.5px', color: '#16a34a', fontWeight: '700' }}>↑ +12% ធៀបខែមុន</span>
             </div>
           </div>
 
           {/* Tasks Completed Bar Graph */}
           <div style={{ borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>Tasks Completed</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>ការងារបានបញ្ចប់ (Completed)</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
               <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)' }}>{completedCount}</div>
               <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '800' }}>↑ 18%</span>
@@ -4315,7 +4315,7 @@ export default function App() {
 
           {/* Due This Week */}
           <div style={{ borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>Due This Week</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>ត្រូវបញ្ចប់សប្ដាហ៍នេះ (Due This Week)</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
               <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)' }}>23</div>
               <span style={{ fontSize: '11px', color: '#f97316', fontWeight: '800' }}>↑ 8%</span>
@@ -4330,10 +4330,10 @@ export default function App() {
 
           {/* Avg Completion Time */}
           <div style={{ borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}>
-            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>Avg. Completion Time</span>
+            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>រយៈពេលមធ្យម (Avg Time)</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)' }}>3.6 Days</div>
-              <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '800' }}>↓ 0.6 day</span>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)' }}>3.6 ថ្ងៃ</div>
+              <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '800' }}>↓ 0.6 ថ្ងៃ</span>
             </div>
             <div style={{ height: '3px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px', marginTop: '12px', overflow: 'hidden' }}>
               <div style={{ width: '65%', height: '100%', backgroundColor: '#10b981' }} />
@@ -4343,8 +4343,8 @@ export default function App() {
           {/* Team Workload / Assignees Bar (Clicking filters by person!) */}
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>Team Workload (Click Person)</span>
-              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '800' }}>Total 16 Members</span>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>បន្ទុកការងារក្រុម (Team Workload)</span>
+              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '800' }}>សរុប 16 រូប</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
               {teamMembersList.slice(0, 5).map(member => {
@@ -4355,7 +4355,7 @@ export default function App() {
                   <div
                     key={member}
                     onClick={() => setKanbanFilterAssignee(isSelected ? 'ALL' : member)}
-                    title={`Click to filter tasks assigned to ${member} (${assignedCount} tasks)`}
+                    title={`ចុចដើម្បស្រង់មើលកិច្ចការងាររបស់ ${member} (សរុប ${assignedCount} Tasks)`}
                     style={{
                       width: '34px',
                       height: '34px',
@@ -4402,7 +4402,7 @@ export default function App() {
             <div style={{ position: 'relative', minWidth: '220px', flex: 1 }}>
               <input 
                 type="text" 
-                placeholder="🔍 Search tasks, users, tags..." 
+                placeholder="🔍 ស្វែងរកកិច្ចការងារ, ឈ្មោះ ឬ Tag..." 
                 value={kanbanFilterSearch}
                 onChange={(e) => setKanbanFilterSearch(e.target.value)}
                 style={{ width: '100%', padding: '9px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12.5px', outline: 'none' }}
@@ -4415,7 +4415,7 @@ export default function App() {
               onChange={(e) => setKanbanFilterAssignee(e.target.value)}
               style={{ padding: '9px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
             >
-              <option value="ALL">👤 Assignee (All)</option>
+              <option value="ALL">👤 អ្នកទទួលបន្ទុក (ទាំងអស់)</option>
               {uniqueAssignees.map(name => (
                 <option key={name} value={name}>{name}</option>
               ))}
@@ -4427,7 +4427,7 @@ export default function App() {
               onChange={(e) => setKanbanFilterDepartment(e.target.value)}
               style={{ padding: '9px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
             >
-              <option value="ALL">🏢 Department (All)</option>
+              <option value="ALL">🏢 នាយកដ្ឋាន (ទាំងអស់)</option>
               <option value="SOC">SOC / Network</option>
               <option value="IT">IT Security</option>
               <option value="Server">Server / System</option>
@@ -4440,11 +4440,11 @@ export default function App() {
               onChange={(e) => setKanbanFilterPriority(e.target.value)}
               style={{ padding: '9px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
             >
-              <option value="ALL">⚡ Priority (All)</option>
-              <option value="Urgent">🔴 Urgent</option>
-              <option value="High">🟠 High</option>
-              <option value="Medium">🟡 Medium</option>
-              <option value="Low">🟢 Low</option>
+              <option value="ALL">⚡ អាទិភាព (ទាំងអស់)</option>
+              <option value="Urgent">🔴 Urgent (បន្ទាន់បំផុត)</option>
+              <option value="High">🟠 High (ខ្ពស់)</option>
+              <option value="Medium">🟡 Medium (មធ្យម)</option>
+              <option value="Low">🟢 Low (ទាប)</option>
             </select>
 
             {/* Status Filter */}
@@ -4453,13 +4453,13 @@ export default function App() {
               onChange={(e) => setKanbanFilterStatus(e.target.value)}
               style={{ padding: '9px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
             >
-              <option value="ALL">📌 Status (All)</option>
-              <option value="todo">📝 To Do</option>
-              <option value="in_progress">⚡ In Progress</option>
-              <option value="review">👀 In Review</option>
-              <option value="testing">🧪 Testing</option>
-              <option value="completed">✅ Completed</option>
-              <option value="on_hold">⏸️ On Hold</option>
+              <option value="ALL">📌 ស្ថានភាព (ទាំងអស់)</option>
+              <option value="todo">📝 ត្រូវធ្វើ (To Do)</option>
+              <option value="in_progress">⚡ កំពុងធ្វើ (In Progress)</option>
+              <option value="review">👀 កំពុងពិនិត្យ (In Review)</option>
+              <option value="testing">🧪 ធ្វើតេស្ត (Testing)</option>
+              <option value="completed">✅ បានបញ្ចប់ (Completed)</option>
+              <option value="on_hold">⏸️ រង់ចាំ (On Hold)</option>
             </select>
 
             {/* Clear Button */}
@@ -4475,7 +4475,7 @@ export default function App() {
                 }}
                 style={{ padding: '9px 14px', borderRadius: '12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: '#ef4444', fontSize: '12.5px', fontWeight: '800', cursor: 'pointer' }}
               >
-                Clear
+                សម្អាត Clear
               </button>
             )}
           </div>
@@ -4498,7 +4498,7 @@ export default function App() {
               }}
               style={{ padding: '10px 20px', borderRadius: '12px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 6px 16px rgba(37, 99, 235, 0.35)' }}
             >
-              <span>+</span> បង្កើត Task ថ្មី (Bitrix Task)
+              <span>➕</span> បង្កើត Task ថ្មី (Bitrix Task)
             </button>
           </div>
 
@@ -4530,7 +4530,7 @@ export default function App() {
                 {/* Column Header */}
                 <div style={{ padding: '12px 16px 0 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '13px', fontWeight: '900', color: col.color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{col.title}</span>
+                    <span style={{ fontSize: '13px', fontWeight: '900', color: col.color, textTransform: 'uppercase', letterSpacing: '0.5px' }}>{col.label}</span>
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span style={{ backgroundColor: col.bg, color: col.color, padding: '2px 10px', borderRadius: '20px', fontSize: '11.5px', fontWeight: '900', border: `1px solid ${col.color}40` }}>
@@ -4578,9 +4578,9 @@ export default function App() {
                             e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
                           }}
                         >
-                          {/* Top Priority Badge & Delete Icon */}
+                          {/* Priority Pill & Card Actions */}
                           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                            <span style={{ fontSize: '10.5px', fontWeight: '900', color: prioColor, backgroundColor: prioBg, padding: '3px 10px', borderRadius: '8px', border: `1px solid ${prioColor}35`, letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                            <span style={{ fontSize: '10px', fontWeight: '900', color: prioColor, backgroundColor: prioBg, padding: '2px 8px', borderRadius: '6px', border: `1px solid ${prioColor}35`, letterSpacing: '0.3px', textTransform: 'uppercase' }}>
                               ● {task.priority || 'Medium'}
                             </span>
                             <button
