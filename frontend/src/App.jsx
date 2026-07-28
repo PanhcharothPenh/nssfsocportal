@@ -5275,11 +5275,6 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>📋</span> កិច្ចការងារ Bitrix (Kanban)
             </li>
           )}
-          {hasPermission('tickets', 'read') && (
-            <li className={`menu-item ${activeTab === 'workflow' ? 'active' : ''}`} onClick={() => handleMenuClick('workflow')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>⚡</span> កំណត់រចនាសម្ព័ន្ធ Workflow
-            </li>
-          )}
           {hasPermission('leave', 'read') && (
             <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => handleMenuClick('leave')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
