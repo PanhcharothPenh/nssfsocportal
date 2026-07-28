@@ -152,7 +152,7 @@ export default function App() {
 
   // User management states (Admin only)
   const [usersList, setUsersList] = useState([]);
-  const [userForm, setUserForm] = useState({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', permissions: {} });
+  const [userForm, setUserForm] = useState({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {} });
   const [editingUser, setEditingUser] = useState(null); // { id, username, role, full_name }
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userFormError, setUserFormError] = useState(null);
@@ -160,6 +160,22 @@ export default function App() {
   const [showPass, setShowPass] = useState(false);
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+  
+  // Bitrix Task Management & Kanban Board States
+  const [kanbanTasks, setKanbanTasks] = useState([]);
+  const [kanbanTasksLoading, setKanbanTasksLoading] = useState(false);
+  const [kanbanModalOpen, setKanbanModalOpen] = useState(false);
+  const [kanbanFilterAssignee, setKanbanFilterAssignee] = useState('ALL');
+  const [kanbanFilterSearch, setKanbanFilterSearch] = useState('');
+  const [kanbanTaskForm, setKanbanTaskForm] = useState({
+    title: '',
+    description: '',
+    priority: 'Medium',
+    assignee_name: '',
+    due_date: '',
+    status: 'todo'
+  });
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -203,6 +219,9 @@ export default function App() {
     l1_approver: '',
     l2_approver: '',
     l3_approver: '',
+    start_date: '',
+    end_date: '',
+    due_date: '',
     description: '',
     requester_name: '',
     department: ''
@@ -214,10 +233,15 @@ export default function App() {
     telegram_leave_template: '',
     telegram_alert_template: '',
     telegram_bot_token: '',
-    telegram_chat_id: '',
-    uptime_kuma_url: ''
+    telegram_chat_id: ''
   });
   const [isTemplatesLoading, setIsTemplatesLoading] = useState(false);
+  
+  // Shift Schedule states
+  const [shiftSchedule, setShiftSchedule] = useState({});
+  const [isShiftLoading, setIsShiftLoading] = useState(false);
+  const [isNotifyingShift, setIsNotifyingShift] = useState(false);
+  const [shiftNotifyResult, setShiftNotifyResult] = useState(null);
   const [dbSettings, setDbSettings] = useState({
     telegram_leave_template: 'សូមគោរព: {recipients}\n\nតាងនាមខ្ញុំបាទ/នាងខ្ញុំ៖ {name}\n\nកម្មវត្ថុ: {subject}\n\nមូលហេតុ: {reason}\n\n{closing}\n\nសូមអរគុណ។',
     telegram_alert_template: '🔔 <b>[NSSF SOC ALERT]</b>\n\n<b>Type:</b> {alert_type}\n<b>Host:</b> {host}\n<b>IP:</b> {ip}\n<b>Status:</b> {status}\n<b>Time:</b> {time}'
@@ -612,17 +636,170 @@ export default function App() {
     }
   }
 
+  // Bitrix Kanban Tasks Fetch & Actions
+  async function fetchKanbanTasks() {
+    setKanbanTasksLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/tasks_kanban`);
+      if (res.ok) {
+        const data = await res.json();
+        setKanbanTasks(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error("Error fetching kanban tasks:", err);
+    } finally {
+      setKanbanTasksLoading(false);
+    }
+  }
+
+  async function handleCreateKanbanTask(e) {
+    if (e) e.preventDefault();
+    if (!kanbanTaskForm.title.trim()) {
+      alert("សូមបញ្ចូលចំណងជើងកិច្ចការងារ!");
+      return;
+    }
+
+    try {
+      const payload = {
+        ...kanbanTaskForm,
+        creator_name: currentLoginUser?.full_name || currentLoginUser?.username || 'User',
+        department: currentLoginUser?.department || 'SOC'
+      };
+
+      const res = await fetch(`${API_BASE}/tasks_kanban`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (res.ok) {
+        setKanbanModalOpen(false);
+        setKanbanTaskForm({
+          title: '',
+          description: '',
+          priority: 'Medium',
+          assignee_name: '',
+          due_date: '',
+          status: 'todo'
+        });
+        fetchKanbanTasks();
+      } else {
+        const errData = await res.json();
+        alert(errData.detail || "បរាជ័យក្នុងការបង្កើត Task ថ្មី");
+      }
+    } catch (err) {
+      console.error("Error creating kanban task:", err);
+      alert("មានបញ្ហាក្នុងការតភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ");
+    }
+  }
+
+  async function handleMoveKanbanTask(taskId, newStatus) {
+    try {
+      const res = await fetch(`${API_BASE}/tasks_kanban/${taskId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: newStatus })
+      });
+      if (res.ok) {
+        setKanbanTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
+      }
+    } catch (err) {
+      console.error("Error moving kanban task:", err);
+    }
+  }
+
+  async function handleDeleteKanbanTask(taskId) {
+    if (!window.confirm("តើអ្នកពិតជាចង់លុប Task នេះមែនទេ?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/tasks_kanban/${taskId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        setKanbanTasks(prev => prev.filter(t => t.id !== taskId));
+      }
+    } catch (err) {
+      console.error("Error deleting kanban task:", err);
+    }
+  }
+
   useEffect(() => {
     if (activeTab === 'tickets') {
       fetchTickets();
       fetchUsersList();
+    } else if (activeTab === 'kanban') {
+      fetchKanbanTasks();
+      fetchUsersList();
+    } else if (activeTab === 'dashboard') {
+      fetchKanbanTasks();
     }
   }, [activeTab]);
+
+  async function compressImageIfNeeded(file) {
+    if (!file || !file.type.startsWith('image/')) return file;
+    if (file.size <= 1024 * 1024) return file; // Skip compression if < 1MB
+
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxDim = 1600;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                });
+                resolve(compressedFile);
+              } else {
+                resolve(file);
+              }
+            },
+            'image/jpeg',
+            0.75
+          );
+        };
+        img.onerror = () => resolve(file);
+        img.src = e.target.result;
+      };
+      reader.onerror = () => resolve(file);
+      reader.readAsDataURL(file);
+    });
+  }
 
   async function handleCreateTicket(e) {
     e.preventDefault();
     setNewTicketSubmitting(true);
     try {
+      let fileToUpload = newTicketFile;
+      if (fileToUpload) {
+        if (fileToUpload.type.startsWith('image/')) {
+          fileToUpload = await compressImageIfNeeded(fileToUpload);
+        }
+        if (fileToUpload.size > 4.5 * 1024 * 1024) {
+          alert("⚠️ ឯកសារធំពេក (ទំហំអតិបរមាគឺ 4.5MB)។ សូមជ្រើសរើសឯកសារតូចជាងនេះ ឬបង្ហាប់រូបភាពជាមុនសិន!");
+          setNewTicketSubmitting(false);
+          return;
+        }
+      }
+
       const formData = new FormData();
       formData.append('title', newTicketForm.title);
       formData.append('category', newTicketForm.category);
@@ -631,12 +808,15 @@ export default function App() {
       formData.append('l1_approver', newTicketForm.l1_approver);
       formData.append('l2_approver', newTicketForm.l2_approver);
       formData.append('l3_approver', newTicketForm.l3_approver);
+      formData.append('start_date', newTicketForm.start_date);
+      formData.append('end_date', newTicketForm.end_date);
+      formData.append('due_date', newTicketForm.due_date);
       formData.append('description', newTicketForm.description);
-      formData.append('requester_name', newTicketForm.requester_name || currentLoginUser?.full_name || 'ពេញ បញ្ជរតន៍');
+      formData.append('requester_name', newTicketForm.requester_name || currentLoginUser?.full_name || '');
       formData.append('department', newTicketForm.department || currentLoginUser?.department || 'SOC Operations Center');
       
-      if (newTicketFile) {
-        formData.append('file', newTicketFile);
+      if (fileToUpload) {
+        formData.append('file', fileToUpload);
       }
 
       const res = await fetch(`${API_BASE}/tickets`, {
@@ -654,6 +834,9 @@ export default function App() {
           l1_approver: '',
           l2_approver: '',
           l3_approver: '',
+          start_date: '',
+          end_date: '',
+          due_date: '',
           description: '',
           requester_name: '',
           department: ''
@@ -662,13 +845,18 @@ export default function App() {
         fetchTickets();
         alert("✅ បានបង្កើតលិខិតស្នើសុំដោយជោគជ័យ និងបានផ្ញើសារទៅកាន់ Telegram!");
       } else {
-        const errData = await res.json();
-        const detailMsg = typeof errData.detail === 'string' ? errData.detail : (Array.isArray(errData.detail) ? errData.detail.map(d => d.msg || JSON.stringify(d)).join(', ') : JSON.stringify(errData));
-        alert("⚠️ បរាជ័យក្នុងការបង្កើតលិខិតស្នើសុំ ៖ " + (detailMsg || "Server Error"));
+        let errorText = "Server Error";
+        try {
+          const errData = await res.json();
+          errorText = typeof errData.detail === 'string' ? errData.detail : (Array.isArray(errData.detail) ? errData.detail.map(d => d.msg || JSON.stringify(d)).join(', ') : JSON.stringify(errData));
+        } catch (e) {
+          errorText = `HTTP ${res.status} ${res.statusText}`;
+        }
+        alert("⚠️ បរាជ័យក្នុងការបង្កើតលិខិតស្នើសុំ ៖ " + errorText);
       }
     } catch (err) {
       console.error("Error creating ticket:", err);
-      alert("⚠️ បរាជ័យក្នុងការភ្ជាប់ទៅកាន់ Server");
+      alert("⚠️ បរាជ័យក្នុងការភ្ជាប់ទៅកាន់ Server ៖ " + (err.message || "Network Error"));
     } finally {
       setNewTicketSubmitting(false);
     }
@@ -696,6 +884,16 @@ export default function App() {
   async function handleApproveTicket(ticketId, currentLevel) {
     try {
       const approverName = currentLoginUser?.full_name || 'អ្នកគ្រប់គ្រងប្រព័ន្ធ';
+      const userPos = currentLoginUser?.position || '';
+      const ticket = ticketDetailModal?.ticket;
+      const reqLevel = ticket?.approval_level_required;
+      
+      const isOfficeHeadStep = (currentLevel === 2 && reqLevel === 2) || (currentLevel === 3 && (reqLevel === 3 || reqLevel === 4)) || (currentLevel === 1 && reqLevel === 6);
+      if (isOfficeHeadStep && userPos && userPos.includes('អនុប្រធាន') && !userPos.includes('ប្រធានការិយាល័យ')) {
+        alert(`⚠️ លោក/លោកស្រី (${approverName}) មានមុខតំណែងជា "${userPos}" មិនអាចអនុម័តក្នុងថ្នាក់ប្រធានបានទេ! មានតែប្រធានការិយាល័យប៉ុណ្ណោះដែលអាចអនុម័តបាន។`);
+        return;
+      }
+
       const res = await fetch(`${API_BASE}/tickets/${ticketId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -705,12 +903,13 @@ export default function App() {
           comment: ticketApprovalComment || 'បានឯកភាព'
         })
       });
+      const data = await res.json();
       if (res.ok) {
         alert("✅ បានអនុម័តលិខិតស្នើសុំដោយជោគជ័យ!");
         fetchTickets();
         handleOpenTicketDetail(ticketId);
       } else {
-        alert("⚠️ បរាជ័យក្នុងការអនុម័តលិខិតស្នើសុំ");
+        alert(`⚠️ បរាជ័យក្នុងការអនុម័ត ៖ ${data.detail || 'មិនមានសិទ្ធិអនុម័តថ្នាក់នេះទេ'}`);
       }
     } catch (err) {
       console.error("Error approving ticket:", err);
@@ -855,12 +1054,13 @@ export default function App() {
           email: userForm.email,
           telegram_username: userForm.telegram_username,
           notify_telegram: userForm.notify_telegram || '1',
+          position: userForm.position || 'មន្ត្រី',
           permissions: userForm.permissions
         }),
       });
       if (res.ok) {
         fetchUsersList();
-        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', permissions: {} });
+        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {} });
         setUserModalOpen(false);
       } else {
         const err = await res.json();
@@ -896,13 +1096,14 @@ export default function App() {
           email: userForm.email,
           telegram_username: userForm.telegram_username,
           notify_telegram: userForm.notify_telegram || '1',
+          position: userForm.position || 'មន្ត្រី',
           permissions: userForm.permissions
         }),
       });
       if (res.ok) {
         fetchUsersList();
         setEditingUser(null);
-        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', permissions: {} });
+        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {} });
         setUserModalOpen(false);
       } else {
         const err = await res.json();
@@ -1001,8 +1202,7 @@ export default function App() {
             telegram_leave_template: data.settings.telegram_leave_template || '',
             telegram_alert_template: data.settings.telegram_alert_template || '',
             telegram_bot_token: data.settings.telegram_bot_token || '',
-            telegram_chat_id: data.settings.telegram_chat_id || '',
-            uptime_kuma_url: data.settings.uptime_kuma_url || ''
+            telegram_chat_id: data.settings.telegram_chat_id || ''
           });
         }
       }
@@ -1342,6 +1542,7 @@ export default function App() {
     else if (activeTab === 'switches') fetchSwitches();
     else if (activeTab === 'storage') fetchDriveFiles();
     else if (activeTab === 'users' && hasPermission('user_management', 'read')) fetchUsersList();
+    else if (activeTab === 'shift') fetchShiftSchedule();
   };
 
   // Fetch Dashboard Stats
@@ -1378,10 +1579,49 @@ export default function App() {
       fetchDriveFiles();
     } else if (activeTab === 'users' && hasPermission('user_management', 'read')) {
       fetchUsersList();
+    } else if (activeTab === 'shift') {
+      fetchShiftSchedule();
     }
     // reset inner filters
     setSubnetSearch('');
   }, [activeTab]);
+
+  const fetchShiftSchedule = async () => {
+    setIsShiftLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/shift/schedule`);
+      if (res.ok) {
+        const data = await res.json();
+        setShiftSchedule(data.schedule || {});
+      }
+    } catch (err) {
+      console.error('Error fetching shift schedule:', err);
+    } finally {
+      setIsShiftLoading(false);
+    }
+  };
+
+  const handleNotifyShiftToday = async () => {
+    setIsNotifyingShift(true);
+    setShiftNotifyResult(null);
+    try {
+      const res = await fetch(`${API_BASE}/shift/notify-today`, { method: 'POST' });
+      const data = await res.json();
+      if (res.ok) {
+        if (data.status === 'no_shift_today') {
+          setShiftNotifyResult({ type: 'warning', message: data.message });
+        } else {
+          setShiftNotifyResult({ type: 'success', message: 'បានបញ្ជូនសាររំលឹកទៅ Telegram រួចរាល់!' });
+        }
+      } else {
+        setShiftNotifyResult({ type: 'error', message: data.detail || 'បរាជ័យក្នុងការបញ្ជូនសារ។' });
+      }
+    } catch (err) {
+      setShiftNotifyResult({ type: 'error', message: 'មានកំហុសក្នុងការតភ្ជាប់ទៅកាន់ប្រព័ន្ធ។' });
+    } finally {
+      setIsNotifyingShift(false);
+    }
+  };
 
   const fetchDriveFiles = async () => {
     setIsDriveLoading(true);
@@ -1848,7 +2088,17 @@ export default function App() {
               background-color: #f8fafc;
             }
             
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
             @media print {
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
               body {
                 margin: 20px;
               }
@@ -1941,11 +2191,19 @@ export default function App() {
     e.preventDefault();
     setIsSubmitting(true);
     
+    const editorUsername = currentLoginUser?.username || currentLoginUser?.full_name || 'Admin';
+    const editorFullname = currentLoginUser?.full_name || currentLoginUser?.username || 'Admin';
+    const jsonHeaders = {
+      'Content-Type': 'application/json',
+      'x-editor-username': editorUsername,
+      'x-editor-fullname': editorFullname
+    };
+
     try {
       if (editingModal === 'branch_ip') {
         const res = await fetch(`${API_BASE}/branches/${editingData.branch_id}/ips?ip=${editingData.ip}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: jsonHeaders,
           body: JSON.stringify({
             user_name: editingData.user_name,
             position: editingData.position,
@@ -1964,7 +2222,7 @@ export default function App() {
       } else if (editingModal === 'hq_ip') {
         const res = await fetch(`${API_BASE}/hq/${editingData.dept_id}/ips?ip=${editingData.ip}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: jsonHeaders,
           body: JSON.stringify({
             user_name_kh: editingData.user_name_kh,
             user_name_en: editingData.user_name_en,
@@ -1987,7 +2245,7 @@ export default function App() {
       } else if (editingModal === 'vpn_user') {
         const res = await fetch(`${API_BASE}/vpn/${editingData.id}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: jsonHeaders,
           body: JSON.stringify(editingData)
         });
         if (res.ok) {
@@ -1998,7 +2256,7 @@ export default function App() {
       } else if (editingModal === 'vpn_user_add') {
         const res = await fetch(`${API_BASE}/vpn`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: jsonHeaders,
           body: JSON.stringify(editingData)
         });
         if (res.ok) {
@@ -2009,7 +2267,7 @@ export default function App() {
       } else if (editingModal === 's2s_vpn') {
         const res = await fetch(`${API_BASE}/hospital_vpns/${editingData.id}`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: jsonHeaders,
           body: JSON.stringify(editingData)
         });
         if (res.ok) {
@@ -2020,7 +2278,7 @@ export default function App() {
       } else if (editingModal === 'branch_add') {
         const res = await fetch(`${API_BASE}/branches`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: jsonHeaders,
           body: JSON.stringify({
             name_kh: editingData.name_kh,
             name_en: editingData.name_en,
@@ -2043,7 +2301,7 @@ export default function App() {
       } else if (editingModal === 'hq_add') {
         const res = await fetch(`${API_BASE}/hq`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: jsonHeaders,
           body: JSON.stringify({
             name_en: editingData.name_en,
             vlan_id: editingData.vlan_id,
@@ -2147,76 +2405,276 @@ export default function App() {
     window.open(`https://t.me/share/url?url=&text=${encoded}`, '_blank');
   };
 
-  const renderMonitoringTab = () => {
-    const uptimeUrl = dbSettings.uptime_kuma_url;
-    if (uptimeUrl && uptimeUrl.trim() !== '') {
-      return (
-        <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 160px)', width: '100%', gap: '12px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#fff', padding: '12px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: '#1e293b' }}>
-              📊 Uptime Kuma Status Page ៖ <a href={uptimeUrl} target="_blank" rel="noopener noreferrer" style={{ color: '#0088cc', textDecoration: 'none' }}>{uptimeUrl} ↗</a>
-            </span>
-            <button 
-              className="btn btn-secondary"
-              onClick={() => window.open(uptimeUrl, '_blank')}
-              style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
-            >
-              Open Status Page in New Tab ↗
-            </button>
-          </div>
-          <iframe 
-            src={uptimeUrl}
-            title="Uptime Kuma Status Page"
-            style={{ width: '100%', height: '100%', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#fff' }}
-          />
-        </div>
-      );
-    }
+  const renderShiftTab = () => {
+    const todayStr = new Date().toLocaleDateString('sv-SE');
+    const todayNames = shiftSchedule[todayStr] || [];
+
+    // Filter shift dates
+    const filteredDates = Object.keys(shiftSchedule)
+      .sort((a, b) => new Date(a) - new Date(b))
+      .filter(dateKey => {
+        const query = (subnetSearch || '').toLowerCase().trim();
+        if (!query) return true;
+        if (dateKey.includes(query)) return true;
+        const names = shiftSchedule[dateKey] || [];
+        return names.some(n => n.toLowerCase().includes(query));
+      });
 
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', padding: '40px 20px', height: 'calc(100vh - 200px)' }}>
-        <div className="card" style={{ maxWidth: '640px', padding: '32px 40px', borderRadius: '16px', backgroundColor: '#fff', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '20px', alignItems: 'center' }}>
-          <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(56, 189, 248, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', color: '#0284c7' }}>
-            📊
-          </div>
-          <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#0f172a', margin: 0 }}>
-            Uptime Kuma Monitoring Dashboard
-          </h2>
-          <p style={{ fontSize: '13px', color: '#475569', lineHeight: '1.6', margin: 0 }}>
-            Keep track of all your local and cloud services (VPNs, subnets, routers, websites, databases) in real time. 
-            Integrate your <b>Uptime Kuma Status Page</b> to display its live metrics directly inside this portal tab!
-          </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        {/* Top Cards Section */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
           
-          <div style={{
-            alignSelf: 'stretch',
-            padding: '16px',
-            borderRadius: '12px',
-            backgroundColor: '#f8fafc',
-            border: '1px dashed #cbd5e1',
-            textAlign: 'left',
+          {/* Card 1: Today's Standing Officers */}
+          <div className="card" style={{ 
+            padding: '24px', 
+            borderRadius: '16px', 
+            backgroundColor: '#1e293b', 
+            color: '#fff', 
+            border: '1px solid #334155',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '8px'
+            gap: '16px',
+            position: 'relative',
+            overflow: 'hidden'
           }}>
-            <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#1e293b' }}>
-              🛠️ How to configure ៖
-            </span>
-            <ol style={{ fontSize: '12px', color: '#475569', margin: 0, paddingLeft: '20px', lineHeight: '1.6' }}>
-              <li>Go to your <b>Profile Settings</b> modal by clicking your avatar in the top right.</li>
-              <li>Switch to the <b>Templates ⚙️</b> tab.</li>
-              <li>Configure your <b>Uptime Kuma Status Page URL</b> under the Uptime Kuma section.</li>
-              <li>Save templates, and the live status dashboard will show up right here!</li>
-            </ol>
+            {/* Background Accent */}
+            <div style={{ 
+              position: 'absolute', 
+              top: '-20px', 
+              right: '-20px', 
+              width: '100px', 
+              height: '100px', 
+              borderRadius: '50%', 
+              backgroundColor: 'rgba(56, 189, 248, 0.15)', 
+              filter: 'blur(20px)' 
+            }} />
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                borderRadius: '50%', 
+                backgroundColor: 'rgba(56, 189, 248, 0.2)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                fontSize: '20px' 
+              }}>
+                📅
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#38bdf8' }}>អ្នកប្រចាំការយប់នេះ (Night Shift Standby)</h3>
+                <span style={{ fontSize: '12px', color: '#94a3b8' }}>ថ្ងៃទី {todayStr}</span>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #334155', paddingTop: '14px' }}>
+              {isShiftLoading ? (
+                <div style={{ fontSize: '13px', color: '#94a3b8' }}>⏳ កំពុងទាញយកទិន្នន័យ...</div>
+              ) : todayNames.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {todayNames.map((name, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#334155', padding: '10px 14px', borderRadius: '10px' }}>
+                      <span style={{ fontSize: '16px' }}>👤</span>
+                      <span style={{ fontSize: '13.5px', fontWeight: '700' }}>{name}</span>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    ⏰ <b>ម៉ោងប្រចាំការ ៖</b> ១៧:០០ - ០៨:០០ ព្រឹក
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '12px', backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '10px', color: '#f59e0b', fontSize: '12.5px' }}>
+                  ℹ️ មិនទាន់មានកាលវិភាគប្រចាំការសម្រាប់ថ្ងៃនេះឡើយ។
+                </div>
+              )}
+            </div>
+
+            <a 
+              href="https://shift-dashboard-efda2.web.app" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={{ fontSize: '12px', color: '#38bdf8', textDecoration: 'none', fontWeight: '700', marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              មើលកាលវិភាគពេញលេញ (External Link) ↗
+            </a>
           </div>
-          
-          <button 
-            className="btn btn-primary"
-            onClick={() => handleMenuClick('dashboard')}
-            style={{ padding: '10px 24px', borderRadius: '10px', fontSize: '13px', fontWeight: '800', cursor: 'pointer', marginTop: '8px' }}
-          >
-            Back to Dashboard
-          </button>
+
+          {/* Card 2: Notification Action Trigger */}
+          <div className="card" style={{ 
+            padding: '24px', 
+            borderRadius: '16px', 
+            backgroundColor: '#fff', 
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ 
+                width: '40px', 
+                height: '40px', 
+                borderRadius: '50%', 
+                backgroundColor: 'rgba(0, 136, 204, 0.1)', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center', 
+                fontSize: '20px',
+                color: '#0088cc'
+              }}>
+                🔔
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>ប្រព័ន្ធរំលឹកវេនប្រចាំការ (Telegram Alerts)</h3>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>ផ្ញើសាររំលឹកទៅកាន់បុគ្គលិកត្រូវប្រចាំការថ្ងៃនេះ</span>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <p style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5', margin: 0 }}>
+                ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការយប់នេះ ទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួនរបស់ពួកគេ។ សាររួមមានម៉ោង កាលបរិច្ឆេទ និងសមាជិកប្រចាំការរួមគ្នា។
+              </p>
+
+              {shiftNotifyResult && (
+                <div style={{ 
+                  padding: '10px 14px', 
+                  borderRadius: '8px', 
+                  fontSize: '12px', 
+                  fontWeight: '700',
+                  backgroundColor: shiftNotifyResult.type === 'success' ? '#f0fdf4' : shiftNotifyResult.type === 'warning' ? '#fffbeb' : '#fef2f2',
+                  border: `1px solid ${shiftNotifyResult.type === 'success' ? '#dcfce7' : shiftNotifyResult.type === 'warning' ? '#fef3c7' : '#fee2e2'}`,
+                  color: shiftNotifyResult.type === 'success' ? '#15803d' : shiftNotifyResult.type === 'warning' ? '#b45309' : '#b91c1c'
+                }}>
+                  {shiftNotifyResult.message}
+                </div>
+              )}
+            </div>
+
+            <button
+              className="btn btn-primary"
+              onClick={handleNotifyShiftToday}
+              disabled={isNotifyingShift || isShiftLoading}
+              style={{ 
+                width: '100%', 
+                padding: '12px', 
+                borderRadius: '10px', 
+                fontWeight: '800', 
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer'
+              }}
+            >
+              {isNotifyingShift ? (
+                <>
+                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" style={{ width: '14px', height: '14px', borderWidth: '2px', borderStyle: 'solid', borderColor: 'currentColor', borderRightColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.75s linear infinite' }} />
+                  <span>កំពុងបញ្ជូន...</span>
+                </>
+              ) : (
+                <>
+                  <span>📢 បញ្ជូនសាររំលឹកទៅ Telegram (Send Alert)</span>
+                </>
+              )}
+            </button>
+          </div>
+
         </div>
+
+        {/* Calendar Timeline / List Section */}
+        <div className="panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>📅 តារាងកាលវិភាគប្រចាំការយប់ (Standby Roster)</h3>
+            
+            {/* Search Input within Roster Panel */}
+            <div className="search-container" style={{ width: '280px', margin: 0 }}>
+              <span className="search-icon-left">🔍</span>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="ស្វែងរកថ្ងៃ ឬឈ្មោះបុគ្គលិក..."
+                value={subnetSearch}
+                onChange={(e) => setSubnetSearch(e.target.value)}
+                style={{ padding: '8px 12px 8px 32px', fontSize: '12.5px' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+            <table className="table" style={{ width: '100%', borderCollapse: 'collapse', margin: 0 }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>កាលបរិច្ឆេទ (Date)</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>ឈ្មោះអ្នកប្រចាំការ (Standby Officers)</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>វេន (Shift Type)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isShiftLoading ? (
+                  <tr>
+                    <td colSpan="3" style={{ padding: '30px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                      ⏳ កំពុងទាញយកទិន្នន័យកាលវិភាគប្រចាំការ...
+                    </td>
+                  </tr>
+                ) : filteredDates.length > 0 ? (
+                  filteredDates.map((dateKey) => {
+                    const isToday = dateKey === todayStr;
+                    const names = shiftSchedule[dateKey] || [];
+                    return (
+                      <tr 
+                        key={dateKey} 
+                        style={{ 
+                          borderBottom: '1px solid #e2e8f0',
+                          backgroundColor: isToday ? '#fffbeb' : 'transparent',
+                          transition: 'background-color 0.2s'
+                        }}
+                      >
+                        <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '700', color: isToday ? '#b45309' : '#0f172a' }}>
+                          {dateKey} {isToday && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#fef3c7', color: '#d97706', fontSize: '10px', fontWeight: '800' }}>ថ្ងៃនេះ</span>}
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {names.map((name, idx) => (
+                              <span 
+                                key={idx} 
+                                style={{ 
+                                  padding: '4px 10px', 
+                                  borderRadius: '6px', 
+                                  fontSize: '12px', 
+                                  fontWeight: '700',
+                                  backgroundColor: isToday ? '#fef3c7' : '#f1f5f9',
+                                  color: isToday ? '#b45309' : '#334155',
+                                  border: `1px solid ${isToday ? '#fde68a' : '#cbd5e1'}`
+                                }}
+                              >
+                                👤 {name}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '12.5px', color: '#64748b' }}>
+                          🌙 Night Standby (១៧:០០ - ០៨:០០)
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="3" style={{ padding: '30px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                      🚫 មិនស្វែងរកឃើញទិន្នន័យឡើយ។
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     );
   };
@@ -2507,6 +2965,7 @@ export default function App() {
                   <th style={{ width: '60px', padding: '14px 16px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '800' }}># No</th>
                   <th style={{ padding: '14px 16px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '800' }}>ឈ្មោះគណនី (Username)</th>
                   <th style={{ padding: '14px 16px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '800' }}>ឈ្មោះពេញ (Full Name)</th>
+                  <th style={{ padding: '14px 16px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '800' }}>មុខតំណែង (Position)</th>
                   <th style={{ padding: '14px 16px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '800' }}>គណនី Telegram (Telegram Username)</th>
                   <th style={{ width: '150px', padding: '14px 16px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '800' }}>តួនាទី (Role)</th>
                   <th style={{ padding: '14px 16px', fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: '800' }}>ទិដ្ឋភាពទូទៅនៃសិទ្ធិ (Permissions Summary)</th>
@@ -2533,6 +2992,18 @@ export default function App() {
                         </div>
                       </td>
                       <td style={{ padding: '16px', fontWeight: '600', color: 'var(--text-primary)' }}>{user.full_name || '-'}</td>
+                      <td style={{ padding: '16px', fontWeight: '700', color: '#1e3a8a' }}>
+                        <span style={{
+                          fontSize: '11.5px',
+                          fontWeight: '800',
+                          padding: '4px 8px',
+                          borderRadius: '6px',
+                          backgroundColor: '#f1f5f9',
+                          color: '#475569'
+                        }}>
+                          💼 {user.position || 'មន្ត្រី'}
+                        </span>
+                      </td>
                       <td style={{ padding: '16px' }}>
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                           {user.telegram_username ? (
@@ -2633,6 +3104,7 @@ export default function App() {
                               email: user.email || '',
                               telegram_username: user.telegram_username || '',
                               notify_telegram: user.notify_telegram || '1',
+                              position: user.position || 'មន្ត្រី',
                               permissions: perms
                             });
                             setUserFormError(null);
@@ -2829,6 +3301,24 @@ export default function App() {
                         onChange={(e) => setUserForm({ ...userForm, full_name: e.target.value })}
                         style={{ padding: '10px 14px 10px 38px', borderRadius: '10px', fontSize: '13.5px', border: '1px solid #cbd5e1', width: '100%', height: '42px', outline: 'none' }}
                         placeholder="e.g. Millersnap"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Position Input */}
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ display: 'block', fontWeight: '700', fontSize: '12.5px', marginBottom: '6px', color: '#475569', textAlign: 'left' }}>
+                      មុខតំណែង (Position)
+                    </label>
+                    <div style={{ position: 'relative' }}>
+                      <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', color: '#64748b', fontSize: '14px' }}>💼</span>
+                      <input
+                        type="text"
+                        className="form-control"
+                        value={userForm.position || ''}
+                        onChange={(e) => setUserForm({ ...userForm, position: e.target.value })}
+                        style={{ padding: '10px 14px 10px 38px', borderRadius: '10px', fontSize: '13.5px', border: '1px solid #cbd5e1', width: '100%', height: '42px', outline: 'none' }}
+                        placeholder="e.g. មន្ត្រី ឬ អនុប្រធានការិយាល័យ"
                       />
                     </div>
                   </div>
@@ -3571,6 +4061,336 @@ export default function App() {
   };
 
 
+  // Render Bitrix Task Management & Interactive Kanban Board Tab
+  function renderKanbanTab() {
+    const columns = [
+      { id: 'todo', title: '📝 ត្រូវធ្វើ (To Do)', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
+      { id: 'in_progress', title: '⚡ កំពុងធ្វើ (In Progress)', color: '#d97706', bg: '#fff7ed', border: '#fde68a' },
+      { id: 'review', title: '👀 កំពុងពិនិត្យ (In Review)', color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' },
+      { id: 'completed', title: '✅ បានបញ្ចប់ (Completed)', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' }
+    ];
+
+    // Filter tasks
+    const filteredTasks = (kanbanTasks || []).filter(task => {
+      const matchSearch = !kanbanFilterSearch.trim() || 
+        task.title.toLowerCase().includes(kanbanFilterSearch.toLowerCase()) || 
+        (task.description && task.description.toLowerCase().includes(kanbanFilterSearch.toLowerCase()));
+      const matchAssignee = kanbanFilterAssignee === 'ALL' || task.assignee_name === kanbanFilterAssignee;
+      return matchSearch && matchAssignee;
+    });
+
+    const uniqueAssignees = Array.from(new Set((usersList || []).map(u => u.full_name || u.username).filter(Boolean)));
+
+    return (
+      <div className="kanban-container" style={{ padding: '4px' }}>
+        {/* Top Control Bar */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
+            <div style={{ position: 'relative', minWidth: '240px' }}>
+              <input 
+                type="text" 
+                placeholder="🔍 ស្វែងរក Task..." 
+                value={kanbanFilterSearch}
+                onChange={(e) => setKanbanFilterSearch(e.target.value)}
+                style={{ width: '100%', padding: '9px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
+              />
+            </div>
+            <select
+              value={kanbanFilterAssignee}
+              onChange={(e) => setKanbanFilterAssignee(e.target.value)}
+              style={{ padding: '9px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }}
+            >
+              <option value="ALL">👤 អ្នកទទួលបន្ទុក ទាំងអស់ ({uniqueAssignees.length})</option>
+              {uniqueAssignees.map(name => (
+                <option key={name} value={name}>{name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '700' }}>
+              សរុប <b>{filteredTasks.length}</b> Tasks
+            </span>
+            <button
+              onClick={() => {
+                setKanbanTaskForm({
+                  title: '',
+                  description: '',
+                  priority: 'Medium',
+                  assignee_name: uniqueAssignees[0] || '',
+                  due_date: '',
+                  status: 'todo'
+                });
+                setKanbanModalOpen(true);
+              }}
+              style={{ padding: '9px 18px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#fff', border: 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)' }}
+            >
+              <span>➕</span> បង្កើត Task ថ្មី
+            </button>
+          </div>
+        </div>
+
+        {/* 4 Kanban Columns Board */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', alignItems: 'start' }}>
+          {columns.map(col => {
+            const colTasks = filteredTasks.filter(t => t.status === col.id);
+            return (
+              <div 
+                key={col.id} 
+                style={{ 
+                  backgroundColor: 'var(--bg-card)', 
+                  borderRadius: '16px', 
+                  border: `1px solid ${col.border}`, 
+                  padding: '16px', 
+                  minHeight: '520px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.03)'
+                }}
+              >
+                {/* Column Header */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: `2px solid ${col.border}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '800', color: col.color }}>{col.title}</span>
+                  </div>
+                  <span style={{ backgroundColor: col.bg, color: col.color, padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', border: `1px solid ${col.border}` }}>
+                    {colTasks.length}
+                  </span>
+                </div>
+
+                {/* Cards list */}
+                {colTasks.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '32px 12px', color: 'var(--text-muted)', fontSize: '12px', fontStyle: 'italic', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px dashed var(--border-color)', marginTop: '8px' }}>
+                    គ្មានកិច្ចការងាររង់ចាំ
+                  </div>
+                ) : (
+                  colTasks.map(task => {
+                    const prioColor = task.priority === 'Urgent' ? '#ef4444' : task.priority === 'High' ? '#f97316' : task.priority === 'Medium' ? '#eab308' : '#22c55e';
+                    const prioBg = task.priority === 'Urgent' ? '#fef2f2' : task.priority === 'High' ? '#fff7ed' : task.priority === 'Medium' ? '#fefce8' : '#f0fdf4';
+                    
+                    return (
+                      <div
+                        key={task.id}
+                        style={{
+                          backgroundColor: 'var(--bg-primary)',
+                          borderRadius: '12px',
+                          border: '1px solid var(--border-color)',
+                          padding: '14px 16px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '10px',
+                          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
+                          transition: 'all 0.2s',
+                          cursor: 'default',
+                          position: 'relative'
+                        }}
+                      >
+                        {/* Top priority & delete row */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <span style={{ fontSize: '10px', fontWeight: '800', color: prioColor, backgroundColor: prioBg, padding: '2px 8px', borderRadius: '6px', border: `1px solid ${prioColor}40`, textTransform: 'uppercase' }}>
+                            ● {task.priority}
+                          </span>
+                          <button
+                            onClick={() => handleDeleteKanbanTask(task.id)}
+                            title="លុប Task"
+                            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px', padding: '2px' }}
+                            onMouseEnter={(e) => e.target.style.color = '#ef4444'}
+                            onMouseLeave={(e) => e.target.style.color = '#94a3b8'}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+
+                        {/* Title */}
+                        <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: '1.3' }}>
+                          {task.title}
+                        </h4>
+
+                        {/* Description */}
+                        {task.description && (
+                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                            {task.description}
+                          </p>
+                        )}
+
+                        {/* Assignee & Due Date Row */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border-color)', marginTop: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '800' }}>
+                              {(task.assignee_name || 'U')[0].toUpperCase()}
+                            </div>
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-primary)' }}>
+                              {task.assignee_name || 'Unassigned'}
+                            </span>
+                          </div>
+
+                          {task.due_date && (
+                            <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              ⏰ {task.due_date}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Quick Stage Move Dropdown Buttons */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }}>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '700' }}>ដំណាក់កាល ៖</span>
+                          <select
+                            value={task.status}
+                            onChange={(e) => handleMoveKanbanTask(task.id, e.target.value)}
+                            style={{ flex: 1, padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '11px', fontWeight: '700' }}
+                          >
+                            <option value="todo">📝 To Do</option>
+                            <option value="in_progress">⚡ In Progress</option>
+                            <option value="review">👀 In Review</option>
+                            <option value="completed">✅ Completed</option>
+                          </select>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Create Task Modal */}
+        {kanbanModalOpen && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+            <form 
+              onSubmit={handleCreateKanbanTask}
+              style={{ width: '100%', maxWidth: '520px', backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', border: '1px solid var(--border-color)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
+                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                  📋 បង្កើត Task ថ្មី (Bitrix Kanban Task)
+                </h3>
+                <button 
+                  type="button" 
+                  onClick={() => setKanbanModalOpen(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                    ចំណងជើងកិច្ចការងារ (Task Title) *
+                  </label>
+                  <input 
+                    type="text"
+                    required
+                    placeholder="ឧទាហរណ៍ ៖ រៀបចំកំណត់រចនាសម្ព័ន្ធ VPN ឬ ពិនិត្យ Log សន្តិសុខ..."
+                    value={kanbanTaskForm.title}
+                    onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, title: e.target.value })}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                    ពិពណ៌នាលម្អិត (Description)
+                  </label>
+                  <textarea 
+                    rows={3}
+                    placeholder="បញ្ចូលព័ត៌មានលម្អិតអំពីកិច្ចការងារ..."
+                    value={kanbanTaskForm.description}
+                    onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, description: e.target.value })}
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                      អ្នកទទួលបន្ទុក (Assignee)
+                    </label>
+                    <select
+                      value={kanbanTaskForm.assignee_name}
+                      onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, assignee_name: e.target.value })}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                    >
+                      <option value="">-- ជ្រើសរើស --</option>
+                      {uniqueAssignees.map(name => (
+                        <option key={name} value={name}>{name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                      អាទិភាព (Priority)
+                    </label>
+                    <select
+                      value={kanbanTaskForm.priority}
+                      onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, priority: e.target.value })}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                    >
+                      <option value="Low">🟢 Low</option>
+                      <option value="Medium">🟡 Medium</option>
+                      <option value="High">🟠 High</option>
+                      <option value="Urgent">🔴 Urgent</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                      ថ្ងៃឱសានវាទ (Due Date)
+                    </label>
+                    <input 
+                      type="date"
+                      value={kanbanTaskForm.due_date}
+                      onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, due_date: e.target.value })}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                      ដំណាក់កាលដើម (Initial Stage)
+                    </label>
+                    <select
+                      value={kanbanTaskForm.status}
+                      onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, status: e.target.value })}
+                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                    >
+                      <option value="todo">📝 To Do</option>
+                      <option value="in_progress">⚡ In Progress</option>
+                      <option value="review">👀 In Review</option>
+                      <option value="completed">✅ Completed</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+                <button
+                  type="button"
+                  onClick={() => setKanbanModalOpen(false)}
+                  style={{ padding: '9px 16px', borderRadius: '10px', backgroundColor: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+                >
+                  បោះបង់
+                </button>
+                <button
+                  type="submit"
+                  style={{ padding: '9px 20px', borderRadius: '10px', backgroundColor: '#2563eb', border: 'none', color: '#fff', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)' }}
+                >
+                  រក្សាទុក & ជូនដំណឹង
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+
   // Render Official Tickets Tab
   function renderTicketsTab() {
     const filteredTickets = tickets.filter(t => {
@@ -3593,7 +4413,7 @@ export default function App() {
     const approvedCount = tickets.filter(t => t.status === 'approved').length;
     const rejectedCount = tickets.filter(t => t.status === 'rejected').length;
 
-    const getStatusBadge = (status) => {
+    const getStatusBadge = (status, approvalLevel) => {
       if (status === 'approved') {
         return <span style={{ backgroundColor: '#dcfce7', color: '#166534', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>✅ បានអនុម័តសព្វគ្រប់</span>;
       } else if (status === 'rejected') {
@@ -3603,6 +4423,15 @@ export default function App() {
       } else if (status === 'pending_l3') {
         return <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំអនុប្រធាននាយកដ្ឋាន</span>;
       } else {
+        if (approvalLevel === 5) {
+          return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំបុគ្គលិក</span>;
+        } else if (approvalLevel === 7) {
+          return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំជំនួយការ</span>;
+        } else if (approvalLevel === 6) {
+          return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំប្រធានការិយាល័យ</span>;
+        } else if (approvalLevel === 8) {
+          return <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំអនុប្រធាននាយកដ្ឋាន</span>;
+        }
         return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ រង់ចាំអនុប្រធានការិយាល័យ</span>;
       }
     };
@@ -3654,7 +4483,15 @@ export default function App() {
             </button>
             <button
               className="btn btn-primary"
-              onClick={() => { fetchUsersList(); setShowNewTicketModal(true); }}
+              onClick={() => {
+                fetchUsersList();
+                setNewTicketForm(prev => ({
+                  ...prev,
+                  requester_name: currentLoginUser?.full_name || prev.requester_name || '',
+                  department: currentLoginUser?.department || prev.department || 'SOC Operations Center'
+                }));
+                setShowNewTicketModal(true);
+              }}
               style={{ borderRadius: '10px', padding: '10px 20px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(37,99,235,0.2)' }}
             >
               ➕ បង្កើតលិខិតស្នើសុំថ្មី
@@ -3710,7 +4547,7 @@ export default function App() {
                         <div style={{ fontSize: '11px', color: '#64748b' }}>{t.category}</div>
                       </td>
                       <td>
-                        <div style={{ fontWeight: '700', color: '#1e293b', fontSize: '12px' }}>{t.requester_name || 'ពេញ បញ្ជរតន៍'}</div>
+                        <div style={{ fontWeight: '700', color: '#1e293b', fontSize: '12px' }}>{t.requester_name || '-'}</div>
                         <div style={{ fontSize: '10.5px', color: '#64748b' }}>{t.department || 'SOC Operations'}</div>
                       </td>
                       <td>
@@ -3724,10 +4561,10 @@ export default function App() {
                       </td>
                       <td>
                         <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569' }}>
-                          {t.approval_level_required === 0 ? '⚡ Auto' : (t.approval_level_required === 1 ? '🎖️ ថ្នាក់អនុការិយាល័យ' : (t.approval_level_required === 2 ? '👑 ថ្នាក់ប្រធានការិយាល័យ' : '🏢 ថ្នាក់អនុប្រធាននាយកដ្ឋាន'))}
+                          {t.approval_level_required === 0 ? '⚡ Auto' : (t.approval_level_required === 5 ? '👤 ត្រឹមបុគ្គលិក' : (t.approval_level_required === 7 ? '🤝 ត្រឹមជំនួយការ' : (t.approval_level_required === 1 ? '🎖️ ត្រឹមអនុប្រធានការិយាល័យ' : (t.approval_level_required === 6 ? '👑 ត្រឹមប្រធានការិយាល័យ' : (t.approval_level_required === 2 ? '🔗 អនុប្រធាន ➔ ប្រធាន' : (t.approval_level_required === 3 ? '👑 ជំនួយការ ➔ អនុប្រធាន ➔ ប្រធាន' : '🏛️ បុគ្គលិក ➔ ជំនួយការ ➔ អនុ ➔ ប្រធាន'))))))}
                         </span>
                       </td>
-                      <td>{getStatusBadge(t.status)}</td>
+                      <td>{getStatusBadge(t.status, t.approval_level_required)}</td>
                       <td style={{ fontSize: '11.5px', color: '#64748b' }}>{t.created_at ? t.created_at.split('T')[0] : '2026-07-23'}</td>
                       <td style={{ textAlign: 'center' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
@@ -3812,11 +4649,6 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>🔌</span> Switches List
             </li>
           )}
-          {hasPermission('dashboard', 'read') && (
-            <li className={`menu-item ${activeTab === 'monitoring' ? 'active' : ''}`} onClick={() => handleMenuClick('monitoring')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>🖥️</span> Uptime Kuma
-            </li>
-          )}
           {hasPermission('storage', 'read') && (
             <li className={`menu-item ${activeTab === 'storage' ? 'active' : ''}`} onClick={() => handleMenuClick('storage')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
@@ -3827,9 +4659,19 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>🎫</span> ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
             </li>
           )}
+          {hasPermission('tickets', 'read') && (
+            <li className={`menu-item ${activeTab === 'kanban' ? 'active' : ''}`} onClick={() => handleMenuClick('kanban')}>
+              <span className="menu-icon" style={{ fontSize: '15px' }}>📋</span> កិច្ចការងារ Bitrix (Kanban)
+            </li>
+          )}
           {hasPermission('leave', 'read') && (
             <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => handleMenuClick('leave')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
+            </li>
+          )}
+          {hasPermission('dashboard', 'read') && (
+            <li className={`menu-item ${activeTab === 'shift' ? 'active' : ''}`} onClick={() => handleMenuClick('shift')}>
+              <span className="menu-icon" style={{ fontSize: '15px' }}>📅</span> វេនប្រចាំការ (Shift)
             </li>
           )}
           {hasPermission('user_management', 'read') && (
@@ -3881,7 +4723,7 @@ export default function App() {
           </button>
           <div className="page-title">
             <h1>
-              {activeTab === 'dashboard' && 'មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)'}
+              {activeTab === 'dashboard' && 'មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC) & ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក'}
               {activeTab === 'ipam' && 'ការគ្រប់គ្រងអាសយដ្ឋាន IP & VLAN (IPAM)'}
               {activeTab === 'vpn' && 'គណនី VPN Remote Access'}
               {activeTab === 's2s' && 'ស្ថានភាព VPN មន្ទីរពេទ្យឯកជន S2S (Hospital S2S Tunnels)'}
@@ -3889,12 +4731,14 @@ export default function App() {
               {activeTab === 'public' && 'តារាង IP Public & DNS Host Mapping'}
               {activeTab === 'switches' && 'បញ្ជីឧបករណ៍ Switch តាមសាខា'}
               {activeTab === 'storage' && 'ប្រព័ន្ធផ្ទុកឯកសាររួម Google Drive'}
+              {activeTab === 'kanban' && 'ប្រព័ន្ធគ្រប់គ្រងកិច្ចការងារ Bitrix (Task Management & Kanban Board)'}
               {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
               {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
-              {activeTab === 'monitoring' && 'ប្រព័ន្ធតាមដានស្ថានភាពសេវាកម្ម (Uptime Kuma)'}
+              {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់ (Night Shift Standby Roster)'}
             </h1>
             <p>
-              {activeTab === 'dashboard' && 'Security Operations Center (SOC)'}
+              {activeTab === 'dashboard' && 'Security Operations Center (SOC) & Electronic Request Management System'}
+              {activeTab === 'kanban' && 'Bitrix-Style Task Pipeline, Visual Stages, Assignees & Deadlines'}
               {activeTab === 'ipam' && (
                 ipamCategory === 'branches'
                   ? (selectedBranch ? `Subnet IP Range details for ${selectedBranch.name_kh} (${selectedBranch.name_en})` : 'Utilization and host mappings for NSSF branch subnets')
@@ -3908,7 +4752,7 @@ export default function App() {
               {activeTab === 'storage' && 'Upload, view, and organize files in the shared Google Drive folder'}
               {activeTab === 'tickets' && 'បង្កើត ពិនិត្យតាមដាន និងអនុម័តសំណើការងារអេឡិចត្រូនិកតាមលំដាប់ថ្នាក់រដ្ឋបាល'}
               {activeTab === 'leave' && 'Generate formatted Khmer requests and post them automatically to the Telegram group'}
-              {activeTab === 'monitoring' && 'Live uptime monitoring status page and service metrics'}
+              {activeTab === 'shift' && 'Roster of active on-duty standby officers and daily notification alert dispatcher'}
             </p>
           </div>
 
@@ -3983,14 +4827,119 @@ export default function App() {
               )}
             </div>
             
-            {/* Notification Bell with Badge */}
-            <button className="bell-icon-btn" style={{ position: 'relative', width: '38px', height: '38px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}>
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#475569' }}>
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
-              </svg>
-              <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: '800', width: '15px', height: '15px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>3</span>
-            </button>
+            {/* Dynamic Interactive Notification Bell with Pending Approvals Panel */}
+            {(() => {
+              const uFull = (currentLoginUser?.full_name || '').toLowerCase();
+              const uName = (currentLoginUser?.username || '').toLowerCase();
+              const pendingApprovalTickets = (tickets || []).filter(t => {
+                if (!['pending_l1', 'pending_l2', 'pending_l3'].includes(t.status)) return false;
+                let target = '';
+                if (t.status === 'pending_l1') target = (t.l1_approver || '').toLowerCase();
+                else if (t.status === 'pending_l2') target = (t.l2_approver || '').toLowerCase();
+                else if (t.status === 'pending_l3') target = (t.l3_approver || '').toLowerCase();
+                
+                if (!target) return true;
+                if (uFull && target.includes(uFull)) return true;
+                if (uName && target.includes(uName)) return true;
+                if (currentLoginUser?.role === 'admin') return true;
+                return false;
+              });
+
+              return (
+                <div style={{ position: 'relative' }}>
+                  <button 
+                    className="bell-icon-btn" 
+                    onClick={() => setShowNotificationDropdown(!showNotificationDropdown)}
+                    style={{ position: 'relative', width: '38px', height: '38px', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: showNotificationDropdown ? '#f1f5f9' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: 'var(--shadow-sm)' }}
+                    title="ការជូនដំណឹង (Notifications)"
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ color: '#475569' }}>
+                      <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                      <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                    </svg>
+                    {pendingApprovalTickets.length > 0 && (
+                      <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: '800', width: '16px', height: '16px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 0 2px #fff' }}>
+                        {pendingApprovalTickets.length}
+                      </span>
+                    )}
+                  </button>
+
+                  {showNotificationDropdown && (
+                    <div 
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        position: 'absolute',
+                        top: '48px',
+                        right: 0,
+                        width: '320px',
+                        backgroundColor: '#fff',
+                        borderRadius: '12px',
+                        boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
+                        border: '1px solid #e2e8f0',
+                        zIndex: 1000,
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f8fafc' }}>
+                        <div style={{ fontWeight: '800', fontSize: '13px', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          🔔 ការជូនដំណឹងរង់ចាំពិនិត្យ
+                          {pendingApprovalTickets.length > 0 && (
+                            <span style={{ backgroundColor: '#ef4444', color: '#fff', padding: '1px 7px', borderRadius: '10px', fontSize: '10px' }}>
+                              {pendingApprovalTickets.length}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div style={{ maxHeight: '320px', overflowY: 'auto' }}>
+                        {pendingApprovalTickets.length === 0 ? (
+                          <div style={{ padding: '24px', textAlign: 'center', color: '#64748b', fontSize: '12px' }}>
+                            🎉 គ្មានការជូនដំណឹងរង់ចាំការពិនិត្យទេ!
+                          </div>
+                        ) : (
+                          pendingApprovalTickets.map((t) => (
+                            <div 
+                              key={t.id}
+                              onClick={() => {
+                                setShowNotificationDropdown(false);
+                                openTicketDetail(t);
+                              }}
+                              style={{
+                                padding: '12px 16px',
+                                borderBottom: '1px solid #f1f5f9',
+                                cursor: 'pointer',
+                                transition: 'background 0.15s',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '4px'
+                              }}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+                            >
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span style={{ fontSize: '11px', fontWeight: '800', color: '#2563eb' }}>
+                                  #{t.ticket_code}
+                                </span>
+                                <span style={{ fontSize: '10px', color: '#d97706', fontWeight: '700', backgroundColor: '#fef3c7', padding: '2px 6px', borderRadius: '4px' }}>
+                                  ⏳ រង់ចាំពិនិត្យ
+                                </span>
+                              </div>
+                              <div style={{ fontSize: '12px', fontWeight: '700', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                {t.title}
+                              </div>
+                              <div style={{ fontSize: '10.5px', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                <span>ស្នើដោយ ៖ {t.requester_name || 'N/A'}</span>
+                                <span>{t.created_at ? t.created_at.split(' ')[0] : ''}</span>
+                              </div>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Profile Avatar Card */}
             <div className="profile-container" 
@@ -4162,88 +5111,141 @@ export default function App() {
         {activeTab === 'dashboard' && dashboardStats && (
           <>
             {/* Top Stats Cards (glowing design matches the screenshot) */}
-            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '24px' }}>
+            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '24px' }}>
               
               {/* Card 1: Total Branches */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '20px 24px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
                 onClick={() => { setActiveTab('ipam'); setIpamCategory('branches'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#2563eb' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#2563eb' }}>
                     🏢
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.25' }}>
-                    <span style={{ fontSize: '28px', fontWeight: '800', color: '#1e3a8a' }}>{dashboardStats.counts.branches}</span>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Branches</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e3a8a' }}>{dashboardStats.counts.branches}</span>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Branches</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11.5px', fontWeight: '800', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
                   View all branches →
                 </div>
               </div>
 
               {/* Card 2: HQ Departments */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '20px 24px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
                 onClick={() => { setActiveTab('ipam'); setIpamCategory('hq'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#7c3aed' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#7c3aed' }}>
                     🏢
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.25' }}>
-                    <span style={{ fontSize: '28px', fontWeight: '800', color: '#5b21b6' }}>{dashboardStats.counts.hq_departments}</span>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HQ Departments</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#5b21b6' }}>{dashboardStats.counts.hq_departments}</span>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HQ Departments</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11.5px', fontWeight: '800', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
                   View all departments →
                 </div>
               </div>
 
               {/* Card 3: Active VPN Users */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '20px 24px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
                 onClick={() => { setActiveTab('vpn'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#10b981' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#10b981' }}>
                     🔑
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.25' }}>
-                    <span style={{ fontSize: '28px', fontWeight: '800', color: '#065f46' }}>{dashboardStats.allocations.active_vpn_users} / {dashboardStats.counts.vpn_users}</span>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active VPN Users</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#065f46' }}>{dashboardStats.allocations.active_vpn_users} / {dashboardStats.counts.vpn_users}</span>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active VPN Users</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11.5px', fontWeight: '800', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
                   View all users →
                 </div>
               </div>
 
               {/* Card 4: Active S2S VPNs */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '20px 24px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
                 onClick={() => { setActiveTab('s2s'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'rgba(245, 158, 11, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#f59e0b' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(245, 158, 11, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#f59e0b' }}>
                     🛡️
                   </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.25' }}>
-                    <span style={{ fontSize: '28px', fontWeight: '800', color: '#92400e' }}>{dashboardStats.allocations.active_s2s_tunnels} / {dashboardStats.counts.s2s_vpns}</span>
-                    <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active S2S VPNs</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#92400e' }}>{dashboardStats.allocations.active_s2s_tunnels} / {dashboardStats.counts.s2s_vpns}</span>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active S2S VPNs</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11.5px', fontWeight: '800', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
                   View all VPNs →
                 </div>
               </div>
 
+              {/* Card 5: ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក */}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
+                onClick={() => { setActiveTab('tickets'); }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#ef4444' }}>
+                    🎫
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#991b1b' }}>
+                      {(tickets || []).filter(t => ['pending_l1', 'pending_l2', 'pending_l3'].includes(t.status)).length} / {(tickets || []).length}
+                    </span>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>សំណើអេឡិចត្រូនិក</span>
+                  </div>
+                </div>
+                <div style={{ fontSize: '11px', fontWeight: '800', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                  គ្រប់គ្រងសំណើ →
+                </div>
+              </div>
+
+            </div>
+
+            {/* Dedicated Quick Action Banner for Electronic Request Management System */}
+            <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '18px 24px', marginBottom: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
+                  🎫
+                </div>
+                <div style={{ textAlign: 'left' }}>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>
+                    ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)
+                  </h3>
+                  <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#64748b' }}>
+                    គ្រប់គ្រងលិខិតស្នើសុំ បង្កើតសំណើថ្មី និងពិនិត្យអនុម័តសំណើតាមថ្នាក់ដឹកនាំរហ័ស
+                  </p>
+                </div>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button 
+                  onClick={() => { setActiveTab('tickets'); setIsCreateTicketModalOpen(true); }}
+                  style={{ padding: '9px 18px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#fff', border: 'none', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)' }}
+                >
+                  <span>➕</span> បង្កើតសំណើថ្មី
+                </button>
+                <button 
+                  onClick={() => setActiveTab('tickets')}
+                  style={{ padding: '9px 18px', borderRadius: '10px', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                >
+                  <span>🎫</span> មើលសំណើទាំងអស់ ({tickets ? tickets.length : 0})
+                </button>
+              </div>
             </div>
 
             {/* Bottom Row Grid */}
@@ -6211,6 +7213,9 @@ export default function App() {
           </div>
         )}
 
+        {/* Bitrix Task Management & Interactive Kanban Board Tab */}
+        {activeTab === 'kanban' && renderKanbanTab()}
+
         {/* Google Drive Storage Tab */}
         {activeTab === 'storage' && renderStorageTab()}
 
@@ -6220,8 +7225,8 @@ export default function App() {
         {/* Leave Requests Tab */}
         {activeTab === 'leave' && renderLeaveTab()}
 
-        {/* Uptime Kuma Tab */}
-        {activeTab === 'monitoring' && renderMonitoringTab()}
+        {/* Shift Schedule Tab */}
+        {activeTab === 'shift' && renderShiftTab()}
 
         {/* User Management Tab */}
         {activeTab === 'users' && hasPermission('user_management', 'read') && renderUsersTab()}
@@ -8338,54 +9343,6 @@ export default function App() {
                             required
                           />
                         </div>
-
-                        <div className="form-group" style={{ margin: 0 }}>
-                          <label className="form-label" style={{ fontWeight: '700', fontSize: '12px', color: '#0284c7' }}>
-                            📊 Uptime Kuma Status Page URL
-                          </label>
-                          <input
-                            type="text"
-                            className="form-input"
-                            style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                            value={telegramTemplatesForm.uptime_kuma_url}
-                            onChange={(e) => setTelegramTemplatesForm({ ...telegramTemplatesForm, uptime_kuma_url: e.target.value })}
-                            placeholder="e.g. https://status.yourdomain.com/status/soc-services"
-                          />
-                        </div>
-                        
-                        {/* Uptime Kuma Integration Helper */}
-                        <div style={{
-                          marginTop: '8px',
-                          padding: '12px 16px',
-                          borderRadius: '8px',
-                          background: '#f8fafc',
-                          border: '1px dashed #38bdf8',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '6px'
-                        }}>
-                          <span style={{ fontSize: '12px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            🟢 Uptime Kuma Webhook Integration
-                          </span>
-                          <p style={{ fontSize: '11px', color: '#475569', margin: 0, lineHeight: '1.5' }}>
-                            To integrate with <b>Uptime Kuma</b>, create a new <b>Webhook</b> notification type in your Uptime Kuma dashboard and configure it with the following URL:
-                          </p>
-                          <code style={{
-                            padding: '6px 8px',
-                            background: '#e2e8f0',
-                            borderRadius: '4px',
-                            fontSize: '11px',
-                            fontWeight: 'bold',
-                            fontFamily: 'monospace',
-                            color: '#0f172a',
-                            wordBreak: 'break-all'
-                          }}>
-                            {window.location.origin}/api/webhooks/uptime-kuma
-                          </code>
-                          <span style={{ fontSize: '10px', color: '#64748b' }}>
-                            Alerts will be automatically formatted using the <i>System Log Alert Template</i> above and sent to your Telegram channel.
-                          </span>
-                        </div>
                       </div>
                     )}
 
@@ -8425,6 +9382,32 @@ export default function App() {
             </div>
 
             <form onSubmit={handleCreateTicket} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>អ្នកស្នើសុំ (Requester Name) *</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="បញ្ចូលឈ្មោះអ្នកស្នើសុំ..."
+                    value={newTicketForm.requester_name}
+                    onChange={(e) => setNewTicketForm({ ...newTicketForm, requester_name: e.target.value })}
+                    required
+                    style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700' }}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>អង្គភាព / ការិយាល័យ (Department)</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="SOC Operations Center"
+                    value={newTicketForm.department}
+                    onChange={(e) => setNewTicketForm({ ...newTicketForm, department: e.target.value })}
+                    style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px' }}
+                  />
+                </div>
+              </div>
+
               <div className="form-group" style={{ margin: 0 }}>
                 <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>កម្មវត្ថុ / ប្រធានបទស្នើសុំ (Title) *</label>
                 <input
@@ -8469,7 +9452,44 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Hierarchy Selection Dropdown */}
+              {/* Task Due Date Picker */}
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label" style={{ fontWeight: '800', fontSize: '13px', color: '#dc2626' }}>
+                  ⏰ ថ្ងៃឱសានវាទ (Task Due Date) ៖
+                </label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={newTicketForm.due_date}
+                  onChange={(e) => setNewTicketForm({ ...newTicketForm, due_date: e.target.value })}
+                  style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', borderColor: '#fca5a5', backgroundColor: '#fff5f5' }}
+                />
+                {newTicketForm.due_date && (() => {
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const due = new Date(newTicketForm.due_date);
+                  due.setHours(0, 0, 0, 0);
+                  if (!isNaN(due.getTime())) {
+                    const diffDays = Math.round((due - today) / (1000 * 3600 * 24));
+                    let bg = '#eff6ff', border = '#bfdbfe', text = '#1e40af', icon = '⏱️', label = '';
+                    if (diffDays === 0) {
+                      bg = '#fffbeb'; border = '#fde68a'; text = '#b45309'; icon = '⚠️';
+                      label = 'ថ្ងៃនេះជាថ្ងៃឱសានវាទ (Due Today)';
+                    } else if (diffDays > 0) {
+                      label = `គិតចាប់ពីថ្ងៃនេះ ៖ នៅសល់ ${diffDays + 1} ថ្ងៃ (${diffDays} ថ្ងៃពេញ)`;
+                    } else {
+                      bg = '#fef2f2'; border = '#fecaca'; text = '#dc2626'; icon = '🚨';
+                      label = `កាលបរិច្ឆេទនេះហួសកំណត់ ${Math.abs(diffDays)} ថ្ងៃហើយ`;
+                    }
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: bg, border: `1px solid ${border}`, padding: '8px 12px', borderRadius: '8px', marginTop: '6px', fontSize: '12px', color: text, fontWeight: '800' }}>
+                        <span>{icon} {label}</span>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()}
+              </div>
               <div className="form-group" style={{ margin: 0, backgroundColor: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
                 <label className="form-label" style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
                   🎯 កម្រិតពិនិត្យ និងអនុម័ត (Approval Hierarchy Level) *
@@ -8481,25 +9501,59 @@ export default function App() {
                   style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#1e3a8a', backgroundColor: '#ffffff' }}
                 >
                   <option value="0">⚡ មិនបាច់ Approve (Auto-Approve / អនុវត្តផ្ទាល់)</option>
-                  <option value="1">🎖️ ត្រឹមអនុប្រធានការិយាល័យ (អនុប្រធានការិយាល័យ)</option>
-                  <option value="2">👑 ត្រឹមប្រធានការិយាល័យ (អនុប្រធានការិយាល័យ ➔ ប្រធានការិយាល័យ)</option>
-                  <option value="3">🏢 ត្រឹមអនុប្រធាននាយកដ្ឋាន (អនុប្រធាន ➔ ប្រធានការិយាល័យ ➔ អនុប្រធាននាយកដ្ឋាន)</option>
-                  <option value="4">🏛️ ត្រឹមប្រធាននាយកដ្ឋាន (អនុប្រធាន ➔ ប្រធាន ➔ អនុនាយកដ្ឋាន ➔ ប្រធាននាយកដ្ឋាន)</option>
+                  <option value="5">👤 ត្រឹមបុគ្គលិក (ត្រឹមបុគ្គលិក)</option>
+                  <option value="7">🤝 ត្រឹមជំនួយការ (ត្រឹមជំនួយការ)</option>
+                  <option value="1">🎖️ ត្រឹមអនុប្រធានការិយាល័យ (ត្រឹមអនុប្រធានការិយាល័យ)</option>
+                  <option value="2">🔗 អនុប្រធានការិយាល័យ ➔ ប្រធានការិយាល័យ</option>
+                  <option value="3">👑 ជំនួយការ ➔ អនុប្រធានការិយាល័យ ➔ ប្រធានការិយាល័យ</option>
+                  <option value="4">🏛️ បុគ្គលិក ➔ ជំនួយការ ➔ អនុប្រធាន ➔ ប្រធានការិយាល័យ</option>
                 </select>
 
                 {/* Dynamic Approver Dropdowns */}
                 {newTicketForm.approval_level_required >= 1 && (
                   <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div>
-                      <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>អ្នកពិនិត្យ ថ្នាក់អនុប្រធានការិយាល័យ 🎖️ ៖</label>
+                      <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>
+                        {newTicketForm.approval_level_required === 5
+                          ? 'អ្នកពិនិត្យ ថ្នាក់បុគ្គលិក 👤 ៖'
+                          : (newTicketForm.approval_level_required === 7
+                              ? 'អ្នកពិនិត្យ ថ្នាក់ជំនួយការ 🤝 ៖'
+                              : (newTicketForm.approval_level_required === 6
+                                  ? 'អ្នកពិនិត្យ ថ្នាក់ប្រធានការិយាល័យ (មានតែ១នាក់) 👑 ៖'
+                                  : (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
+                                      ? 'អ្នកពិនិត្យ ថ្នាក់ជំនួយការ 🤝 ៖'
+                                      : 'អ្នកពិនិត្យ ថ្នាក់អនុប្រធានការិយាល័យ 🎖️ ៖')))}
+                      </label>
                       <select
                         className="form-input"
                         value={newTicketForm.l1_approver}
                         onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
                         style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
                       >
-                        <option value="">-- ជ្រើសរើសឈ្មោះអនុប្រធានការិយាល័យ --</option>
-                        {usersList.map((u) => {
+                        <option value="">
+                          {newTicketForm.approval_level_required === 5
+                            ? '-- ជ្រើសរើសឈ្មោះបុគ្គលិក --'
+                            : (newTicketForm.approval_level_required === 7
+                                ? '-- ជ្រើសរើសឈ្មោះជំនួយការ --'
+                                : (newTicketForm.approval_level_required === 6
+                                    ? '-- ជ្រើសរើសឈ្មោះប្រធានការិយាល័យ --'
+                                    : (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
+                                        ? '-- ជ្រើសរើសឈ្មោះជំនួយការ --'
+                                        : '-- ជ្រើសរើសឈ្មោះអនុប្រធានការិយាល័យ --')))}
+                        </option>
+                        {usersList.filter(u => {
+                          const pos = u.position || '';
+                          if (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 || newTicketForm.approval_level_required === 7) {
+                            return pos.includes('ជំនួយការ') || pos.includes('បុគ្គលិក') || !pos;
+                          }
+                          if (newTicketForm.approval_level_required === 1 || newTicketForm.approval_level_required === 2) {
+                            return pos.includes('អនុប្រធាន');
+                          }
+                          if (newTicketForm.approval_level_required === 6) {
+                            return pos.includes('ប្រធាន') && !pos.includes('អនុ');
+                          }
+                          return true;
+                        }).map((u) => {
                           const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
                           const details = u.position ? u.position : (u.department || u.role || '');
                           return (
@@ -8514,29 +9568,46 @@ export default function App() {
                         <input
                           type="text"
                           className="form-input"
-                          placeholder="បញ្ចូលឈ្មោះអនុប្រធានការិយាល័យដោយផ្ទាល់..."
+                          placeholder={newTicketForm.approval_level_required === 5 ? "បញ្ចូលឈ្មោះបុគ្គលិកដោយផ្ទាល់..." : (newTicketForm.approval_level_required === 7 ? "បញ្ចូលឈ្មោះជំនួយការដោយផ្ទាល់..." : (newTicketForm.approval_level_required === 6 ? "បញ្ចូលឈ្មោះប្រធានការិយាល័យដោយផ្ទាល់..." : (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? "បញ្ចូលឈ្មោះជំនួយការដោយផ្ទាល់..." : "បញ្ចូលឈ្មោះអនុប្រធានការិយាល័យដោយផ្ទាល់...")))}
                           onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
                           style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
                         />
                       )}
                     </div>
 
-                    {newTicketForm.approval_level_required >= 2 && (
+                    {(newTicketForm.approval_level_required === 2 || newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4) && (
                       <div>
-                        <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>អ្នកពិនិត្យ ថ្នាក់ប្រធានការិយាល័យ 👑 ៖</label>
+                        <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>
+                          {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
+                            ? 'អ្នកពិនិត្យ ថ្នាក់អនុប្រធានការិយាល័យ 🎖️ ៖'
+                            : 'អ្នកពិនិត្យ ថ្នាក់ប្រធានការិយាល័យ 👑 ៖'}
+                        </label>
                         <select
                           className="form-input"
                           value={newTicketForm.l2_approver}
                           onChange={(e) => setNewTicketForm({ ...newTicketForm, l2_approver: e.target.value })}
                           style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
                         >
-                          <option value="">-- ជ្រើសរើសឈ្មោះប្រធានការិយាល័យ --</option>
-                          {usersList.map((u) => {
+                          <option value="">
+                            {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
+                              ? '-- ជ្រើសរើសឈ្មោះអនុប្រធានការិយាល័យ --'
+                              : '-- ជ្រើសរើសឈ្មោះប្រធានការិយាល័យ --'}
+                          </option>
+                          {usersList.filter(u => {
+                            const pos = u.position || '';
+                            if (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4) {
+                              return pos.includes('អនុប្រធាន');
+                            }
+                            if (newTicketForm.approval_level_required === 2) {
+                              return pos.includes('ប្រធាន') && !pos.includes('អនុ');
+                            }
+                            return true;
+                          }).map((u) => {
                             const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
                             const details = u.position ? u.position : (u.department || u.role || '');
                             return (
                               <option key={u.id || u.username} value={name}>
-                                👑 {name} {details ? `(${details})` : ''}
+                                {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? '🎖️' : '👑'} {name} {details ? `(${details})` : ''}
                               </option>
                             );
                           })}
@@ -8546,7 +9617,7 @@ export default function App() {
                           <input
                             type="text"
                             className="form-input"
-                            placeholder="បញ្ចូលឈ្មោះប្រធានការិយាល័យដោយផ្ទាល់..."
+                            placeholder={newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? "បញ្ចូលឈ្មោះអនុប្រធានការិយាល័យដោយផ្ទាល់..." : "បញ្ចូលឈ្មោះប្រធានការិយាល័យដោយផ្ទាល់..."}
                             onChange={(e) => setNewTicketForm({ ...newTicketForm, l2_approver: e.target.value })}
                             style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
                           />
@@ -8554,22 +9625,36 @@ export default function App() {
                       </div>
                     )}
 
-                    {newTicketForm.approval_level_required >= 3 && (
+                    {(newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4) && (
                       <div>
-                        <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>អ្នកពិនិត្យ ថ្នាក់អនុប្រធាននាយកដ្ឋាន 🏢 ៖</label>
+                        <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>
+                          {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
+                            ? 'អ្នកពិនិត្យ ថ្នាក់ប្រធានការិយាល័យ 👑 ៖'
+                            : 'អ្នកពិនិត្យ ថ្នាក់អនុប្រធាននាយកដ្ឋាន 🏢 ៖'}
+                        </label>
                         <select
                           className="form-input"
                           value={newTicketForm.l3_approver}
                           onChange={(e) => setNewTicketForm({ ...newTicketForm, l3_approver: e.target.value })}
                           style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
                         >
-                          <option value="">-- ជ្រើសរើសឈ្មោះអនុប្រធាននាយកដ្ឋាន --</option>
-                          {usersList.map((u) => {
+                          <option value="">
+                            {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
+                              ? '-- ជ្រើសរើសឈ្មោះប្រធានការិយាល័យ --'
+                              : '-- ជ្រើសរើសឈ្មោះអនុប្រធាននាយកដ្ឋាន --'}
+                          </option>
+                          {usersList.filter(u => {
+                            const pos = u.position || '';
+                            if (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4) {
+                              return pos.includes('ប្រធាន') && !pos.includes('អនុ');
+                            }
+                            return true;
+                          }).map((u) => {
                             const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
                             const details = u.position ? u.position : (u.department || u.role || '');
                             return (
                               <option key={u.id || u.username} value={name}>
-                                🏢 {name} {details ? `(${details})` : ''}
+                                {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? '👑' : '🏢'} {name} {details ? `(${details})` : ''}
                               </option>
                             );
                           })}
@@ -8579,7 +9664,7 @@ export default function App() {
                           <input
                             type="text"
                             className="form-input"
-                            placeholder="បញ្ចូលឈ្មោះអនុប្រធាននាយកដ្ឋានដោយផ្ទាល់..."
+                            placeholder={newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? "បញ្ចូលឈ្មោះប្រធានការិយាល័យដោយផ្ទាល់..." : "បញ្ចូលឈ្មោះអនុប្រធាននាយកដ្ឋានដោយផ្ទាល់..."}
                             onChange={(e) => setNewTicketForm({ ...newTicketForm, l3_approver: e.target.value })}
                             style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
                           />
@@ -8603,13 +9688,29 @@ export default function App() {
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>ឯកសារភ្ជាប់ (Attachment PDF/Doc)</label>
+                <label className="form-label" style={{ fontWeight: '800', fontSize: '12px', color: '#1e3a8a' }}>
+                  📎 ឯកសារភ្ជាប់ និងលិខិតយោង (Attachment PDF / Word / Excel / Image) ៖
+                </label>
                 <input
                   type="file"
                   className="form-input"
-                  onChange={(e) => setNewTicketFile(e.target.files[0])}
-                  style={{ padding: '8px', borderRadius: '8px', fontSize: '12px' }}
+                  onChange={(e) => setNewTicketFile(e.target.files[0] || null)}
+                  style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', backgroundColor: '#ffffff' }}
                 />
+                {newTicketFile && (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '8px 12px', borderRadius: '8px', marginTop: '6px', fontSize: '12px', color: '#15803d' }}>
+                    <div style={{ fontWeight: '700' }}>
+                      📄 ឯកសារដែលបានជ្រើស ៖ <b>{newTicketFile.name}</b> ({(newTicketFile.size / 1024).toFixed(1)} KB)
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setNewTicketFile(null)}
+                      style={{ border: 'none', background: 'none', color: '#dc2626', fontWeight: '800', cursor: 'pointer', fontSize: '14px' }}
+                    >
+                      ✕ លុបចេញ
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
@@ -8644,16 +9745,82 @@ export default function App() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
               {/* Info Grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', backgroundColor: '#f8fafc', padding: '14px', borderRadius: '12px', fontSize: '12.5px' }}>
-                <div><b>អ្នកស្នើសុំ ៖</b> {ticketDetailModal.ticket.requester_name || 'ពេញ បញ្ជរតន៍'}</div>
+                <div><b>អ្នកស្នើសុំ ៖</b> {ticketDetailModal.ticket.requester_name || '-'}</div>
                 <div><b>អង្គភាព ៖</b> {ticketDetailModal.ticket.department || 'SOC Operations center'}</div>
                 <div><b>ប្រភេទ ៖</b> {ticketDetailModal.ticket.category}</div>
                 <div><b>អាទិភាព ៖</b> {ticketDetailModal.ticket.priority}</div>
+                {(ticketDetailModal.ticket.start_date || ticketDetailModal.ticket.end_date || ticketDetailModal.ticket.due_date) && (
+                  <div style={{ gridColumn: 'span 2', color: '#1e3a8a', fontWeight: '700', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {(ticketDetailModal.ticket.start_date || ticketDetailModal.ticket.end_date) && (
+                      <div>📅 <b>កាលបរិច្ឆេទអនុវត្ត ៖</b> {ticketDetailModal.ticket.start_date || 'N/A'} ដល់ {ticketDetailModal.ticket.end_date || 'N/A'}</div>
+                    )}
+                    {ticketDetailModal.ticket.due_date && (() => {
+                      const today = new Date();
+                      today.setHours(0, 0, 0, 0);
+                      const due = new Date(ticketDetailModal.ticket.due_date);
+                      due.setHours(0, 0, 0, 0);
+                      let remStr = '';
+                      if (!isNaN(due.getTime())) {
+                        const diffDays = Math.round((due - today) / (1000 * 3600 * 24));
+                        if (diffDays === 0) remStr = ' (⚠️ ថ្ងៃនេះជាថ្ងៃឱសានវាទ)';
+                        else if (diffDays > 0) remStr = ` (⏱️ គិតពីថ្ងៃនេះនៅសល់ ${diffDays + 1} ថ្ងៃ / ${diffDays} ថ្ងៃពេញ)`;
+                        else remStr = ` (🚨 ហួសកំណត់ ${Math.abs(diffDays)} ថ្ងៃ)`;
+                      }
+                      return (
+                        <div style={{ color: '#dc2626', fontWeight: '800' }}>
+                          ⏰ <b>ថ្ងៃឱសានវាទ (Task Due Date) ៖</b> {ticketDetailModal.ticket.due_date} <span style={{ color: '#047857' }}>{remStr}</span>
+                        </div>
+                      );
+                    })()}
+                    {ticketDetailModal.ticket.start_date && (ticketDetailModal.ticket.due_date || ticketDetailModal.ticket.end_date) && (() => {
+                      const targetEnd = ticketDetailModal.ticket.due_date || ticketDetailModal.ticket.end_date;
+                      const s = new Date(ticketDetailModal.ticket.start_date);
+                      const e = new Date(targetEnd);
+                      if (!isNaN(s) && !isNaN(e)) {
+                        const diff = Math.round((e - s) / (1000 * 3600 * 24));
+                        const totalDays = diff >= 0 ? diff + 1 : 0;
+                        if (diff >= 0) {
+                          return (
+                            <div style={{ color: '#047857', marginTop: '2px', fontWeight: '800' }}>
+                              ⏱️ <b>រយៈពេលអនុវត្តសរុប ៖</b> {totalDays} ថ្ងៃ ({diff} ថ្ងៃពេញ)
+                            </div>
+                          );
+                        }
+                      }
+                      return null;
+                    })()}
+                  </div>
+                )}
               </div>
 
               {ticketDetailModal.ticket.description && (
                 <div style={{ fontSize: '13px', color: '#334155', lineHeight: '1.6', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', padding: '14px', borderRadius: '12px' }}>
                   <b>ខ្លឹមសារស្នើសុំ ៖</b><br />
                   {ticketDetailModal.ticket.description}
+                </div>
+              )}
+
+              {ticketDetailModal.ticket.attachment_name && (
+                <div style={{ backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', padding: '12px 16px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#166534', fontWeight: '800', fontSize: '13px' }}>
+                    📎 <b>ឯកសារភ្ជាប់ (Attachment) ៖</b> {ticketDetailModal.ticket.attachment_name}
+                  </div>
+                  {ticketDetailModal.ticket.attachment_url && (
+                    <a
+                      href={
+                        ticketDetailModal.ticket.attachment_url.startsWith('http')
+                          ? ticketDetailModal.ticket.attachment_url
+                          : (ticketDetailModal.ticket.attachment_url.startsWith('/api')
+                              ? `https://nssfsocportal.vercel.app${ticketDetailModal.ticket.attachment_url}`
+                              : `${API_BASE}${ticketDetailModal.ticket.attachment_url.startsWith('/') ? '' : '/'}${ticketDetailModal.ticket.attachment_url}`)
+                      }
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ backgroundColor: '#16a34a', color: '#ffffff', padding: '7px 16px', borderRadius: '8px', fontSize: '12.5px', fontWeight: '800', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '6px', boxShadow: '0 2px 6px rgba(22,163,74,0.3)' }}
+                    >
+                      📥 បើក / ទាញយកឯកសារ
+                    </a>
+                  )}
                 </div>
               )}
 
@@ -8684,24 +9851,51 @@ export default function App() {
                         <div style={{ position: 'absolute', left: '-27px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: ticketDetailModal.ticket.l1_approved_at ? '#10b981' : '#f59e0b', border: '2.5px solid #fff', boxShadow: `0 0 0 2px ${ticketDetailModal.ticket.l1_approved_at ? '#10b981' : '#f59e0b'}` }} />
                         <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{ticketDetailModal.ticket.l1_approved_at || '⏳ កំពុងរង់ចាំ'}</div>
                         <div style={{ fontSize: '13px', fontWeight: '800', color: ticketDetailModal.ticket.l1_approved_at ? '#059669' : '#d97706', marginTop: '2px' }}>
-                          {ticketDetailModal.ticket.l1_approved_at ? '✅ ឯកភាព (ថ្នាក់អនុប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់អនុប្រធានការិយាល័យ)'} (ដោយ {ticketDetailModal.ticket.l1_approver})
+                          {ticketDetailModal.ticket.approval_level_required === 5
+                            ? (ticketDetailModal.ticket.l1_approved_at ? '✅ ឯកភាព (ថ្នាក់បុគ្គលិក)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់បុគ្គលិក)')
+                            : (ticketDetailModal.ticket.approval_level_required === 7
+                                ? (ticketDetailModal.ticket.l1_approved_at ? '✅ ឯកភាព (ថ្នាក់ជំនួយការ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់ជំនួយការ)')
+                                : (ticketDetailModal.ticket.approval_level_required === 6
+                                    ? (ticketDetailModal.ticket.l1_approved_at ? '✅ ឯកភាព (ថ្នាក់ប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់ប្រធានការិយាល័យ)')
+                                    : (ticketDetailModal.ticket.approval_level_required === 3 || ticketDetailModal.ticket.approval_level_required === 4
+                                        ? (ticketDetailModal.ticket.l1_approved_at ? '✅ ឯកភាព (ថ្នាក់ជំនួយការ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់ជំនួយការ)')
+                                        : (ticketDetailModal.ticket.l1_approved_at ? '✅ ឯកភាព (ថ្នាក់អនុប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់អនុប្រធានការិយាល័យ)'))))
+                          } (ដោយ {ticketDetailModal.ticket.l1_approver})
                         </div>
                         <div style={{ fontSize: '12px', color: '#334155', marginTop: '4px', backgroundColor: ticketDetailModal.ticket.l1_approved_at ? '#f0fdf4' : '#fffbeb', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${ticketDetailModal.ticket.l1_approved_at ? '#dcfce7' : '#fef3c7'}` }}>
-                          <b>មតិយោបល់ ៖</b> {ticketDetailModal.ticket.l1_comment || (ticketDetailModal.ticket.l1_approved_at ? 'បានពិនិត្យ និងយល់ព្រម គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ' : 'កំពុងរង់ចាំការពិនិត្យ')}
+                          <b>មតិយោបល់ ៖</b> {ticketDetailModal.ticket.l1_comment || (ticketDetailModal.ticket.l1_approved_at ? (ticketDetailModal.ticket.approval_level_required === 5 || ticketDetailModal.ticket.approval_level_required === 1 || ticketDetailModal.ticket.approval_level_required === 6 || ticketDetailModal.ticket.approval_level_required === 7 ? 'បានពិនិត្យ និងយល់ព្រម' : 'បានពិនិត្យ និងយល់ព្រម គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ') : 'កំពុងរង់ចាំការពិនិត្យ')}
                         </div>
                       </div>
                     )}
 
-                    {/* Level 2 Approver Step */}
-                    {ticketDetailModal.ticket.l2_approver && (
+                    {/* Level 2 Approver Step (only if workflow requires level 2, 3, or 4) */}
+                    {[2, 3, 4].includes(ticketDetailModal.ticket.approval_level_required) && ticketDetailModal.ticket.l2_approver && (
                       <div style={{ position: 'relative' }}>
                         <div style={{ position: 'absolute', left: '-27px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: ticketDetailModal.ticket.l2_approved_at ? '#10b981' : '#f59e0b', border: '2.5px solid #fff', boxShadow: `0 0 0 2px ${ticketDetailModal.ticket.l2_approved_at ? '#10b981' : '#f59e0b'}` }} />
                         <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{ticketDetailModal.ticket.l2_approved_at || '⏳ កំពុងរង់ចាំ'}</div>
                         <div style={{ fontSize: '13px', fontWeight: '800', color: ticketDetailModal.ticket.l2_approved_at ? '#059669' : '#d97706', marginTop: '2px' }}>
-                          {ticketDetailModal.ticket.l2_approved_at ? '✅ ឯកភាព (ថ្នាក់ប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់ប្រធានការិយាល័យ)'} (ដោយ {ticketDetailModal.ticket.l2_approver})
+                          {ticketDetailModal.ticket.approval_level_required === 3 || ticketDetailModal.ticket.approval_level_required === 4
+                            ? (ticketDetailModal.ticket.l2_approved_at ? '✅ ឯកភាព (ថ្នាក់អនុប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់អនុប្រធានការិយាល័យ)')
+                            : (ticketDetailModal.ticket.l2_approved_at ? '✅ ឯកភាព (ថ្នាក់ប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់ប្រធានការិយាល័យ)')} (ដោយ {ticketDetailModal.ticket.l2_approver})
                         </div>
-                        <div style={{ fontSize: '12px', color: '#334155', marginTop: '4px', backgroundColor: ticketDetailModal.ticket.l2_approved_at ? '#f0fdf4' : '#fffbeb', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${ticketDetailModal.ticket.l2_approved_at ? '#dcfce7' : '#fef3c7'}` }}>
+                        <div style={{ fontSize: '12px', color: '#334155', marginTop: '4px', backgroundColor: ticketDetailModal.ticket.l2_approved_at ? '#f0fdf4' : '#fffbeb', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${ticketDetailModal.ticket.l1_approved_at ? '#dcfce7' : '#fef3c7'}` }}>
                           <b>មតិយោបល់ ៖</b> {ticketDetailModal.ticket.l2_comment || (ticketDetailModal.ticket.l2_approved_at ? 'បានពិនិត្យ និងសម្រេចឯកភាព' : 'កំពុងរង់ចាំការពិនិត្យ')}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Level 3 Approver Step (only if workflow requires level 3 or 4) */}
+                    {[3, 4].includes(ticketDetailModal.ticket.approval_level_required) && ticketDetailModal.ticket.l3_approver && (
+                      <div style={{ position: 'relative' }}>
+                        <div style={{ position: 'absolute', left: '-27px', top: '2px', width: '16px', height: '16px', borderRadius: '50%', backgroundColor: ticketDetailModal.ticket.l3_approved_at ? '#10b981' : '#f59e0b', border: '2.5px solid #fff', boxShadow: `0 0 0 2px ${ticketDetailModal.ticket.l3_approved_at ? '#10b981' : '#f59e0b'}` }} />
+                        <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>{ticketDetailModal.ticket.l3_approved_at || '⏳ កំពុងរង់ចាំ'}</div>
+                        <div style={{ fontSize: '13px', fontWeight: '800', color: ticketDetailModal.ticket.l3_approved_at ? '#059669' : '#d97706', marginTop: '2px' }}>
+                          {ticketDetailModal.ticket.approval_level_required === 3 || ticketDetailModal.ticket.approval_level_required === 4
+                            ? (ticketDetailModal.ticket.l3_approved_at ? '✅ ឯកភាព (ថ្នាក់ប្រធានការិយាល័យ)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់ប្រធានការិយាល័យ)')
+                            : (ticketDetailModal.ticket.l3_approved_at ? '✅ ឯកភាព (ថ្នាក់អនុប្រធាននាយកដ្ឋាន)' : '⏳ កំពុងរង់ចាំ (ថ្នាក់អនុប្រធាននាយកដ្ឋាន)')} (ដោយ {ticketDetailModal.ticket.l3_approver})
+                        </div>
+                        <div style={{ fontSize: '12px', color: '#334155', marginTop: '4px', backgroundColor: ticketDetailModal.ticket.l3_approved_at ? '#f0fdf4' : '#fffbeb', padding: '8px 12px', borderRadius: '8px', border: `1px solid ${ticketDetailModal.ticket.l3_approved_at ? '#dcfce7' : '#fef3c7'}` }}>
+                          <b>មតិយោបល់ ៖</b> {ticketDetailModal.ticket.l3_comment || (ticketDetailModal.ticket.l3_approved_at ? 'បានពិនិត្យ និងសម្រេចឯកភាព' : 'កំពុងរង់ចាំការពិនិត្យ')}
                         </div>
                       </div>
                     )}
@@ -8724,35 +9918,56 @@ export default function App() {
               </div>
 
               {/* Action Buttons for Leaders */}
-              {ticketDetailModal.ticket.status !== 'approved' && ticketDetailModal.ticket.status !== 'rejected' && (
-                <div style={{ marginTop: '12px', backgroundColor: '#f1f5f9', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <label style={{ fontSize: '12px', fontWeight: '800', color: '#1e3a8a' }}>មតិយោបល់ / ចំណារស្ដីពីការអនុម័ត ៖</label>
-                  <textarea
-                    rows="2"
-                    className="form-input"
-                    placeholder="បញ្ចូលមតិយោបល់ ឬចំណារ..."
-                    value={ticketApprovalComment}
-                    onChange={(e) => setTicketApprovalComment(e.target.value)}
-                    style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}
-                  />
-                  <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleRejectTicket(ticketDetailModal.ticket.id)}
-                      style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: '#ef4444', color: '#ffffff', borderColor: '#ef4444', fontWeight: '800', fontSize: '12px' }}
-                    >
-                      ❌ បដិសេធ (Reject)
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleApproveTicket(ticketDetailModal.ticket.id, ticketDetailModal.ticket.current_approval_level || 1)}
-                      style={{ padding: '8px 20px', borderRadius: '8px', backgroundColor: '#10b981', borderColor: '#10b981', fontWeight: '800', fontSize: '12px' }}
-                    >
-                      ✅ អនុម័ត (Approve)
-                    </button>
+              {ticketDetailModal.ticket.status !== 'approved' && ticketDetailModal.ticket.status !== 'rejected' && (() => {
+                const currentLevel = ticketDetailModal.ticket.current_approval_level || 1;
+                const assignedApprover = currentLevel === 1 
+                  ? ticketDetailModal.ticket.l1_approver 
+                  : (currentLevel === 2 ? ticketDetailModal.ticket.l2_approver : ticketDetailModal.ticket.l3_approver);
+                
+                const userFullName = (currentLoginUser?.full_name || '').trim().toLowerCase();
+                const userUsername = (currentLoginUser?.username || '').trim().toLowerCase();
+                const assignedNorm = (assignedApprover || '').trim().toLowerCase();
+
+                const isAssigned = !assignedApprover || assignedNorm === 'ផ្សេងៗ' || (userFullName && assignedNorm === userFullName) || (userUsername && assignedNorm === userUsername);
+
+                if (!isAssigned) {
+                  return (
+                    <div style={{ marginTop: '12px', backgroundColor: '#f8fafc', padding: '14px 18px', borderRadius: '12px', border: '1px solid #cbd5e1', color: '#475569', fontSize: '12.5px', textAlign: 'center', fontWeight: '700' }}>
+                      👁️ <b>សិទ្ធិមើលព័ត៌មាន (View Only) ៖</b> លោកអ្នកមិនមែនជាអ្នកពិនិត្យដែលត្រូវបានជ្រើសរើសក្នុងជំហាននេះទេ (អ្នកត្រូវពិនិត្យ ៖ <span style={{ color: '#1e3a8a', fontWeight: '800' }}>{assignedApprover}</span>)
+                    </div>
+                  );
+                }
+
+                return (
+                  <div style={{ marginTop: '12px', backgroundColor: '#f1f5f9', padding: '16px', borderRadius: '12px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <label style={{ fontSize: '12px', fontWeight: '800', color: '#1e3a8a' }}>មតិយោបល់ / ចំណារស្ដីពីការអនុម័ត ៖</label>
+                    <textarea
+                      rows="2"
+                      className="form-input"
+                      placeholder="បញ្ចូលមតិយោបល់ ឬចំណារ..."
+                      value={ticketApprovalComment}
+                      onChange={(e) => setTicketApprovalComment(e.target.value)}
+                      style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px' }}
+                    />
+                    <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+                      <button
+                        className="btn btn-secondary"
+                        onClick={() => handleRejectTicket(ticketDetailModal.ticket.id)}
+                        style={{ padding: '8px 16px', borderRadius: '8px', backgroundColor: '#ef4444', color: '#ffffff', borderColor: '#ef4444', fontWeight: '800', fontSize: '12px' }}
+                      >
+                        ❌ បដិសេធ (Reject)
+                      </button>
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => handleApproveTicket(ticketDetailModal.ticket.id, ticketDetailModal.ticket.current_approval_level || 1)}
+                        style={{ padding: '8px 20px', borderRadius: '8px', backgroundColor: '#10b981', borderColor: '#10b981', fontWeight: '800', fontSize: '12px' }}
+                      >
+                        ✅ អនុម័ត (Approve)
+                      </button>
+                    </div>
                   </div>
-                </div>
-              )}
+                );
+              })()}
 
               {/* Attachment, Delete & Export PDF Actions */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', borderTop: '1px solid #e2e8f0', paddingTop: '14px', gap: '10px', flexWrap: 'wrap' }}>

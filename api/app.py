@@ -37,6 +37,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def init_db_migrations():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("ALTER TABLE tickets ADD COLUMN attachment_data TEXT")
+            conn.commit()
+        except Exception:
+            conn.rollback()
+        conn.close()
+    except Exception as e:
+        print("Migration warning:", e)
+
+init_db_migrations()
+
+def get_ict_now():
+    from datetime import datetime, timedelta, timezone
+    return datetime.now(timezone.utc) + timedelta(hours=7)
+
 def auto_sync_loop():
     # Initial sleep to let server boot up and avoid rate limit hit during restarts
     time.sleep(60)
@@ -958,7 +977,7 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
         
         # Trigger Telegram Audit Notification
         from telegram import notify_data_change
-        editor = request.headers.get("x-editor-username")
+        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         branch_name = f"{branch_row['name_kh']} ({branch_row['name_en']})"
         notify_data_change(
@@ -1173,7 +1192,7 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
         
         # Trigger Telegram Audit Notification
         from telegram import notify_data_change
-        editor = request.headers.get("x-editor-username")
+        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         dept_name = f"{dept_row['name_en']} (VLAN {dept_row['vlan_id']})"
         notify_data_change(
@@ -1307,7 +1326,7 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
         
         # Trigger Telegram Audit Notification
         from telegram import notify_data_change
-        editor = request.headers.get("x-editor-username")
+        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         notify_data_change(
             action_title="ធ្វើបច្ចុប្បន្នភាព Remote VPN User (VPN User Update)",
@@ -1392,7 +1411,7 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request):
         
         # Trigger Telegram Audit Notification
         from telegram import notify_data_change
-        editor = request.headers.get("x-editor-username")
+        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         notify_data_change(
             action_title="ធ្វើបច្ចុប្បន្នភាព Hospital/Bank VPN (Hospital VPN Update)",
@@ -1706,95 +1725,6 @@ def google_sheets_webhook(payload: GoogleSheetWebhookPayload):
         if conn:
             conn.close()
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/api/webhooks/uptime-kuma")
-def uptime_kuma_webhook(payload: dict):
-    msg_str = payload.get("msg")
-    heartbeat = payload.get("heartbeat")
-    monitor = payload.get("monitor")
-    
-    # 1. Format alert details
-    if heartbeat and monitor:
-        # It is a real monitoring update
-        monitor_name = monitor.get("name", "Unknown Monitor")
-        monitor_url = monitor.get("url") or monitor.get("hostname") or "N/A"
-        status_code = heartbeat.get("status") # 0 = DOWN, 1 = UP, 2 = PENDING
-        err_msg = heartbeat.get("msg") or "No error detail"
-        ping_time = heartbeat.get("ping")
-        hb_time = heartbeat.get("time")
-        
-        if status_code == 0:
-            status_label = "🔴 Down"
-        elif status_code == 1:
-            status_label = "🟢 Up"
-        else:
-            status_label = f"⏳ Pending ({status_code})"
-            
-        alert_text = (
-            f"🔔 <b>[UPTIME KUMA ALERT]</b>\n\n"
-            f"🖥️ <b>Service:</b> <code>{monitor_name}</code>\n"
-            f"🌐 <b>URL/Host:</b> {monitor_url}\n"
-            f"📊 <b>Status:</b> {status_label}\n"
-            f"⚠️ <b>Detail:</b> <code>{err_msg}</code>\n"
-            f"⚡ <b>Response Time:</b> {ping_time} ms\n"
-            f"🕒 <b>Time:</b> {hb_time} (UTC)\n"
-        )
-    else:
-        # Fall back to generic message, e.g. test notification
-        raw_msg = msg_str or "Test ping notification from Uptime Kuma"
-        alert_text = (
-            f"🔔 <b>[UPTIME KUMA ALERT]</b>\n\n"
-            f"📝 <b>Message:</b> {raw_msg}\n"
-        )
-
-    # 2. Retrieve dynamic template from DB if configured, and substitute values if appropriate
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_alert_template'")
-        row = cursor.fetchone()
-        conn.close()
-        
-        if row and row['value']:
-            template = row['value']
-            # Placeholders: {alert_type}, {host}, {ip}, {status}, {time}
-            alert_type = "Uptime Kuma Webhook Alert"
-            host = monitor.get("name", "Unknown Monitor") if monitor else "Uptime Kuma"
-            ip = (monitor.get("url") or monitor.get("hostname") or "N/A") if monitor else "N/A"
-            
-            if heartbeat and monitor:
-                status_code = heartbeat.get("status")
-                err_msg = heartbeat.get("msg") or ""
-                if status_code == 0:
-                    status = f"🔴 Down ({err_msg})"
-                elif status_code == 1:
-                    status = "🟢 Up"
-                else:
-                    status = f"⏳ Pending ({status_code})"
-            else:
-                status = msg_str or "Test Notification"
-                
-            import datetime
-            time_val = heartbeat.get("time") if (heartbeat and heartbeat.get("time")) else (datetime.datetime.utcnow() + datetime.timedelta(hours=7)).strftime("%Y-%m-%d %H:%M:%S")
-            
-            # Format using placeholders
-            formatted_text = template.replace("{alert_type}", alert_type)\
-                                     .replace("{host}", host)\
-                                     .replace("{ip}", ip)\
-                                     .replace("{status}", status)\
-                                     .replace("{time}", time_val)
-            alert_text = formatted_text
-    except Exception as e:
-        print(f"Error formatting Uptime Kuma alert with custom template: {e}")
-
-    # 3. Send Telegram notification using send_telegram_message function from telegram
-    try:
-        from telegram import send_telegram_message
-        success, info = send_telegram_message(alert_text)
-        return {"status": "success", "sent": success, "detail": info}
-    except Exception as e:
-        return {"status": "error", "detail": str(e)}
-
 # Local Document Storage Endpoints (Bypassing cloud quota limitations)
 import tempfile
 
@@ -2756,11 +2686,12 @@ def generate_ticket_timeline(ticket):
             "comment": "កំពុងរង់ចាំការពិនិត្យ និងឯកភាពពីប្រធាន/អនុប្រធានការិយាល័យ"
         })
 
-    # 4. Level 2 Approval (if required)
-    if ticket.get("approval_level_required", 1) >= 2:
-        l2_approver = ticket.get("l2_approver") or "លោក មាន ណារិមន្ត (ប្រធាននាយកដ្ឋាន)"
+    # 4. Level 2 Approval (ONLY if workflow requires >= 2 steps: level 2, 3, or 4)
+    req_level = ticket.get("approval_level_required", 1)
+    if req_level in (2, 3, 4):
+        l2_approver = ticket.get("l2_approver") or "ប្រធានការិយាល័យ"
         l2_time = ticket.get("l2_approved_at") or l1_time
-        l2_note = ticket.get("l2_comment") or "បានពិនិត្យ និងសម្រេចឯកភាព អនុញ្ញាតឲ្យក្រុមការងារអនុវត្ត"
+        l2_note = ticket.get("l2_comment") or "បានពិនិត្យ និងសម្រេចឯកភាព"
         if ticket.get("status") in ("approved", "in_progress", "completed"):
             timeline.append({
                 "status": "l2_approved",
@@ -2773,11 +2704,11 @@ def generate_ticket_timeline(ticket):
         elif ticket.get("status") == "pending_l2":
             timeline.append({
                 "status": "pending",
-                "badge_text": "កំពុងរង់ចាំ (Level 2 Director)",
+                "badge_text": "កំពុងរង់ចាំ (Level 2)",
                 "color": "#f59e0b",
                 "actor": l2_approver,
                 "timestamp": "កំពុងរង់ចាំ...",
-                "comment": "កំពុងរង់ចាំការពិនិត្យ និងសម្រេចពីប្រធាននាយកដ្ឋាន"
+                "comment": "កំពុងរង់ចាំការពិនិត្យ និងសម្រេចពីប្រធានការិយាល័យ"
             })
 
     # 5. In Progress / Execution
@@ -2838,108 +2769,161 @@ def get_ticket_detail(ticket_id: int):
 async def create_ticket(request: Request):
     from datetime import datetime
     import random
+    import os
+    import traceback
     
-    # Extract payload from Form or JSON
-    ticket_data = {}
-    content_type = request.headers.get("content-type", "")
-    if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
-        try:
-            form = await request.form()
-            ticket_data = dict(form)
-            if "file" in form and hasattr(form["file"], "filename") and form["file"].filename:
-                file_obj = form["file"]
-                ticket_data["attachment_name"] = file_obj.filename
-        except Exception as e:
-            print("Form parse error:", e)
-    else:
-        try:
-            ticket_data = await request.json()
-        except Exception as e:
-            print("JSON parse error:", e)
-            
-    title = ticket_data.get("title")
-    if not title:
-        raise HTTPException(status_code=400, detail="Ticket title is required")
-        
-    category = ticket_data.get("category", "Incident")
-    priority = ticket_data.get("priority", "Medium")
-    description = ticket_data.get("description", "")
-    requester_name = ticket_data.get("requester_name", "SOC Analyst")
-    department = ticket_data.get("department", "SOC Operational Center")
-    assignee_name = ticket_data.get("assignee_name", "SOC Duty Officer")
-    approval_level_required = int(ticket_data.get("approval_level_required", 1))
-    l1_approver = ticket_data.get("l1_approver") or ""
-    l2_approver = ticket_data.get("l2_approver") or ""
-    l3_approver = ticket_data.get("l3_approver") or ""
+    # Safe upload_dir inside /tmp (or local) without crashing read-only filesystems
+    upload_dir = os.path.join("/tmp", "uploads")
+    try:
+        os.makedirs(upload_dir, exist_ok=True)
+    except Exception as ex:
+        print("Upload dir creation warning:", ex)
     
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    date_code = datetime.now().strftime("%Y%m%d")
+    ict_now = get_ict_now()
+    now_str = ict_now.strftime("%Y-%m-%d %H:%M:%S")
+    date_code = ict_now.strftime("%Y%m%d")
     rand_suffix = random.randint(100, 999)
     ticket_code = f"TK-{date_code}-{rand_suffix}"
     
-    status = "pending_l1" if approval_level_required >= 1 else "approved"
-    current_level = 1 if approval_level_required >= 1 else 3
-    
-    attachment_name = ticket_data.get("attachment_name") or f"បង្កាន់ដៃទទួល_{ticket_code}.pdf"
-    attachment_url = ticket_data.get("attachment_url") or ""
-
-    conn = get_db_connection()
-    cursor = conn.cursor()
-
-    cursor.execute("""
-    INSERT INTO tickets (
-        ticket_code, title, category, priority, description,
-        requester_name, department, assignee_name, approval_level_required,
-        current_approval_level, status, l1_approver, l2_approver, l3_approver,
-        attachment_name, attachment_url, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, (
-        ticket_code, title, category, priority, description,
-        requester_name, department, assignee_name, approval_level_required,
-        current_level, status, l1_approver, l2_approver, l3_approver,
-        attachment_name, attachment_url, now_str, now_str
-    ))
-    conn.commit()
-    
-    new_id = 1
     try:
-        cursor.execute("SELECT MAX(id) FROM tickets")
-        row = cursor.fetchone()
-        if row and row[0]:
-            new_id = row[0]
-    except Exception as e:
-        print("Error getting created ticket id:", e)
+        # Extract payload from Form or JSON
+        ticket_data = {}
+        content_type = request.headers.get("content-type", "")
+        file_bytes = None
+        uploaded_orig_name = None
         
-    conn.close()
-    
-    # Broadcast interactive Approval Buttons to Telegram asynchronously in background thread for INSTANT <100ms response!
-    import threading
-    new_ticket_obj = {
-        "id": new_id,
-        "ticket_code": ticket_code,
-        "title": title,
-        "category": category,
-        "priority": priority,
-        "description": description,
-        "requester_name": requester_name,
-        "department": department,
-        "status": status,
-        "approval_level_required": approval_level_required,
-        "l1_approver": l1_approver,
-        "l2_approver": l2_approver,
-        "l3_approver": l3_approver
-    }
-    
-    def async_tg_ticket():
-        try:
-            from telegram import send_ticket_telegram_alert
-            send_ticket_telegram_alert(new_ticket_obj, level=1)
-        except Exception as ex:
-            print("Telegram Ticket Notify Exception:", ex)
+        if "multipart/form-data" in content_type or "application/x-www-form-urlencoded" in content_type:
+            try:
+                form = await request.form()
+                ticket_data = dict(form)
+                if "file" in form and hasattr(form["file"], "filename") and form["file"].filename:
+                    file_obj = form["file"]
+                    uploaded_orig_name = file_obj.filename
+                    file_bytes = await file_obj.read()
+            except Exception as e:
+                print("Form parse error:", e)
+        else:
+            try:
+                ticket_data = await request.json()
+            except Exception as e:
+                print("JSON parse error:", e)
+                
+        title = ticket_data.get("title")
+        if not title:
+            raise HTTPException(status_code=400, detail="Ticket title is required")
+            
+        category = ticket_data.get("category", "Incident")
+        priority = ticket_data.get("priority", "Medium")
+        description = ticket_data.get("description", "")
+        requester_name = ticket_data.get("requester_name", "SOC Analyst")
+        department = ticket_data.get("department", "SOC Operational Center")
+        assignee_name = ticket_data.get("assignee_name", "SOC Duty Officer")
+        approval_level_required = int(ticket_data.get("approval_level_required", 1))
+        l1_approver = ticket_data.get("l1_approver") or ""
+        l2_approver = ticket_data.get("l2_approver") or ""
+        l3_approver = ticket_data.get("l3_approver") or ""
+        start_date = ticket_data.get("start_date") or ""
+        end_date = ticket_data.get("end_date") or ""
+        due_date = ticket_data.get("due_date") or end_date or ""
+        
+        status = "pending_l1" if approval_level_required >= 1 else "approved"
+        current_level = 1 if approval_level_required >= 1 else 3
+        
+        attachment_name = ""
+        attachment_url = ""
+        attachment_data = ""
+        
+        # Handle File Saving if present
+        saved_filename = ""
+        if file_bytes and uploaded_orig_name:
+            safe_code = ticket_code.replace('/', '_').replace('\\', '_')
+            file_ext = os.path.splitext(uploaded_orig_name)[1]
+            saved_filename = f"{safe_code}_{random.randint(1000, 9999)}{file_ext}"
+            
+            try:
+                file_path = os.path.join(upload_dir, saved_filename)
+                with open(file_path, "wb") as f:
+                    f.write(file_bytes)
+            except Exception as ex:
+                print("Error writing file to /tmp/uploads:", ex)
+                    
+            attachment_name = uploaded_orig_name
+            attachment_url = f"/api/uploads/{saved_filename}"
+            import base64, mimetypes
+            mime_type = mimetypes.guess_type(uploaded_orig_name)[0] or "application/octet-stream"
+            b64_str = base64.b64encode(file_bytes).decode("utf-8")
+            attachment_data = f"data:{mime_type};base64,{b64_str}"
+        else:
+            attachment_name = ticket_data.get("attachment_name") or f"បង្កាន់ដៃទទួល_{ticket_code}.pdf"
+            attachment_url = ticket_data.get("attachment_url") or ""
+            attachment_data = ticket_data.get("attachment_data") or ""
 
-    threading.Thread(target=async_tg_ticket, daemon=True).start()
+        conn = get_db_connection()
+        cursor = conn.cursor()
+
+        cursor.execute("""
+        INSERT INTO tickets (
+            ticket_code, title, category, priority, description,
+            requester_name, department, assignee_name, approval_level_required,
+            current_approval_level, status, l1_approver, l2_approver, l3_approver,
+            attachment_name, attachment_url, attachment_data, start_date, end_date, due_date, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            ticket_code, title, category, priority, description,
+            requester_name, department, assignee_name, approval_level_required,
+            current_level, status, l1_approver, l2_approver, l3_approver,
+            attachment_name, attachment_url, attachment_data, start_date, end_date, due_date, now_str, now_str
+        ))
+        conn.commit()
         
-    return {"status": "success", "id": new_id, "ticket_code": ticket_code}
+        new_id = 1
+        try:
+            cursor.execute("SELECT MAX(id) FROM tickets")
+            row = cursor.fetchone()
+            if row and row[0]:
+                new_id = row[0]
+        except Exception as e:
+            print("Error getting created ticket id:", e)
+            
+        conn.close()
+        
+        # Broadcast interactive Approval Buttons to Telegram asynchronously in background thread for INSTANT <100ms response!
+        import threading
+        new_ticket_obj = {
+            "id": new_id,
+            "ticket_code": ticket_code,
+            "title": title,
+            "category": category,
+            "priority": priority,
+            "description": description,
+            "requester_name": requester_name,
+            "department": department,
+            "status": status,
+            "approval_level_required": approval_level_required,
+            "l1_approver": l1_approver,
+            "l2_approver": l2_approver,
+            "l3_approver": l3_approver,
+            "start_date": start_date,
+            "end_date": end_date,
+            "due_date": due_date,
+            "attachment_name": attachment_name,
+            "attachment_url": f"/api/uploads/{saved_filename}" if saved_filename else attachment_url
+        }
+        
+        def async_tg_ticket():
+            try:
+                from telegram import send_ticket_telegram_alert
+                send_ticket_telegram_alert(new_ticket_obj, level=1)
+            except Exception as ex:
+                print("Telegram Ticket Notify Exception:", ex)
+
+        threading.Thread(target=async_tg_ticket, daemon=True).start()
+            
+        return {"status": "success", "id": new_id, "ticket_code": ticket_code}
+    except Exception as e:
+        print("Error in create_ticket:", e)
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Internal Error: {str(e)}")
 
 @app.post("/api/tickets/{ticket_id}/approve")
 def approve_ticket(ticket_id: int, payload: dict = Body(...)):
@@ -2947,7 +2931,7 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
     
     action = payload.get("action", "approve") # "approve" or "reject"
     level = int(payload.get("level", 1))
-    approver = payload.get("approver", "Leadership")
+    approver = payload.get("approver") or payload.get("approver_name") or "Leadership"
     comment = payload.get("comment", "")
     
     conn = get_db_connection()
@@ -2959,32 +2943,76 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
         conn.close()
         raise HTTPException(status_code=404, detail="Ticket not found")
         
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
     req_level = ticket["approval_level_required"]
     
     if action == "reject":
         new_status = "rejected"
         cursor.execute("""
         UPDATE tickets SET status = ?, rejection_reason = ?, updated_at = ? WHERE id = ?
-        """, (new_status, comment or "Rejected by leadership", now_str, ticket_id))
+        """, (comment or "Rejected by leadership", comment or "Rejected by leadership", now_str, ticket_id))
     else: # approve
+        # Validate approver position for Office Head step
+        cursor.execute("SELECT position FROM users WHERE full_name = ? OR username = ?", (approver, approver))
+        app_user = cursor.fetchone()
+        app_pos = app_user["position"] if (app_user and app_user["position"]) else ""
+        
+        is_head_step = (level == 2 and req_level == 2) or (level == 3 and req_level in (3, 4)) or (level == 1 and req_level == 6)
+        if is_head_step:
+            if app_pos and ("អនុប្រធាន" in app_pos or "ប្រធាន" not in app_pos):
+                conn.close()
+                raise HTTPException(
+                    status_code=403,
+                    detail=f"លោក/លោកស្រី {approver} ({app_pos}) មិនអាចអនុម័តក្នុងថ្នាក់ប្រធានបានទេ! មានតែថ្នាក់ប្រធានការិយាល័យប៉ុណ្ណោះដែលអាចអនុម័តបាន។"
+                )
+                
+        # Prevent self-approval on multiple consecutive levels
+        if level == 2 and ticket["l1_approver"] and ticket["l1_approver"].strip() == approver.strip():
+            conn.close()
+            raise HTTPException(
+                status_code=403,
+                detail=f"លោក/លោកស្រី {approver} បានពិនិត្យថ្នាក់ទី ១ រួចហើយ! មិនអាចអនុម័តថ្នាក់ទី ២ ស្ទួនបានទេ (ត្រូវឱ្យថ្នាក់ដឹកនាំជាន់ខ្ពស់ពិនិត្យ)។"
+            )
+        if level == 3 and ticket["l2_approver"] and ticket["l2_approver"].strip() == approver.strip():
+            conn.close()
+            raise HTTPException(
+                status_code=403,
+                detail=f"លោក/លោកស្រី {approver} បានពិនិត្យថ្នាក់ទី ២ រួចហើយ! មិនអាចអនុម័តថ្នាក់ទី ៣ ស្ទួនបានទេ (ត្រូវឱ្យប្រធានការិយាល័យពិនិត្យ)។"
+            )
         if level == 1:
-            if req_level == 2:
+            has_l2 = bool(ticket.get("l2_approver") and str(ticket.get("l2_approver")).strip())
+            if has_l2 or req_level in (2, 3, 4, 8):
                 new_status = "pending_l2"
                 next_level = 2
             else:
                 new_status = "approved"
                 next_level = 3
-            l1_note = comment or "បានពិនិត្យ និងយល់ព្រម គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ"
+            if req_level in (1, 5, 6, 7):
+                l1_note = comment or "បានពិនិត្យ និងសម្រេចឯកភាព"
+            else:
+                l1_note = comment or "បានពិនិត្យ និងយល់ព្រម គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ"
             cursor.execute("""
             UPDATE tickets SET status = ?, current_approval_level = ?, l1_approver = ?, l1_approved_at = ?, l1_comment = ?, updated_at = ? WHERE id = ?
             """, (new_status, next_level, approver, now_str, l1_note, now_str, ticket_id))
-        else: # level 2
-            new_status = "approved"
-            l2_note = comment or "បានពិនិត្យ និងសម្រេចឯកភាព អនុញ្ញាតឲ្យក្រុមការងារអនុវត្ត"
+        elif level == 2:
+            has_l3 = bool(ticket.get("l3_approver") and str(ticket.get("l3_approver")).strip())
+            if has_l3 or req_level in (3, 4):
+                new_status = "pending_l3"
+                next_level = 3
+                l2_note = comment or "បានពិនិត្យ និងសម្រេចឯកភាព គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ"
+            else:
+                new_status = "approved"
+                next_level = 4
+                l2_note = comment or "បានពិនិត្យ និងសម្រេចឯកភាព អនុញ្ញាតឲ្យក្រុមការងារអនុវត្ត"
             cursor.execute("""
-            UPDATE tickets SET status = ?, current_approval_level = 3, l2_approver = ?, l2_approved_at = ?, l2_comment = ?, updated_at = ? WHERE id = ?
-            """, (new_status, approver, now_str, l2_note, now_str, ticket_id))
+            UPDATE tickets SET status = ?, current_approval_level = ?, l2_approver = ?, l2_approved_at = ?, l2_comment = ?, updated_at = ? WHERE id = ?
+            """, (new_status, next_level, approver, now_str, l2_note, now_str, ticket_id))
+        else: # level 3
+            new_status = "approved"
+            l3_note = comment or "បានពិនិត្យ និងសម្រេចឯកភាព អនុញ្ញាតឲ្យក្រុមការងារអនុវត្ត"
+            cursor.execute("""
+            UPDATE tickets SET status = ?, current_approval_level = 4, l3_approver = ?, l3_approved_at = ?, l3_comment = ?, updated_at = ? WHERE id = ?
+            """, (new_status, approver, now_str, l3_note, now_str, ticket_id))
             
     conn.commit()
     conn.close()
@@ -2993,22 +3021,37 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
     import threading
     def async_tg_approve():
         try:
-            from telegram import send_telegram_alert
-            if action == "reject":
-                msg = f"<b>❌ TICKET REJECTED: {ticket['ticket_code']}</b>\n\n" \
-                      f"<b>Title:</b> {ticket['title']}\n" \
-                      f"<b>Rejected By:</b> {approver}\n" \
-                      f"<b>Reason:</b> {comment or 'N/A'}"
-            else:
-                msg = f"<b>✅ TICKET APPROVED (Level {level}): {ticket['ticket_code']}</b>\n\n" \
-                      f"<b>Title:</b> {ticket['title']}\n" \
-                      f"<b>Approved By:</b> {approver}\n" \
-                      f"<b>New Status:</b> {'⏳ Pending Level 2 Approval' if new_status == 'pending_l2' else '🟢 Approved & Ready for Execution'}"
-            send_telegram_alert(msg)
+            from telegram import send_ticket_telegram_alert, send_telegram_alert
+            c2 = get_db_connection()
+            cur2 = c2.cursor()
+            cur2.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
+            up_row = cur2.fetchone()
+            c2.close()
+
+            if up_row:
+                up_tkt = dict(up_row)
+                if new_status == "pending_l2":
+                    send_ticket_telegram_alert(up_tkt, level=2)
+                elif new_status == "pending_l3":
+                    send_ticket_telegram_alert(up_tkt, level=3)
+                else:
+                    st_desc = "បដិសេធ" if action == "reject" else "បានអនុម័តផ្លូវការ"
+                    c_txt = comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if action != "reject" else "បដិសេធដោយថ្នាក់ដឹកនាំ")
+                    msg = (
+                        f"⚡ <b>[NSSF SOC WORKFLOW UPDATE]</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                        f"📩 <b>លិខិត #{up_tkt['ticket_code']} — {up_tkt['title']}</b>\n"
+                        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                        f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{approver}</b>\n"
+                        f"📊 <b>ស្ថានភាព ៖</b> <b>{st_desc}</b>\n"
+                        f"📝 <b>ចំណារ / មតិយោបល់ ៖</b> <b>\"{c_txt}\"</b>\n"
+                        f"⏰ <code>{now_str}</code>"
+                    )
+                    send_telegram_alert(msg)
         except Exception as ex:
             print("Telegram Ticket Approval Notify Exception:", ex)
 
-    threading.Thread(target=async_tg_approve, daemon=True).start()
+    async_tg_approve()
         
     return {"status": "success", "ticket_id": ticket_id, "new_status": new_status}
 
@@ -3020,7 +3063,7 @@ def update_ticket_status(ticket_id: int, payload: dict = Body(...)):
     if not new_status:
         raise HTTPException(status_code=400, detail="New status required")
         
-    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
     
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -3058,6 +3101,51 @@ def delete_ticket(ticket_id: int):
     conn.close()
     return {"status": "success", "message": f"Ticket {ticket_id} deleted successfully"}
 
+@app.get("/uploads/{filename}")
+@app.get("/api/uploads/{filename}")
+def serve_uploaded_file(filename: str):
+    from fastapi.responses import FileResponse, Response
+    import os, base64
+    
+    # Check disk first
+    p1 = os.path.join(os.path.dirname(__file__), "uploads", filename)
+    if os.path.exists(p1):
+        return FileResponse(p1)
+    p2 = os.path.join("/tmp", "uploads", filename)
+    if os.path.exists(p2):
+        return FileResponse(p2)
+        
+    # Persistent Database Fallback
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        search_code = filename.split("_")[0] if "_" in filename else filename
+        search_like = f"%{search_code}%"
+        filename_like = f"%{filename}%"
+        cursor.execute("""
+            SELECT attachment_data, attachment_url FROM tickets 
+            WHERE attachment_url LIKE ? OR attachment_name LIKE ? OR ticket_code LIKE ?
+            ORDER BY id DESC LIMIT 1
+        """, (filename_like, search_like, search_like))
+        row = cursor.fetchone()
+        conn.close()
+
+        if row:
+            data_uri = row.get('attachment_data') or row.get('attachment_url')
+            if data_uri and data_uri.startswith("data:"):
+                header, encoded = data_uri.split(",", 1)
+                mime_type = header.split(";")[0].replace("data:", "")
+                file_data = base64.b64decode(encoded)
+                return Response(
+                    content=file_data,
+                    media_type=mime_type,
+                    headers={"Content-Disposition": f"inline; filename=\"{filename}\""}
+                )
+    except Exception as ex:
+        print("Database attachment lookup error:", ex)
+        
+    raise HTTPException(status_code=404, detail="File not found")
+
 @app.get("/api/tickets/{ticket_id}/view")
 @app.get("/api/tickets/{ticket_id}/attachment")
 def view_ticket_attachment(ticket_id: int):
@@ -3092,13 +3180,13 @@ def view_ticket_attachment(ticket_id: int):
 
         timeline_html += f"""
         <div class="timeline-item">
-            <div class="timeline-icon" style="background: {icon_bg};">{icon_symbol}</div>
-            <div class="timeline-content" style="background: {badge_bg};">
+            <div class="timeline-icon" style="background: {icon_bg} !important; color: #ffffff !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">{icon_symbol}</div>
+            <div class="timeline-content" style="background: {badge_bg} !important; border: 1px solid #cbd5e1 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;">
                 <div style="display: flex; justify-content: space-between;">
-                    <span class="timeline-actor" style="color: {actor_color};">{item.get('badge_text')} (ដោយ {item.get('actor')})</span>
-                    <span class="timeline-time">{item.get('timestamp')}</span>
+                    <span class="timeline-actor" style="color: {actor_color} !important;">{item.get('badge_text')} (ដោយ {item.get('actor')})</span>
+                    <span class="timeline-time" style="color: #64748b !important;">{item.get('timestamp')}</span>
                 </div>
-                <div class="timeline-comment"><strong>មតិយោបល់ ៖</strong> {clean_comment}</div>
+                <div class="timeline-comment" style="background: #ffffff !important; border: 1px solid #cbd5e1 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important;"><strong>មតិយោបល់ ៖</strong> {clean_comment}</div>
             </div>
         </div>
         """
@@ -3136,21 +3224,30 @@ def view_ticket_attachment(ticket_id: int):
     <title>លិខិតស្នើសុំផ្លូវការ - {t.get('ticket_code')}</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Moul&family=Siemreap&family=Inter:wght@400;600;700&display=swap');
+        * {{
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+        }}
         body {{
             font-family: 'Siemreap', sans-serif;
             background: #f8fafc;
             color: #0f172a;
             margin: 0;
             padding: 40px 20px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         .letter-page {{
             max-width: 820px;
             margin: 0 auto;
-            background: #ffffff;
+            background: #ffffff !important;
             padding: 45px 55px;
             box-shadow: 0 10px 25px rgba(0,0,0,0.08);
             border-radius: 8px;
             position: relative;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         .header-container {{
             display: flex;
@@ -3165,7 +3262,7 @@ def view_ticket_attachment(ticket_id: int):
         .header-left .title-nssf {{
             font-family: 'Moul', serif;
             font-size: 13.5px;
-            color: #1e3a8a;
+            color: #1e3a8a !important;
             font-weight: bold;
             line-height: 1.4;
             margin-top: 6px;
@@ -3173,7 +3270,7 @@ def view_ticket_attachment(ticket_id: int):
         .header-left .sub-nssf {{
             font-family: 'Siemreap', sans-serif;
             font-size: 11px;
-            color: #334155;
+            color: #334155 !important;
             margin-top: 3px;
         }}
         .header-right {{
@@ -3183,40 +3280,42 @@ def view_ticket_attachment(ticket_id: int):
         .header-right .title-national {{
             font-family: 'Moul', serif;
             font-size: 14px;
-            color: #0f172a;
+            color: #0f172a !important;
             font-weight: bold;
             line-height: 1.6;
         }}
         .header-right .sub-national {{
             font-family: 'Moul', serif;
             font-size: 13px;
-            color: #0f172a;
+            color: #0f172a !important;
             font-weight: bold;
             line-height: 1.6;
         }}
         .header-right .divider-line {{
             margin-top: 6px;
-            color: #1e3a8a;
+            color: #1e3a8a !important;
             font-size: 11px;
             font-weight: bold;
             letter-spacing: 2px;
         }}
         .ticket-code-badge {{
             font-family: 'Inter', monospace;
-            background: #eff6ff;
-            color: #1d4ed8;
+            background: #eff6ff !important;
+            color: #1d4ed8 !important;
             padding: 6px 14px;
             border-radius: 6px;
             font-weight: 700;
             font-size: 13px;
-            border: 1px solid #bfdbfe;
+            border: 1px solid #bfdbfe !important;
             display: inline-block;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         .document-title {{
             text-align: center;
             font-family: 'Moul', serif;
             font-size: 18px;
-            color: #1e3a8a;
+            color: #1e3a8a !important;
             margin: 35px 0 25px 0;
             line-height: 1.5;
         }}
@@ -3224,35 +3323,39 @@ def view_ticket_attachment(ticket_id: int):
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 12px;
-            background: #f8fafc;
+            background: #f8fafc !important;
             padding: 16px 20px;
             border-radius: 8px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #e2e8f0 !important;
             margin-bottom: 25px;
             font-size: 13px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         .info-item span {{
             font-weight: 700;
-            color: #334155;
+            color: #334155 !important;
         }}
         .description-box {{
-            background: #ffffff;
-            border: 1px solid #cbd5e1;
+            background: #ffffff !important;
+            border: 1px solid #cbd5e1 !important;
             padding: 18px 20px;
             border-radius: 8px;
             margin-bottom: 30px;
             font-size: 13.5px;
             line-height: 1.7;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         .timeline-section {{
             margin-top: 35px;
-            border-top: 2px dashed #cbd5e1;
+            border-top: 2px dashed #cbd5e1 !important;
             padding-top: 25px;
         }}
         .timeline-title {{
             font-family: 'Moul', serif;
             font-size: 14px;
-            color: #1e3a8a;
+            color: #1e3a8a !important;
             margin-bottom: 20px;
         }}
         .timeline-item {{
@@ -3265,8 +3368,8 @@ def view_ticket_attachment(ticket_id: int):
         .timeline-icon {{
             width: 24px;
             height: 24px;
-            background: #10b981;
-            color: #fff;
+            background: #10b981 !important;
+            color: #fff !important;
             border-radius: 50%;
             display: flex;
             align-items: center;
@@ -3274,30 +3377,37 @@ def view_ticket_attachment(ticket_id: int):
             font-size: 12px;
             font-weight: bold;
             flex-shrink: 0;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         .timeline-content {{
-            background: #f1f5f9;
+            background: #f1f5f9 !important;
             padding: 12px 16px;
             border-radius: 8px;
+            border: 1px solid #cbd5e1 !important;
             flex: 1;
             font-size: 12.5px;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         .timeline-actor {{
             font-weight: 700;
-            color: #0f172a;
+            color: #0f172a !important;
         }}
         .timeline-time {{
             font-size: 11px;
-            color: #64748b;
+            color: #64748b !important;
             margin-top: 2px;
         }}
         .timeline-comment {{
             margin-top: 6px;
-            color: #334155;
-            background: #ffffff;
+            color: #334155 !important;
+            background: #ffffff !important;
             padding: 8px 12px;
             border-radius: 6px;
-            border: 1px solid #e2e8f0;
+            border: 1px solid #cbd5e1 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         .signature-section {{
             margin-top: 50px;
@@ -3315,43 +3425,66 @@ def view_ticket_attachment(ticket_id: int):
         }}
         .sig-lunar {{
             font-size: 12px;
-            color: #334155;
+            color: #334155 !important;
             margin-bottom: 4px;
         }}
         .sig-gregorian {{
             font-size: 13px;
             font-weight: 700;
-            color: #0f172a;
+            color: #0f172a !important;
             margin-bottom: 14px;
         }}
         .sig-role {{
             font-family: 'Moul', serif;
             font-size: 14px;
-            color: #1e3a8a;
+            color: #1e3a8a !important;
             font-weight: bold;
             margin-bottom: 65px;
         }}
         .sig-name {{
             font-family: 'Moul', serif;
             font-size: 14px;
-            color: #0f172a;
+            color: #0f172a !important;
             font-weight: bold;
         }}
         .stamp-badge {{
             display: inline-block;
-            border: 2px solid #059669;
-            background: #ecfdf5;
-            color: #047857;
+            border: 2px solid #059669 !important;
+            background: #ecfdf5 !important;
+            color: #047857 !important;
             padding: 10px 18px;
             border-radius: 8px;
             font-weight: bold;
             font-size: 12px;
             box-shadow: 0 2px 6px rgba(16,185,129,0.15);
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }}
         @media print {{
-            body {{ background: #fff; padding: 0; }}
-            .letter-page {{ box-shadow: none; padding: 0; max-width: 100%; }}
-            .no-print {{ display: none; }}
+            * {{
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }}
+            body {{ background: #fff !important; padding: 0 !important; }}
+            .letter-page {{ box-shadow: none !important; padding: 0 !important; max-width: 100% !important; border: none !important; }}
+            .no-print {{ display: none !important; }}
+            .timeline-icon {{
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }}
+            .timeline-content {{
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }}
+            .timeline-comment {{
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }}
+            .stamp-badge {{
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }}
         }}
     </style>
 </head>
@@ -3396,6 +3529,7 @@ def view_ticket_attachment(ticket_id: int):
             <div class="info-item"><span>អង្គភាព/ការិយាល័យ ៖</span> {t.get('department')}</div>
             <div class="info-item"><span>កាលបរិច្ឆេទ ៖</span> {t.get('created_at')}</div>
             <div class="info-item"><span>កម្រិតអាទិភាព ៖</span> {t.get('priority')}</div>
+            {(f'<div class="info-item" style="grid-column: span 2; color: #dc2626;"><span>ថ្ងៃឱសានវាទ (Task Due Date) ៖</span> ' + str(t.get('due_date')) + '</div>') if t.get('due_date') else ''}
         </div>
 
         <div style="font-weight: 700; font-size: 13.5px; margin-bottom: 8px; color: #1e3a8a;">ខ្លឹមសារ និងបរិយាយលម្អិតនៃសំណើ ៖</div>
@@ -3421,7 +3555,7 @@ def view_ticket_attachment(ticket_id: int):
                 <div class="sig-lunar">{khmer_lunar_date}</div>
                 <div class="sig-gregorian">{khmer_gregorian_date}</div>
                 <div class="sig-role">អ្នករៀបចំ</div>
-                <div class="sig-name">{t.get('requester_name') or 'ពេញ បញ្ជរតន៍'}</div>
+                <div class="sig-name">{t.get('requester_name') or ''}</div>
             </div>
         </div>
     </div>

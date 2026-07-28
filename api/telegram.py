@@ -65,19 +65,23 @@ def notify_data_change(action_title: str, details: dict, editor_username: str = 
     import datetime
     
     editor_display = "System"
-    if editor_username:
+    if editor_username and str(editor_username).strip():
         try:
             from database import get_db_connection
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT username, full_name FROM users WHERE LOWER(username) = LOWER(?)", (editor_username.strip(),))
+            clean_ed = str(editor_username).strip()
+            cursor.execute("""
+                SELECT username, full_name FROM users 
+                WHERE LOWER(username) = LOWER(?) OR LOWER(full_name) = LOWER(?) OR LOWER(telegram_username) = LOWER(?)
+            """, (clean_ed, clean_ed, clean_ed.replace("@", "")))
             user = cursor.fetchone()
             conn.close()
             if user:
                 full_name = user['full_name'] or ""
-                editor_display = f"<b>{user['username']}</b>" + (f" ({full_name})" if full_name else "")
+                editor_display = f"<b>{full_name or user['username']}</b>"
             else:
-                editor_display = f"<b>{editor_username}</b>"
+                editor_display = f"<b>{clean_ed}</b>"
         except Exception:
             editor_display = f"<b>{editor_username}</b>"
 
@@ -759,7 +763,10 @@ def process_telegram_incoming_update(update: dict):
                                 SELECT full_name FROM users 
                                 WHERE (telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?))
                                    OR telegram_chat_id = ?
-                            """, (tg_uname_clean, str(chat_id)))
+                                ORDER BY 
+                                   CASE WHEN telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?) THEN 1 ELSE 2 END,
+                                   id DESC
+                            """, (tg_uname_clean, str(chat_id), tg_uname_clean))
                             u_row = cursor.fetchone()
                             if u_row and u_row['full_name']:
                                 user_db_fullname = u_row['full_name']
@@ -782,35 +789,42 @@ def process_telegram_incoming_update(update: dict):
                     import datetime
                     ict_now = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
                     now_str = ict_now.strftime("%Y-%m-%d %H:%M:%S")
-                    
-                    if action_type == "rej":
-                        cursor.execute("UPDATE tickets SET status = 'rejected', rejection_reason = ?, updated_at = ? WHERE id = ?",
-                                       ("បដិសេធតាមរយៈ Telegram Bot", now_str, tkt_id))
-                        new_st_desc = "❌ ត្រូវបានបដិសេធ (Rejected via Telegram)"
-                    else:
-                        req_level = tkt['approval_level_required']
-                        if level == 1 and req_level >= 2:
-                            new_st_desc = "⏳ បានឯកភាពថ្នាក់អនុប្រធានការិយាល័យ ➔ គោរពស្នើថ្នាក់ប្រធានការិយាល័យ"
-                            cursor.execute("UPDATE tickets SET status = 'pending_l2', current_approval_level = 2, l1_approver = ?, l1_approved_at = ?, updated_at = ? WHERE id = ?",
-                                           (approver_name, now_str, now_str, tkt_id))
-                        elif level == 2 and req_level >= 3:
-                            new_st_desc = "⏳ បានឯកភាពថ្នាក់ប្រធានការិយាល័យ ➔ គោរពស្នើថ្នាក់អនុប្រធាននាយកដ្ឋាន"
-                            cursor.execute("UPDATE tickets SET status = 'pending_l3', current_approval_level = 3, l2_approver = ?, l2_approved_at = ?, updated_at = ? WHERE id = ?",
-                                           (approver_name, now_str, now_str, tkt_id))
-                        else:
-                            new_st_desc = "🟢 ឯកភាព និងបានអនុម័តសព្វគ្រប់ (Approved & Ready)"
-                            cursor.execute("UPDATE tickets SET status = 'approved', current_approval_level = 4, l2_approver = ?, l2_approved_at = ?, updated_at = ? WHERE id = ?",
-                                           (approver_name, now_str, now_str, tkt_id))
-                    conn.commit()
-                    conn.close()
-                    
-                    # Update Telegram message directly with approval status!
+
+                    # Send Force Reply message to get comment/remark
                     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
                     if bot_token:
+                        action_label = "ការអនុម័ត" if action_type == "app" else "ការបដិសេធ"
+                        orig_mid = msg.get("message_id") or ""
+                        prompt_text = (
+                            f"✍️ <b>[TICKET #{tkt_id} - Level {level} - {action_type.upper()} - M{orig_mid}]</b>\n"
+                            f"កូដលិខិត ៖ <code>{tkt['ticket_code']}</code>\n"
+                            f"កម្មវត្ថុ ៖ <b>{tkt['title']}</b>\n\n"
+                        )
+                        if action_type == "app":
+                            prompt_text += f"សូមផ្ញើសារសរសេរ<b>ចំណារ ឬមតិយោបល់ (Comment)</b> សម្រាប់ការអនុម័តនេះ (ឬផ្ញើ <code>-</code> បើគ្មានចំណារ) ៖"
+                        else:
+                            prompt_text += f"សូមផ្ញើសារសរសេរ<b>មូលហេតុនៃការបដិសេធ (Rejection Reason)</b> ៖"
+
+                        # Send prompt message with force reply
+                        requests.post(
+                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                            json={
+                                "chat_id": chat_id,
+                                "text": prompt_text,
+                                "parse_mode": "HTML",
+                                "reply_markup": {
+                                    "force_reply": True,
+                                    "selective": True
+                                }
+                            },
+                            timeout=5
+                        )
+                        
+                        # Edit original message to remove buttons and show pending status
                         edited_text = (
                             f"<b>{tkt['ticket_code']} — {tkt['title']}</b>\n\n"
-                            f"✅ <b>ស្ថានភាពបច្ចុប្បន្ន ៖</b> <code>{new_st_desc}</code>\n"
-                            f"👤 <b>អ្នកអនុម័ត ៖</b> <b>{approver_name}</b>\n"
+                            f"⏳ <b>ស្ថានភាព ៖</b> កំពុងរង់ចាំការបញ្ចូលចំណារ/មតិយោបល់ សម្រាប់{action_label}...\n"
+                            f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{approver_name}</b>\n"
                             f"🕒 <code>{now_str}</code>"
                         )
                         requests.post(
@@ -823,6 +837,7 @@ def process_telegram_incoming_update(update: dict):
                             },
                             timeout=5
                         )
+                    conn.close()
                     return
             except Exception as e:
                 print("Error handling Telegram inline ticket approval:", e)
@@ -835,6 +850,165 @@ def process_telegram_incoming_update(update: dict):
         text = (message.get("text") or "").strip()
         from_user = message.get("from", {})
         username = from_user.get("username") or from_user.get("first_name") or "User"
+
+        # Check if this is a reply to our TICKET approval comment prompt
+        reply_to = message.get("reply_to_message")
+        if reply_to and reply_to.get("text") and "✍️ [TICKET #" in reply_to.get("text"):
+            try:
+                user_msg_id = message.get("message_id")
+                prompt_msg_id = reply_to.get("message_id")
+                orig_msg_id = None
+
+                # Format: "✍️ [TICKET #{tkt_id} - Level {level} - {action_type} - M{orig_mid}]"
+                prompt_line = reply_to["text"].split("\n")[0]
+                if "- M" in prompt_line:
+                    try:
+                        orig_msg_id = int(prompt_line.split("- M")[1].split("]")[0].strip())
+                    except Exception:
+                        pass
+
+                start_idx = prompt_line.find("#")
+                end_idx = prompt_line.find("]")
+                if start_idx != -1 and end_idx != -1:
+                    meta_content = prompt_line[start_idx+1:end_idx].strip()
+                    parts = [p.strip() for p in meta_content.split("-")]
+                    tkt_id = int(parts[0])
+                    level = int(parts[1].replace("Level", "").strip())
+                    action_type = parts[2].lower()
+                    
+                    user_comment = text if text != "-" else ""
+                    
+                    from database import get_db_connection
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("SELECT * FROM tickets WHERE id = ?", (tkt_id,))
+                    tkt = cursor.fetchone()
+                    
+                    if tkt:
+                        tg_uname_clean = (from_user.get("username") or "").replace("@", "").strip()
+                        user_db_fullname = ""
+                        try:
+                            cursor.execute("""
+                                SELECT full_name FROM users 
+                                WHERE (telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?))
+                                   OR telegram_chat_id = ?
+                                ORDER BY 
+                                   CASE WHEN telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?) THEN 1 ELSE 2 END,
+                                   id DESC
+                            """, (tg_uname_clean, str(chat_id), tg_uname_clean))
+                            u_row = cursor.fetchone()
+                            if u_row and u_row['full_name']:
+                                user_db_fullname = u_row['full_name']
+                        except Exception as ex_u:
+                            print("Error fetching user full name in comment reply:", ex_u)
+                        
+                        first_name = (from_user.get("first_name") or "").strip()
+                        last_name = (from_user.get("last_name") or "").strip()
+                        tg_profile_name = f"{first_name} {last_name}".strip() if (first_name or last_name) else ""
+                        approver_name = user_db_fullname or tg_profile_name or "ថ្នាក់ដឹកនាំ"
+                        
+                        import datetime
+                        ict_now = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
+                        now_str = ict_now.strftime("%Y-%m-%d %H:%M:%S")
+                        
+                        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+                        
+                        if action_type == "rej":
+                            cursor.execute("UPDATE tickets SET status = 'rejected', rejection_reason = ?, l1_comment = ?, updated_at = ? WHERE id = ?",
+                                           (user_comment or "បដិសេធតាមរយៈ Telegram Bot", user_comment, now_str, tkt_id))
+                            new_status = "rejected"
+                            new_st_desc = "❌ ត្រូវបានបដិសេធ (Rejected via Telegram)"
+                            comment_desc = user_comment or "គ្មាន"
+                        else:
+                            req_level = tkt['approval_level_required']
+                            has_l2 = bool(tkt.get("l2_approver") and str(tkt.get("l2_approver")).strip())
+                            has_l3 = bool(tkt.get("l3_approver") and str(tkt.get("l3_approver")).strip())
+
+                            if level == 1 and (has_l2 or req_level in (2, 3, 4, 8)):
+                                new_status = "pending_l2"
+                                new_st_desc = "⏳ បានឯកភាពថ្នាក់ជំនួយការ/អនុប្រធាន ➔ គោរពស្នើថ្នាក់បន្ទាប់"
+                                l1_note = user_comment or "បានពិនិត្យ និងយល់ព្រម គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ"
+                                cursor.execute("UPDATE tickets SET status = 'pending_l2', current_approval_level = 2, l1_approver = ?, l1_approved_at = ?, l1_comment = ?, updated_at = ? WHERE id = ?",
+                                               (approver_name, now_str, l1_note, now_str, tkt_id))
+                                comment_desc = l1_note
+                            elif level == 2 and (has_l3 or req_level in (3, 4)):
+                                new_status = "pending_l3"
+                                new_st_desc = "⏳ បានឯកភាពថ្នាក់ប្រធានការិយាល័យ ➔ គោរពស្នើថ្នាក់អនុប្រធាននាយកដ្ឋាន"
+                                l2_note = user_comment or "បានពិនិត្យ និងសម្រេចឯកភាព គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ"
+                                cursor.execute("UPDATE tickets SET status = 'pending_l3', current_approval_level = 3, l2_approver = ?, l2_approved_at = ?, l2_comment = ?, updated_at = ? WHERE id = ?",
+                                               (approver_name, now_str, l2_note, now_str, tkt_id))
+                                comment_desc = l2_note
+                            else:
+                                new_status = "approved"
+                                new_st_desc = "🟢 ឯកភាព និងបានអនុម័តសព្វគ្រប់ (Approved & Ready)"
+                                if level == 1:
+                                    l1_note = user_comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if req_level in (1, 5, 6, 7) else "បានពិនិត្យ និងយល់ព្រម គោរពស្នើថ្នាក់ដឹកនាំពិនិត្យ")
+                                    cursor.execute("UPDATE tickets SET status = 'approved', current_approval_level = 3, l1_approver = ?, l1_approved_at = ?, l1_comment = ?, updated_at = ? WHERE id = ?",
+                                                   (approver_name, now_str, l1_note, now_str, tkt_id))
+                                    comment_desc = l1_note
+                                else:
+                                    l2_note = user_comment or "បានពិនិត្យ និងសម្រេចឯកភាព អនុញ្ញាតឲ្យក្រុមការងារអនុវត្ត"
+                                    cursor.execute("UPDATE tickets SET status = 'approved', current_approval_level = 4, l2_approver = ?, l2_approved_at = ?, l2_comment = ?, updated_at = ? WHERE id = ?",
+                                                   (approver_name, now_str, l2_note, now_str, tkt_id))
+                                    comment_desc = l2_note
+                                    
+                        conn.commit()
+
+                        # Query updated ticket row for next level notification
+                        cursor.execute("SELECT * FROM tickets WHERE id = ?", (tkt_id,))
+                        up_tkt_row = cursor.fetchone()
+                        conn.close()
+                        
+                        # 1. Trigger next level approver Telegram alert IMMEDIATELY for INSTANT notification!
+                        if up_tkt_row:
+                            up_tkt = dict(up_tkt_row)
+                            if new_status == "pending_l2":
+                                send_ticket_telegram_alert(up_tkt, level=2)
+                            elif new_status == "pending_l3":
+                                send_ticket_telegram_alert(up_tkt, level=3)
+
+                        # 2. Send final confirmation message to current approver IMMEDIATELY
+                        confirm_text = (
+                            f"<b>🎉 ដំណើរការជោគជ័យ (Action Executed)!</b>\n\n"
+                            f"<b>Ticket Code ៖</b> #{tkt['ticket_code']}\n"
+                            f"<b>កម្មវត្ថុ ៖</b> {tkt['title']}\n"
+                            f"<b>ស្ថានភាពថ្មី ៖</b> <b>{new_st_desc}</b>\n"
+                            f"<b>អ្នកអនុម័ត ៖</b> <b>{approver_name}</b>\n"
+                            f"<b>ចំណារ / មតិយោបល់ ៖</b> <b>\"{comment_desc}\"</b>\n"
+                            f"🕒 <code>{now_str}</code>"
+                        )
+                        requests.post(
+                            f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                            json={
+                                "chat_id": chat_id,
+                                "text": confirm_text,
+                                "parse_mode": "HTML"
+                            },
+                            timeout=5
+                        )
+
+                        # 3. Auto-delete intermediate messages ASYNCHRONOUSLY in background thread so notifications are INSTANT
+                        def async_cleanup():
+                            def delete_tg_msg(token, cid, mid):
+                                if token and cid and mid:
+                                    try:
+                                        requests.post(
+                                            f"https://api.telegram.org/bot{token}/deleteMessage",
+                                            json={"chat_id": cid, "message_id": mid},
+                                            timeout=3
+                                        )
+                                    except Exception:
+                                        pass
+
+                            delete_tg_msg(bot_token, chat_id, user_msg_id)
+                            delete_tg_msg(bot_token, chat_id, prompt_msg_id)
+                            delete_tg_msg(bot_token, chat_id, orig_msg_id)
+
+                        import threading
+                        threading.Thread(target=async_cleanup, daemon=True).start()
+                        return
+            except Exception as e_p:
+                print("Error parsing ticket reply metadata:", e_p)
 
     if not text or not chat_id:
         return
@@ -962,9 +1136,55 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
     else:
         target_approver = ""
 
-    level_desc = "ថ្នាក់អនុប្រធានការិយាល័យ" if level == 1 else ("ថ្នាក់ប្រធានការិយាល័យ" if level == 2 else ("ថ្នាក់អនុប្រធាននាយកដ្ឋាន" if level == 3 else "ថ្នាក់ប្រធាននាយកដ្ឋាន"))
+    req_level = ticket.get("approval_level_required", 1)
+    if level == 1:
+        level_desc = "ថ្នាក់បុគ្គលិក" if req_level == 5 else "ថ្នាក់អនុប្រធានការិយាល័យ"
+    else:
+        level_desc = "ថ្នាក់ប្រធានការិយាល័យ" if level == 2 else ("ថ្នាក់អនុប្រធាននាយកដ្ឋាន" if level == 3 else "ថ្នាក់ប្រធាននាយកដ្ឋាន")
     prio_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡" if prio == "Medium" else "🟢"
-    created_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    from datetime import timezone, timedelta
+    ict_now = datetime.now(timezone.utc) + timedelta(hours=7)
+    created_time = ict_now.strftime("%Y-%m-%d %H:%M")
+    start_date = ticket.get("start_date") or ""
+    due_date = ticket.get("due_date") or ticket.get("end_date") or ""
+    
+    att_name = ticket.get("attachment_name") or ""
+    att_url = ticket.get("attachment_url") or ""
+    att_line = ""
+    if att_name and att_url and not att_url.startswith("data:"):
+        if att_url.startswith("http"):
+            full_url = att_url
+        elif att_url.startswith("/api/"):
+            full_url = f"https://nssfsocportal.vercel.app{att_url}"
+        else:
+            clean_path = att_url if att_url.startswith("/") else f"/{att_url}"
+            full_url = f"https://nssfsocportal.vercel.app/api{clean_path}"
+        att_line = f"📎 <b>ឯកសារភ្ជាប់ ៖</b> <a href=\"{full_url}\">📥 បើក/ទាញយក ({att_name})</a>\n"
+
+    date_extra = ""
+    if due_date:
+        try:
+            d_today = ict_now.date()
+            d_due = datetime.strptime(due_date, "%Y-%m-%d").date()
+            diff_days = (d_due - d_today).days
+            if diff_days == 0:
+                rem_str = " (⚠️ ថ្ងៃនេះជាថ្ងៃឱសានវាទ)"
+            elif diff_days > 0:
+                rem_str = f" (⏱️ គិតពីថ្ងៃនេះនៅសល់ {diff_days + 1} ថ្ងៃ)"
+            else:
+                rem_str = f" (🚨 ហួសកំណត់ {abs(diff_days)} ថ្ងៃ)"
+            date_extra += f"⏰ <b>ថ្ងៃឱសានវាទ (Due Date) ៖</b> <code>{due_date}</code> <b>{rem_str}</b>\n"
+        except Exception:
+            date_extra += f"⏰ <b>ថ្ងៃឱសានវាទ (Due Date) ៖</b> <code>{due_date}</code>\n"
+    if start_date and due_date:
+        try:
+            d1 = datetime.strptime(start_date, "%Y-%m-%d")
+            d2 = datetime.strptime(due_date, "%Y-%m-%d")
+            days = (d2 - d1).days + 1
+            if days > 0:
+                date_extra += f"⏱️ <b>រយៈពេលអនុវត្តសរុប ៖</b> <b>{days} ថ្ងៃ</b>\n"
+        except Exception:
+            pass
 
     msg = (
         f"⚡ <b>[NSSF SOC WORKFLOW APPROVAL]</b>\n"
@@ -976,7 +1196,9 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
         f"🎯 <b>អ្នកត្រូវពិនិត្យអនុម័ត ៖</b> <b>{target_approver or level_desc}</b>\n"
         f"🏢 <b>អង្គភាព / ការិយាល័យ ៖</b> <b>{dept}</b>\n"
         f"🔥 <b>កម្រិតអាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n"
-        f"⏰ <b>កាលបរិច្ឆេទ ៖</b> <code>{created_time}</code>\n\n"
+        f"{att_line}"
+        f"{date_extra}"
+        f"⏰ <b>កាលបរិច្ឆេទបង្កើត ៖</b> <code>{created_time}</code>\n\n"
         f"━━━━━━━━━━━━━━━━━━━━━━\n"
         f"👇 <b>សូមជ្រើសរើស Action ដើម្បីអនុម័តដោយផ្ទាល់ ៖</b>"
     )
@@ -1001,48 +1223,78 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
 
             # Find requester's chat ID to EXCLUDE them from receiving approval request
             requester_chat_ids = set()
-            if req_name:
-                clean_req = req_name.replace("@", "").strip()
+            if req_name and str(req_name).strip():
+                clean_req = str(req_name).split("(")[0].replace("@", "").strip()
+                req_like = f"%{clean_req}%"
                 cursor.execute("""
                     SELECT telegram_chat_id FROM users 
-                    WHERE LOWER(full_name) = LOWER(?) OR LOWER(username) = LOWER(?) OR LOWER(telegram_username) = LOWER(?)
-                """, (clean_req, clean_req, clean_req))
+                    WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != '' AND (
+                        LOWER(full_name) = LOWER(?)
+                        OR LOWER(username) = LOWER(?)
+                        OR LOWER(telegram_username) = LOWER(?)
+                        OR LOWER(full_name) LIKE LOWER(?)
+                        OR LOWER(username) LIKE LOWER(?)
+                    )
+                """, (clean_req, clean_req, clean_req, req_like, req_like))
                 for r in cursor.fetchall():
                     if r['telegram_chat_id']:
                         requester_chat_ids.add(str(r['telegram_chat_id']).strip())
 
-            # Find designated approver's chat ID
+            # Find designated approver's chat ID (Smart Multi-Field & Partial Token Resolution)
             approver_chat_ids = set()
-            if target_approver:
-                clean_app = target_approver.replace("@", "").strip()
+            if target_approver and str(target_approver).strip():
+                clean_app = str(target_approver).split("(")[0].replace("@", "").strip()
+                clean_like = f"%{clean_app}%"
                 cursor.execute("""
                     SELECT telegram_chat_id FROM users 
-                    WHERE LOWER(full_name) = LOWER(?) OR LOWER(username) = LOWER(?) OR LOWER(telegram_username) = LOWER(?)
-                """, (clean_app, clean_app, clean_app))
+                    WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != '' AND (
+                        LOWER(full_name) = LOWER(?)
+                        OR LOWER(username) = LOWER(?)
+                        OR LOWER(telegram_username) = LOWER(?)
+                        OR LOWER(full_name) LIKE LOWER(?)
+                        OR LOWER(username) LIKE LOWER(?)
+                    )
+                """, (clean_app, clean_app, clean_app, clean_like, clean_like))
                 for r in cursor.fetchall():
                     if r['telegram_chat_id']:
                         approver_chat_ids.add(str(r['telegram_chat_id']).strip())
 
+                if not approver_chat_ids:
+                    tokens = [t for t in clean_app.split() if len(t) >= 2]
+                    for token in tokens:
+                        token_like = f"%{token}%"
+                        cursor.execute("""
+                            SELECT telegram_chat_id FROM users 
+                            WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != '' AND (
+                                LOWER(full_name) LIKE LOWER(?)
+                                OR LOWER(username) LIKE LOWER(?)
+                                OR LOWER(telegram_username) LIKE LOWER(?)
+                            )
+                        """, (token_like, token_like, token_like))
+                        for r in cursor.fetchall():
+                            if r['telegram_chat_id']:
+                                approver_chat_ids.add(str(r['telegram_chat_id']).strip())
+
             conn.close()
 
-            # Send ONLY to designated approver chat IDs (excluding requester)
+            # 1. Direct 1-on-1 Telegram notification to designated approver chat IDs
             sent_chats = set()
             for app_chat in approver_chat_ids:
-                if app_chat not in requester_chat_ids and app_chat not in sent_chats:
+                if app_chat not in sent_chats:
                     sent_chats.add(app_chat)
                     send_telegram_message(msg, chat_id=app_chat, reply_markup=reply_markup)
 
-            # Send to main Telegram Group Channel if configured
+            # 2. Send to main Telegram Group Channel ONLY if default_chat is a group channel (starts with - or -100) OR if no approver chat ID was found
             default_chat = os.getenv("TELEGRAM_CHAT_ID")
-            if default_chat and str(default_chat).strip() not in requester_chat_ids:
-                if str(default_chat).strip() not in sent_chats:
-                    send_telegram_message(msg, chat_id=str(default_chat).strip(), reply_markup=reply_markup)
+            if default_chat and str(default_chat).strip():
+                group_id = str(default_chat).strip()
+                is_group = group_id.startswith("-")
+                if (is_group or not sent_chats) and group_id not in sent_chats:
+                    send_telegram_message(msg, chat_id=group_id, reply_markup=reply_markup)
 
         except Exception as ex:
             print("Error sending ticket approval alert:", ex)
 
-    import threading
-    t = threading.Thread(target=broadcast, daemon=True)
-    t.start()
+    broadcast()
 
 
