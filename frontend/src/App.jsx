@@ -7832,9 +7832,6 @@ export default function App() {
         {/* Google Drive Storage Tab */}
         {activeTab === 'storage' && renderStorageTab()}
 
-        {/* Bitrix Task Management & Kanban Board Tab */}
-        {activeTab === 'kanban' && renderKanbanTab()}
-
         {/* Enterprise Workflow & Approval Flow Builder Tab */}
         {activeTab === 'workflow' && renderWorkflowTab()}
 
