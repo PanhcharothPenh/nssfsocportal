@@ -176,6 +176,20 @@ export default function App() {
     due_date: '',
     status: 'todo'
   });
+
+  // Visual Workflow & Approval Flow Builder States
+  const [workflowsList, setWorkflowsList] = useState([]);
+  const [activeWorkflowId, setActiveWorkflowId] = useState(1);
+  const [workflowNodes, setWorkflowNodes] = useState([]);
+  const [workflowEdges, setWorkflowEdges] = useState([]);
+  const [workflowName, setWorkflowName] = useState('ប្រព័ន្ធរចនាសម្ព័ន្ធអនុម័តសំណើផ្លូវការ NSSF SOC Approval Flow');
+  const [workflowDesc, setWorkflowDesc] = useState('ដំណើរការអនុម័តសំណើផ្លូវការតាមលំដាប់ថ្នាក់រដ្ឋបាល L1 -> L2 -> L3 និងការចាត់ចែងស្វ័យប្រវត្តិតាមជំនាញ');
+  const [isWfPublished, setIsWfPublished] = useState(true);
+  const [selectedWfNode, setSelectedWfNode] = useState(null);
+  const [wfCanvasZoom, setWfCanvasZoom] = useState(1);
+  const [wfViewMode, setWfViewMode] = useState('builder');
+  const [wfAnalyticsData, setWfAnalyticsData] = useState(null);
+
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
   const [isDarkMode, setIsDarkMode] = useState(() => {
