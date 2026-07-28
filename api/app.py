@@ -3642,6 +3642,7 @@ except Exception as _e:
 
 
 @app.get("/api/kanban/tasks")
+@app.get("/api/tasks_kanban")
 def get_kanban_tasks():
     conn = get_db_connection()
     if not conn:
@@ -3659,6 +3660,7 @@ def get_kanban_tasks():
         conn.close()
 
 @app.post("/api/kanban/tasks")
+@app.post("/api/tasks_kanban")
 def create_kanban_task(payload: dict = Body(...)):
     title = payload.get("title")
     if not title:
@@ -3718,6 +3720,8 @@ def create_kanban_task(payload: dict = Body(...)):
         conn.close()
 
 @app.put("/api/kanban/tasks/{task_id}/status")
+@app.put("/api/kanban/tasks/{task_id}")
+@app.put("/api/tasks_kanban/{task_id}")
 def update_kanban_task_status(task_id: int, payload: dict = Body(...)):
     new_status = payload.get("status")
     changed_by = payload.get("changed_by", "User")
@@ -3766,6 +3770,7 @@ def update_kanban_task_status(task_id: int, payload: dict = Body(...)):
         conn.close()
 
 @app.delete("/api/kanban/tasks/{task_id}")
+@app.delete("/api/tasks_kanban/{task_id}")
 def delete_kanban_task(task_id: int):
     conn = get_db_connection()
     if not conn:

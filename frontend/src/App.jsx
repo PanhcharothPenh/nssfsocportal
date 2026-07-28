@@ -640,7 +640,10 @@ export default function App() {
   async function fetchKanbanTasks() {
     setKanbanTasksLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/tasks_kanban`);
+      let res = await fetch(`${API_BASE}/kanban/tasks`);
+      if (!res.ok) {
+        res = await fetch(`${API_BASE}/tasks_kanban`);
+      }
       if (res.ok) {
         const data = await res.json();
         setKanbanTasks(Array.isArray(data) ? data : []);
@@ -666,11 +669,19 @@ export default function App() {
         department: currentLoginUser?.department || 'SOC'
       };
 
-      const res = await fetch(`${API_BASE}/tasks_kanban`, {
+      let res = await fetch(`${API_BASE}/kanban/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+
+      if (!res.ok && (res.status === 404 || res.status === 405)) {
+        res = await fetch(`${API_BASE}/tasks_kanban`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+      }
 
       if (res.ok) {
         setKanbanModalOpen(false);
@@ -684,7 +695,7 @@ export default function App() {
         });
         fetchKanbanTasks();
       } else {
-        const errData = await res.json();
+        const errData = await res.json().catch(() => ({}));
         alert(errData.detail || "បរាជ័យក្នុងការបង្កើត Task ថ្មី");
       }
     } catch (err) {
@@ -695,11 +706,18 @@ export default function App() {
 
   async function handleMoveKanbanTask(taskId, newStatus) {
     try {
-      const res = await fetch(`${API_BASE}/tasks_kanban/${taskId}`, {
+      let res = await fetch(`${API_BASE}/kanban/tasks/${taskId}/status`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: newStatus })
+        body: JSON.stringify({ status: newStatus, changed_by: currentLoginUser?.full_name || currentLoginUser?.username || 'User' })
       });
+      if (!res.ok) {
+        res = await fetch(`${API_BASE}/tasks_kanban/${taskId}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+      }
       if (res.ok) {
         setKanbanTasks(prev => prev.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
       }
@@ -711,9 +729,14 @@ export default function App() {
   async function handleDeleteKanbanTask(taskId) {
     if (!window.confirm("តើអ្នកពិតជាចង់លុប Task នេះមែនទេ?")) return;
     try {
-      const res = await fetch(`${API_BASE}/tasks_kanban/${taskId}`, {
+      let res = await fetch(`${API_BASE}/kanban/tasks/${taskId}`, {
         method: 'DELETE'
       });
+      if (!res.ok) {
+        res = await fetch(`${API_BASE}/tasks_kanban/${taskId}`, {
+          method: 'DELETE'
+        });
+      }
       if (res.ok) {
         setKanbanTasks(prev => prev.filter(t => t.id !== taskId));
       }
@@ -4064,10 +4087,10 @@ export default function App() {
   // Render Bitrix Task Management & Interactive Kanban Board Tab
   function renderKanbanTab() {
     const columns = [
-      { id: 'todo', title: '📝 ត្រូវធ្វើ (To Do)', color: '#2563eb', bg: '#eff6ff', border: '#bfdbfe' },
-      { id: 'in_progress', title: '⚡ កំពុងធ្វើ (In Progress)', color: '#d97706', bg: '#fff7ed', border: '#fde68a' },
-      { id: 'review', title: '👀 កំពុងពិនិត្យ (In Review)', color: '#7c3aed', bg: '#faf5ff', border: '#ddd6fe' },
-      { id: 'completed', title: '✅ បានបញ្ចប់ (Completed)', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0' }
+      { id: 'todo', title: '📝 ត្រូវធ្វើ (To Do)', color: '#2563eb', bg: 'rgba(37, 99, 235, 0.08)', border: '#3b82f6', accent: 'linear-gradient(90deg, #2563eb, #60a5fa)' },
+      { id: 'in_progress', title: '⚡ កំពុងធ្វើ (In Progress)', color: '#d97706', bg: 'rgba(217, 119, 6, 0.08)', border: '#f59e0b', accent: 'linear-gradient(90deg, #d97706, #fbbf24)' },
+      { id: 'review', title: '👀 កំពុងពិនិត្យ (In Review)', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.08)', border: '#8b5cf6', accent: 'linear-gradient(90deg, #7c3aed, #a78bfa)' },
+      { id: 'completed', title: '✅ បានបញ្ចប់ (Completed)', color: '#16a34a', bg: 'rgba(22, 163, 74, 0.08)', border: '#10b981', accent: 'linear-gradient(90deg, #16a34a, #34d399)' }
     ];
 
     // Filter tasks
@@ -4079,26 +4102,88 @@ export default function App() {
       return matchSearch && matchAssignee;
     });
 
+    const totalCount = (kanbanTasks || []).length;
+    const todoCount = (kanbanTasks || []).filter(t => t.status === 'todo').length;
+    const inProgressCount = (kanbanTasks || []).filter(t => t.status === 'in_progress').length;
+    const reviewCount = (kanbanTasks || []).filter(t => t.status === 'review').length;
+    const completedCount = (kanbanTasks || []).filter(t => t.status === 'completed').length;
+
     const uniqueAssignees = Array.from(new Set((usersList || []).map(u => u.full_name || u.username).filter(Boolean)));
 
     return (
       <div className="kanban-container" style={{ padding: '4px' }}>
+        
+        {/* Modern KPI Summary Analytics Banner */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '20px' }}>
+          
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #3b82f6' }}>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>សរុប TASKS</span>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: 'var(--text-primary)', marginTop: '2px' }}>{totalCount}</div>
+            </div>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+              📊
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #2563eb' }}>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#2563eb', textTransform: 'uppercase', letterSpacing: '0.5px' }}>📝 ត្រូវធ្វើ (TO DO)</span>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#2563eb', marginTop: '2px' }}>{todoCount}</div>
+            </div>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '800' }}>
+              {todoCount}
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #d97706' }}>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#d97706', textTransform: 'uppercase', letterSpacing: '0.5px' }}>⚡ កំពុងធ្វើ (IN PROGRESS)</span>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#d97706', marginTop: '2px' }}>{inProgressCount}</div>
+            </div>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#fff7ed', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '800' }}>
+              {inProgressCount}
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #7c3aed' }}>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#7c3aed', textTransform: 'uppercase', letterSpacing: '0.5px' }}>👀 កំពុងពិនិត្យ (IN REVIEW)</span>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#7c3aed', marginTop: '2px' }}>{reviewCount}</div>
+            </div>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#faf5ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '800' }}>
+              {reviewCount}
+            </div>
+          </div>
+
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderLeft: '4px solid #16a34a' }}>
+            <div>
+              <span style={{ fontSize: '11px', fontWeight: '800', color: '#16a34a', textTransform: 'uppercase', letterSpacing: '0.5px' }}>✅ បានបញ្ចប់ (COMPLETED)</span>
+              <div style={{ fontSize: '24px', fontWeight: '900', color: '#16a34a', marginTop: '2px' }}>{completedCount}</div>
+            </div>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '800' }}>
+              {completedCount}
+            </div>
+          </div>
+
+        </div>
+
         {/* Top Control Bar */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '20px', backgroundColor: 'var(--bg-card)', padding: '16px 20px', borderRadius: '16px', border: '1px solid var(--border-color)', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap', flex: 1 }}>
-            <div style={{ position: 'relative', minWidth: '240px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px', marginBottom: '22px', backgroundColor: 'var(--bg-card)', padding: '18px 24px', borderRadius: '18px', border: '1px solid var(--border-color)', boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', flex: 1 }}>
+            <div style={{ position: 'relative', minWidth: '280px', flex: 1 }}>
               <input 
                 type="text" 
-                placeholder="🔍 ស្វែងរក Task..." 
+                placeholder="🔍 ស្វែងរកចំណងជើង ឬពិពណ៌នា..." 
                 value={kanbanFilterSearch}
                 onChange={(e) => setKanbanFilterSearch(e.target.value)}
-                style={{ width: '100%', padding: '9px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
+                style={{ width: '100%', padding: '10px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none', transition: 'all 0.2s' }}
               />
             </div>
             <select
               value={kanbanFilterAssignee}
               onChange={(e) => setKanbanFilterAssignee(e.target.value)}
-              style={{ padding: '9px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '600' }}
+              style={{ padding: '10px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '700', outline: 'none', cursor: 'pointer' }}
             >
               <option value="ALL">👤 អ្នកទទួលបន្ទុក ទាំងអស់ ({uniqueAssignees.length})</option>
               {uniqueAssignees.map(name => (
@@ -4107,10 +4192,7 @@ export default function App() {
             </select>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '700' }}>
-              សរុប <b>{filteredTasks.length}</b> Tasks
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <button
               onClick={() => {
                 setKanbanTaskForm({
@@ -4123,15 +4205,17 @@ export default function App() {
                 });
                 setKanbanModalOpen(true);
               }}
-              style={{ padding: '9px 18px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#fff', border: 'none', fontWeight: '800', fontSize: '13px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)' }}
+              style={{ padding: '11px 22px', borderRadius: '12px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#fff', border: 'none', fontWeight: '800', fontSize: '13.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 6px 16px rgba(37, 99, 235, 0.35)', transition: 'transform 0.2s' }}
+              onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-1px)'}
+              onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}
             >
-              <span>➕</span> បង្កើត Task ថ្មី
+              <span style={{ fontSize: '16px' }}>➕</span> បង្កើត Task ថ្មី (Bitrix Task)
             </button>
           </div>
         </div>
 
         {/* 4 Kanban Columns Board */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: '16px', alignItems: 'start' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', alignItems: 'start' }}>
           {columns.map(col => {
             const colTasks = filteredTasks.filter(t => t.status === col.id);
             return (
@@ -4139,145 +4223,166 @@ export default function App() {
                 key={col.id} 
                 style={{ 
                   backgroundColor: 'var(--bg-card)', 
-                  borderRadius: '16px', 
-                  border: `1px solid ${col.border}`, 
-                  padding: '16px', 
-                  minHeight: '520px',
+                  borderRadius: '20px', 
+                  border: '1px solid var(--border-color)',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  minHeight: '560px',
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '12px',
-                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.03)'
+                  gap: '14px',
+                  boxShadow: '0 4px 14px rgba(0, 0, 0, 0.03)'
                 }}
               >
+                {/* Top Accent Gradient Bar */}
+                <div style={{ height: '4px', background: col.accent, width: '100%' }} />
+
                 {/* Column Header */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '12px', borderBottom: `2px solid ${col.border}` }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '14px', fontWeight: '800', color: col.color }}>{col.title}</span>
+                <div style={{ padding: '14px 18px 0 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <span style={{ fontSize: '15px', fontWeight: '900', color: 'var(--text-primary)' }}>{col.title}</span>
                   </div>
-                  <span style={{ backgroundColor: col.bg, color: col.color, padding: '2px 10px', borderRadius: '20px', fontSize: '12px', fontWeight: '800', border: `1px solid ${col.border}` }}>
+                  <span style={{ backgroundColor: col.bg, color: col.color, padding: '3px 12px', borderRadius: '20px', fontSize: '12.5px', fontWeight: '900', border: `1px solid ${col.color}40` }}>
                     {colTasks.length}
                   </span>
                 </div>
 
+                {/* Column Divider */}
+                <div style={{ margin: '0 18px', borderBottom: '1px solid var(--border-color)' }} />
+
                 {/* Cards list */}
-                {colTasks.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '32px 12px', color: 'var(--text-muted)', fontSize: '12px', fontStyle: 'italic', backgroundColor: 'var(--bg-primary)', borderRadius: '12px', border: '1px dashed var(--border-color)', marginTop: '8px' }}>
-                    គ្មានកិច្ចការងាររង់ចាំ
-                  </div>
-                ) : (
-                  colTasks.map(task => {
-                    const prioColor = task.priority === 'Urgent' ? '#ef4444' : task.priority === 'High' ? '#f97316' : task.priority === 'Medium' ? '#eab308' : '#22c55e';
-                    const prioBg = task.priority === 'Urgent' ? '#fef2f2' : task.priority === 'High' ? '#fff7ed' : task.priority === 'Medium' ? '#fefce8' : '#f0fdf4';
-                    
-                    return (
-                      <div
-                        key={task.id}
-                        style={{
-                          backgroundColor: 'var(--bg-primary)',
-                          borderRadius: '12px',
-                          border: '1px solid var(--border-color)',
-                          padding: '14px 16px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          gap: '10px',
-                          boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
-                          transition: 'all 0.2s',
-                          cursor: 'default',
-                          position: 'relative'
-                        }}
-                      >
-                        {/* Top priority & delete row */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          <span style={{ fontSize: '10px', fontWeight: '800', color: prioColor, backgroundColor: prioBg, padding: '2px 8px', borderRadius: '6px', border: `1px solid ${prioColor}40`, textTransform: 'uppercase' }}>
-                            ● {task.priority}
-                          </span>
-                          <button
-                            onClick={() => handleDeleteKanbanTask(task.id)}
-                            title="លុប Task"
-                            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px', padding: '2px' }}
-                            onMouseEnter={(e) => e.target.style.color = '#ef4444'}
-                            onMouseLeave={(e) => e.target.style.color = '#94a3b8'}
-                          >
-                            🗑️
-                          </button>
-                        </div>
-
-                        {/* Title */}
-                        <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: '1.3' }}>
-                          {task.title}
-                        </h4>
-
-                        {/* Description */}
-                        {task.description && (
-                          <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.4', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
-                            {task.description}
-                          </p>
-                        )}
-
-                        {/* Assignee & Due Date Row */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid var(--border-color)', marginTop: '4px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <div style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#2563eb', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '800' }}>
-                              {(task.assignee_name || 'U')[0].toUpperCase()}
-                            </div>
-                            <span style={{ fontSize: '11px', fontWeight: '700', color: 'var(--text-primary)' }}>
-                              {task.assignee_name || 'Unassigned'}
+                <div style={{ padding: '0 14px 16px 14px', display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+                  {colTasks.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '40px 16px', color: 'var(--text-muted)', fontSize: '12px', fontStyle: 'italic', backgroundColor: 'var(--bg-primary)', borderRadius: '14px', border: '1px dashed var(--border-color)', marginTop: '4px' }}>
+                      <div style={{ fontSize: '28px', marginBottom: '8px', opacity: 0.6 }}>📭</div>
+                      គ្មានកិច្ចការងារក្នុងដំណាក់កាលនេះទេ
+                    </div>
+                  ) : (
+                    colTasks.map(task => {
+                      const prioColor = task.priority === 'Urgent' ? '#ef4444' : task.priority === 'High' ? '#f97316' : task.priority === 'Medium' ? '#d97706' : '#16a34a';
+                      const prioBg = task.priority === 'Urgent' ? '#fef2f2' : task.priority === 'High' ? '#fff7ed' : task.priority === 'Medium' ? '#fefce8' : '#f0fdf4';
+                      
+                      return (
+                        <div
+                          key={task.id}
+                          style={{
+                            backgroundColor: 'var(--bg-primary)',
+                            borderRadius: '14px',
+                            border: '1px solid var(--border-color)',
+                            padding: '16px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '12px',
+                            boxShadow: '0 2px 6px rgba(0,0,0,0.03)',
+                            transition: 'all 0.2s ease-in-out',
+                            position: 'relative'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.transform = 'translateY(-2px)';
+                            e.currentTarget.style.boxShadow = '0 8px 20px rgba(0,0,0,0.07)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.transform = 'translateY(0)';
+                            e.currentTarget.style.boxShadow = '0 2px 6px rgba(0,0,0,0.03)';
+                          }}
+                        >
+                          {/* Top Priority Badge & Delete Icon */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '10.5px', fontWeight: '900', color: prioColor, backgroundColor: prioBg, padding: '3px 10px', borderRadius: '8px', border: `1px solid ${prioColor}35`, letterSpacing: '0.3px', textTransform: 'uppercase' }}>
+                              ● {task.priority || 'Medium'}
                             </span>
+                            <button
+                              onClick={() => handleDeleteKanbanTask(task.id)}
+                              title="លុប Task"
+                              style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '13px', padding: '4px', borderRadius: '6px', transition: 'color 0.2s' }}
+                              onMouseEnter={(e) => e.target.style.color = '#ef4444'}
+                              onMouseLeave={(e) => e.target.style.color = '#94a3b8'}
+                            >
+                              🗑️
+                            </button>
                           </div>
 
-                          {task.due_date && (
-                            <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              ⏰ {task.due_date}
-                            </span>
-                          )}
-                        </div>
+                          {/* Task Title */}
+                          <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)', lineHeight: '1.4' }}>
+                            {task.title}
+                          </h4>
 
-                        {/* Quick Stage Move Dropdown Buttons */}
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px', paddingTop: '6px', borderTop: '1px dashed var(--border-color)' }}>
-                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: '700' }}>ដំណាក់កាល ៖</span>
-                          <select
-                            value={task.status}
-                            onChange={(e) => handleMoveKanbanTask(task.id, e.target.value)}
-                            style={{ flex: 1, padding: '4px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '11px', fontWeight: '700' }}
-                          >
-                            <option value="todo">📝 To Do</option>
-                            <option value="in_progress">⚡ In Progress</option>
-                            <option value="review">👀 In Review</option>
-                            <option value="completed">✅ Completed</option>
-                          </select>
+                          {/* Description */}
+                          {task.description && (
+                            <p style={{ margin: 0, fontSize: '12px', color: 'var(--text-muted)', lineHeight: '1.5', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                              {task.description}
+                            </p>
+                          )}
+
+                          {/* Assignee & Due Date Meta Info */}
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: '10px', borderTop: '1px solid var(--border-color)', marginTop: '2px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg, #2563eb, #4f46e5)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '900', boxShadow: '0 2px 4px rgba(37, 99, 235, 0.25)' }}>
+                                {(task.assignee_name || 'U')[0].toUpperCase()}
+                              </div>
+                              <span style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                                {task.assignee_name || 'Unassigned'}
+                              </span>
+                            </div>
+
+                            {task.due_date && (
+                              <span style={{ fontSize: '11px', fontWeight: '800', color: '#64748b', backgroundColor: 'var(--bg-card)', padding: '3px 8px', borderRadius: '6px', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                ⏰ {task.due_date}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Stage Transition Selector */}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px', paddingTop: '8px', borderTop: '1px dashed var(--border-color)' }}>
+                            <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800' }}>ដំណាក់កាល ៖</span>
+                            <select
+                              value={task.status}
+                              onChange={(e) => handleMoveKanbanTask(task.id, e.target.value)}
+                              style={{ flex: 1, padding: '5px 10px', borderRadius: '8px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-card)', color: 'var(--text-primary)', fontSize: '11.5px', fontWeight: '800', outline: 'none', cursor: 'pointer' }}
+                            >
+                              <option value="todo">📝 ត្រូវធ្វើ (To Do)</option>
+                              <option value="in_progress">⚡ កំពុងធ្វើ (In Progress)</option>
+                              <option value="review">👀 កំពុងពិនិត្យ (In Review)</option>
+                              <option value="completed">✅ បានបញ្ចប់ (Completed)</option>
+                            </select>
+                          </div>
+
                         </div>
-                      </div>
-                    );
-                  })
-                )}
+                      );
+                    })
+                  )}
+                </div>
               </div>
             );
           })}
         </div>
 
-        {/* Create Task Modal */}
+        {/* Ultra-Modern Glassmorphic Create Task Modal */}
         {kanbanModalOpen && (
-          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999, padding: '16px' }}>
             <form 
               onSubmit={handleCreateKanbanTask}
-              style={{ width: '100%', maxWidth: '520px', backgroundColor: 'var(--bg-card)', borderRadius: '16px', padding: '24px', border: '1px solid var(--border-color)', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.2)' }}
+              style={{ width: '100%', maxWidth: '540px', backgroundColor: 'var(--bg-card)', borderRadius: '24px', padding: '28px', border: '1px solid var(--border-color)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', position: 'relative', overflow: 'hidden' }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '18px' }}>
-                <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                  📋 បង្កើត Task ថ្មី (Bitrix Kanban Task)
+              {/* Modal Top Accent Bar */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '5px', background: 'linear-gradient(90deg, #2563eb, #7c3aed)' }} />
+
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+                <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>📋</span> បង្កើត Task ថ្មី (Bitrix Kanban Task)
                 </h3>
                 <button 
                   type="button" 
                   onClick={() => setKanbanModalOpen(false)}
-                  style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: 'var(--text-muted)' }}
+                  style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px' }}
                 >
                   ✕
                 </button>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '6px', display: 'block' }}>
                     ចំណងជើងកិច្ចការងារ (Task Title) *
                   </label>
                   <input 
@@ -4286,12 +4391,12 @@ export default function App() {
                     placeholder="ឧទាហរណ៍ ៖ រៀបចំកំណត់រចនាសម្ព័ន្ធ VPN ឬ ពិនិត្យ Log សន្តិសុខ..."
                     value={kanbanTaskForm.title}
                     onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, title: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '11px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                  <label style={{ fontSize: '12.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '6px', display: 'block' }}>
                     ពិពណ៌នាលម្អិត (Description)
                   </label>
                   <textarea 
@@ -4299,19 +4404,54 @@ export default function App() {
                     placeholder="បញ្ចូលព័ត៌មានលម្អិតអំពីកិច្ចការងារ..."
                     value={kanbanTaskForm.description}
                     onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, description: e.target.value })}
-                    style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                    style={{ width: '100%', padding: '11px 16px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', outline: 'none' }}
                   />
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                {/* Priority Selection Radio Pills */}
+                <div>
+                  <label style={{ fontSize: '12.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '8px', display: 'block' }}>
+                    អាទិភាព (Priority)
+                  </label>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
+                    {[
+                      { id: 'Low', label: '🟢 Low', color: '#16a34a', bg: '#f0fdf4' },
+                      { id: 'Medium', label: '🟡 Medium', color: '#d97706', bg: '#fefce8' },
+                      { id: 'High', label: '🟠 High', color: '#f97316', bg: '#fff7ed' },
+                      { id: 'Urgent', label: '🔴 Urgent', color: '#ef4444', bg: '#fef2f2' }
+                    ].map(prio => (
+                      <button
+                        key={prio.id}
+                        type="button"
+                        onClick={() => setKanbanTaskForm({ ...kanbanTaskForm, priority: prio.id })}
+                        style={{
+                          padding: '8px 10px',
+                          borderRadius: '10px',
+                          border: kanbanTaskForm.priority === prio.id ? `2px solid ${prio.color}` : '1px solid var(--border-color)',
+                          backgroundColor: kanbanTaskForm.priority === prio.id ? prio.bg : 'var(--bg-primary)',
+                          color: prio.color,
+                          fontWeight: '800',
+                          fontSize: '12px',
+                          cursor: 'pointer',
+                          textAlign: 'center',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {prio.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '6px', display: 'block' }}>
                       អ្នកទទួលបន្ទុក (Assignee)
                     </label>
                     <select
                       value={kanbanTaskForm.assignee_name}
                       onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, assignee_name: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '700' }}
                     >
                       <option value="">-- ជ្រើសរើស --</option>
                       {uniqueAssignees.map(name => (
@@ -4321,66 +4461,48 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
-                      អាទិភាព (Priority)
-                    </label>
-                    <select
-                      value={kanbanTaskForm.priority}
-                      onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, priority: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
-                    >
-                      <option value="Low">🟢 Low</option>
-                      <option value="Medium">🟡 Medium</option>
-                      <option value="High">🟠 High</option>
-                      <option value="Urgent">🔴 Urgent</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                    <label style={{ fontSize: '12.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '6px', display: 'block' }}>
                       ថ្ងៃឱសានវាទ (Due Date)
                     </label>
                     <input 
                       type="date"
                       value={kanbanTaskForm.due_date}
                       onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, due_date: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
+                      style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
                     />
                   </div>
+                </div>
 
-                  <div>
-                    <label style={{ fontSize: '12px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
-                      ដំណាក់កាលដើម (Initial Stage)
-                    </label>
-                    <select
-                      value={kanbanTaskForm.status}
-                      onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, status: e.target.value })}
-                      style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px' }}
-                    >
-                      <option value="todo">📝 To Do</option>
-                      <option value="in_progress">⚡ In Progress</option>
-                      <option value="review">👀 In Review</option>
-                      <option value="completed">✅ Completed</option>
-                    </select>
-                  </div>
+                <div>
+                  <label style={{ fontSize: '12.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '6px', display: 'block' }}>
+                    ដំណាក់កាលដើម (Initial Stage)
+                  </label>
+                  <select
+                    value={kanbanTaskForm.status}
+                    onChange={(e) => setKanbanTaskForm({ ...kanbanTaskForm, status: e.target.value })}
+                    style={{ width: '100%', padding: '11px 14px', borderRadius: '12px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '13px', fontWeight: '700' }}
+                  >
+                    <option value="todo">📝 ត្រូវធ្វើ (To Do)</option>
+                    <option value="in_progress">⚡ កំពុងធ្វើ (In Progress)</option>
+                    <option value="review">👀 កំពុងពិនិត្យ (In Review)</option>
+                    <option value="completed">✅ បានបញ្ចប់ (Completed)</option>
+                  </select>
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '10px', marginTop: '20px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '12px', marginTop: '24px' }}>
                 <button
                   type="button"
                   onClick={() => setKanbanModalOpen(false)}
-                  style={{ padding: '9px 16px', borderRadius: '10px', backgroundColor: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
+                  style={{ padding: '10px 18px', borderRadius: '12px', backgroundColor: 'transparent', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: '700', fontSize: '13px', cursor: 'pointer' }}
                 >
                   បោះបង់
                 </button>
                 <button
                   type="submit"
-                  style={{ padding: '9px 20px', borderRadius: '10px', backgroundColor: '#2563eb', border: 'none', color: '#fff', fontWeight: '800', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.3)' }}
+                  style={{ padding: '10px 24px', borderRadius: '12px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', border: 'none', color: '#fff', fontWeight: '800', fontSize: '13.5px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)' }}
                 >
-                  រក្សាទុក & ជូនដំណឹង
+                  🚀 រក្សាទុក & ផ្ញើការជូនដំណឹង
                 </button>
               </div>
             </form>
@@ -4389,6 +4511,7 @@ export default function App() {
       </div>
     );
   }
+
 
 
   // Render Official Tickets Tab

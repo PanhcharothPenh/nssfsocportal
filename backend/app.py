@@ -3128,6 +3128,7 @@ def delete_ticket(ticket_id: int):
 # ==========================================
 
 @app.get("/api/tasks_kanban")
+@app.get("/api/kanban/tasks")
 def get_kanban_tasks():
     try:
         conn = get_db_connection()
@@ -3141,6 +3142,7 @@ def get_kanban_tasks():
         return []
 
 @app.post("/api/tasks_kanban")
+@app.post("/api/kanban/tasks")
 def create_kanban_task(payload: dict = Body(...)):
     title = (payload.get("title") or "").strip()
     if not title:
@@ -3182,6 +3184,8 @@ def create_kanban_task(payload: dict = Body(...)):
     return {"status": "success", "task": task_obj}
 
 @app.put("/api/tasks_kanban/{task_id}")
+@app.put("/api/kanban/tasks/{task_id}/status")
+@app.put("/api/kanban/tasks/{task_id}")
 def update_kanban_task(task_id: int, payload: dict = Body(...)):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -3213,6 +3217,7 @@ def update_kanban_task(task_id: int, payload: dict = Body(...)):
     return {"status": "success", "task": dict(up_row) if up_row else {}}
 
 @app.delete("/api/tasks_kanban/{task_id}")
+@app.delete("/api/kanban/tasks/{task_id}")
 def delete_kanban_task(task_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
