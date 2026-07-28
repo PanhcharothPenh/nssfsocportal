@@ -4514,6 +4514,480 @@ export default function App() {
 
 
 
+  // Render Enterprise Workflow & Approval Flow Builder Tab
+  function renderWorkflowTab() {
+    const nodeCategories = [
+      {
+        cat: 'trigger',
+        title: '🚀 Triggers (ចាប់ផ្តើម)',
+        nodes: [
+          { type: 'start', label: '📝 Start Ticket Request', bg: '#eff6ff', border: '#2563eb', color: '#1d4ed8' },
+          { type: 'department', label: '🏢 Department / Category Select', bg: '#eff6ff', border: '#3b82f6', color: '#1d4ed8' }
+        ]
+      },
+      {
+        cat: 'condition',
+        title: '❓ Logic & Conditions (លក្ខខណ្ឌ)',
+        nodes: [
+          { type: 'condition', label: '❓ IF / ELSE Rule Condition', bg: '#fefce8', border: '#eab308', color: '#a16207' },
+          { type: 'condition_multi', label: '🔀 Multi-Branch Evaluator', bg: '#fefce8', border: '#ca8a04', color: '#854d0e' }
+        ]
+      },
+      {
+        cat: 'approval',
+        title: '👥 Approvals & Governance (ការអនុម័ត)',
+        nodes: [
+          { type: 'approval_l1', label: '👤 L1 Section Chief Approval', bg: '#faf5ff', border: '#8b5cf6', color: '#6b21a8' },
+          { type: 'approval_l2', label: '👤 L2 Dept Manager Approval', bg: '#faf5ff', border: '#7c3aed', color: '#5b21b6' },
+          { type: 'approval_l3', label: '👑 L3 Executive Approval', bg: '#faf5ff', border: '#6d28d9', color: '#4c1d95' },
+          { type: 'parallel_approval', label: '👥 Parallel Multi Approval', bg: '#f3e8ff', border: '#a855f7', color: '#7e22ce' },
+          { type: 'first_wins', label: '🥇 First Approver Wins', bg: '#f3e8ff', border: '#c084fc', color: '#7e22ce' }
+        ]
+      },
+      {
+        cat: 'assignment',
+        title: '⚡ Assignment & SLA (ការចាត់ចែង & SLA)',
+        nodes: [
+          { type: 'assignment', label: '⚡ Auto Assign (Round Robin)', bg: '#fff7ed', border: '#f97316', color: '#c2410c' },
+          { type: 'skill_assign', label: '🎯 Skill-Based Assign', bg: '#fff7ed', border: '#ea580c', color: '#9a3412' },
+          { type: 'sla', label: '⏰ SLA Timer (24h/48h Countdown)', bg: '#fef2f2', border: '#ef4444', color: '#b91c1c' },
+          { type: 'pause_sla', label: '⏸️ Pause / Resume SLA', bg: '#fef2f2', border: '#f87171', color: '#b91c1c' }
+        ]
+      },
+      {
+        cat: 'notification',
+        title: '🔔 Actions & Alerts (ការជូនដំណឹង)',
+        nodes: [
+          { type: 'notification', label: '🔔 Telegram Bot Alert', bg: '#f0fdf4', border: '#10b981', color: '#047857' },
+          { type: 'email', label: '📧 Official Email Notification', bg: '#f0fdf4', border: '#059669', color: '#065f46' },
+          { type: 'api_call', label: '🌐 External API Integration', bg: '#ecfeff', border: '#06b6d4', color: '#0e7490' },
+          { type: 'escalate', label: '🚨 Timeout Escalation Route', bg: '#fff1f2', border: '#f43f5e', color: '#be123c' }
+        ]
+      },
+      {
+        cat: 'end',
+        title: '🔒 Termination (បញ្ចប់សំណើ)',
+        nodes: [
+          { type: 'close', label: '🔒 Close Ticket & Audit Log', bg: '#f1f5f9', border: '#64748b', color: '#334155' },
+          { type: 'reject', label: '❌ Reject Ticket & Notify', bg: '#fef2f2', border: '#dc2626', color: '#991b1b' }
+        ]
+      }
+    ];
+
+    const currentNodes = workflowNodes.length > 0 ? workflowNodes : [
+      { id: "node-start", type: "start", label: "📝 បង្កើតសំណើផ្លូវការ", category: "trigger", x: 140, y: 50, props: { title: "ការបង្កើតសំណើថ្មី" } },
+      { id: "node-dept", type: "department", label: "🏢 ជ្រើសរើសនាយកដ្ឋាន / ប្រភេទសំណើ", category: "trigger", x: 140, y: 150, props: { dept: "SOC / IT" } },
+      { id: "node-cond-l1", type: "condition", label: "❓ ពិនិត្យកម្រិត L1 (Supervisor Approval)", category: "condition", x: 140, y: 250, props: { rule: "Always Require L1" } },
+      { id: "node-app-l1", type: "approval", label: "👤 អនុម័តថ្នាក់ប្រធានការិយាល័យ (L1)", category: "approval", x: 140, y: 350, props: { level: 1, role: "Section Chief" } },
+      { id: "node-cond-l2", type: "condition", label: "❓ IF Cost > $500 Or Priority = High", category: "condition", x: 140, y: 450, props: { field: "cost", op: ">", val: "500" } },
+      { id: "node-app-l2", type: "approval", label: "👤 អនុម័តថ្នាក់ប្រធាននាយកដ្ឋាន (L2)", category: "approval", x: 140, y: 550, props: { level: 2, role: "Department Manager" } },
+      { id: "node-cond-l3", type: "condition", label: "❓ IF Cost > $5,000 Or Critical", category: "condition", x: 140, y: 650, props: { field: "cost", op: ">", val: "5000" } },
+      { id: "node-app-l3", type: "approval", label: "👑 អនុម័តថ្នាក់អគ្គនាយក/អគ្គនាយករង (L3)", category: "approval", x: 140, y: 750, props: { level: 3, role: "Executive Director" } },
+      { id: "node-assign", type: "assignment", label: "⚡ ចាត់ចែងស្វ័យប្រវត្តិ (Auto Assign IT)", category: "assignment", x: 140, y: 850, props: { method: "Round Robin" } },
+      { id: "node-sla", type: "sla", label: "⏰ SLA Countdown Timer (24h)", category: "sla", x: 140, y: 950, props: { hours: 24 } },
+      { id: "node-tg", type: "notification", label: "🔔 ផ្ញើការជូនដំណឹង Telegram Bot", category: "notification", x: 140, y: 1050, props: { channel: "Telegram Bot" } },
+      { id: "node-qc", type: "wait", label: "✅ ផ្ទៀងផ្ទាត់គុណភាព (Quality Check)", category: "action", x: 140, y: 1150, props: { step: "Requester Confirm" } },
+      { id: "node-close", type: "close", label: "🔒 បិទសំណើ & រក្សាទុកក្នុងប័ណ្ណសារ", category: "end", x: 140, y: 1250, props: { action: "Archive & Log" } }
+    ];
+
+    const currentEdges = workflowEdges.length > 0 ? workflowEdges : [
+      { id: "e1", from: "node-start", to: "node-dept" },
+      { id: "e2", from: "node-dept", to: "node-cond-l1" },
+      { id: "e3", from: "node-cond-l1", to: "node-app-l1" },
+      { id: "e4", from: "node-app-l1", to: "node-cond-l2" },
+      { id: "e5", from: "node-cond-l2", to: "node-app-l2" },
+      { id: "e6", from: "node-app-l2", to: "node-cond-l3" },
+      { id: "e7", from: "node-cond-l3", to: "node-app-l3" },
+      { id: "e8", from: "node-app-l3", to: "node-assign" },
+      { id: "e9", from: "node-assign", to: "node-sla" },
+      { id: "e10", from: "node-sla", to: "node-tg" },
+      { id: "e11", from: "node-tg", to: "node-qc" },
+      { id: "e12", from: "node-qc", to: "node-close" }
+    ];
+
+    return (
+      <div className="workflow-builder-container" style={{ display: 'flex', flexDirection: 'column', gap: '16px', minHeight: 'calc(100vh - 120px)' }}>
+        
+        {/* Top Control Header Toolbar */}
+        <div style={{ backgroundColor: 'var(--bg-card)', padding: '16px 24px', borderRadius: '20px', border: '1px solid var(--border-color)', boxShadow: '0 4px 16px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '14px' }}>
+          
+          {/* Left Title & Status */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: '12px', background: 'linear-gradient(135deg, #2563eb, #7c3aed)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', boxShadow: '0 4px 12px rgba(37,99,235,0.3)' }}>
+              ⚡
+            </div>
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <input 
+                  type="text" 
+                  value={workflowName}
+                  onChange={(e) => setWorkflowName(e.target.value)}
+                  style={{ fontSize: '16px', fontWeight: '900', color: 'var(--text-primary)', border: 'none', background: 'transparent', outline: 'none', minWidth: '320px' }}
+                />
+                <span style={{ fontSize: '11px', fontWeight: '800', backgroundColor: isWfPublished ? '#f0fdf4' : '#fefce8', color: isWfPublished ? '#16a34a' : '#d97706', padding: '3px 10px', borderRadius: '20px', border: `1px solid ${isWfPublished ? '#10b981' : '#f59e0b'}40` }}>
+                  {isWfPublished ? '● Published (v1.0)' : '● Draft Mode'}
+                </span>
+              </div>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: '600' }}>
+                {workflowDesc}
+              </span>
+            </div>
+          </div>
+
+          {/* Right Toolbar Actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            
+            <button
+              onClick={() => setWfViewMode(wfViewMode === 'builder' ? 'analytics' : 'builder')}
+              style={{ padding: '9px 16px', borderRadius: '12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: '800', fontSize: '12.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              {wfViewMode === 'builder' ? '📊 មើល Live Analytics' : '✏️ ត្រឡប់ទៅ Visual Builder'}
+            </button>
+
+            <button
+              onClick={() => {
+                setWorkflowNodes([
+                  { id: "node-start", type: "start", label: "📝 បង្កើតសំណើផ្លូវការ", category: "trigger", x: 140, y: 50, props: { title: "ការបង្កើតសំណើថ្មី" } },
+                  { id: "node-dept", type: "department", label: "🏢 ជ្រើសរើសនាយកដ្ឋាន / ប្រភេទសំណើ", category: "trigger", x: 140, y: 150, props: { dept: "SOC / IT" } },
+                  { id: "node-cond-l1", type: "condition", label: "❓ ពិនិត្យកម្រិត L1 (Supervisor Approval)", category: "condition", x: 140, y: 250, props: { rule: "Always Require L1" } },
+                  { id: "node-app-l1", type: "approval", label: "👤 អនុម័តថ្នាក់ប្រធានការិយាល័យ (L1)", category: "approval", x: 140, y: 350, props: { level: 1, role: "Section Chief" } },
+                  { id: "node-cond-l2", type: "condition", label: "❓ IF Cost > $500 Or Priority = High", category: "condition", x: 140, y: 450, props: { field: "cost", op: ">", val: "500" } },
+                  { id: "node-app-l2", type: "approval", label: "👤 អនុម័តថ្នាក់ប្រធាននាយកដ្ឋាន (L2)", category: "approval", x: 140, y: 550, props: { level: 2, role: "Department Manager" } },
+                  { id: "node-cond-l3", type: "condition", label: "❓ IF Cost > $5,000 Or Critical", category: "condition", x: 140, y: 650, props: { field: "cost", op: ">", val: "5000" } },
+                  { id: "node-app-l3", type: "approval", label: "👑 អនុម័តថ្នាក់អគ្គនាយក/អគ្គនាយករង (L3)", category: "approval", x: 140, y: 750, props: { level: 3, role: "Executive Director" } },
+                  { id: "node-assign", type: "assignment", label: "⚡ ចាត់ចែងស្វ័យប្រវត្តិ (Auto Assign IT)", category: "assignment", x: 140, y: 850, props: { method: "Round Robin" } },
+                  { id: "node-sla", type: "sla", label: "⏰ SLA Countdown Timer (24h)", category: "sla", x: 140, y: 950, props: { hours: 24 } },
+                  { id: "node-tg", type: "notification", label: "🔔 ផ្ញើការជូនដំណឹង Telegram Bot", category: "notification", x: 140, y: 1050, props: { channel: "Telegram Bot" } },
+                  { id: "node-qc", type: "wait", label: "✅ ផ្ទៀងផ្ទាត់គុណភាព (Quality Check)", category: "action", x: 140, y: 1150, props: { step: "Requester Confirm" } },
+                  { id: "node-close", type: "close", label: "🔒 បិទសំណើ & រក្សាទុកក្នុងប័ណ្ណសារ", category: "end", x: 140, y: 1250, props: { action: "Archive & Log" } }
+                ]);
+                setWorkflowEdges([
+                  { id: "e1", from: "node-start", to: "node-dept" },
+                  { id: "e2", from: "node-dept", to: "node-cond-l1" },
+                  { id: "e3", from: "node-cond-l1", to: "node-app-l1" },
+                  { id: "e4", from: "node-app-l1", to: "node-cond-l2" },
+                  { id: "e5", from: "node-cond-l2", to: "node-app-l2" },
+                  { id: "e6", from: "node-app-l2", to: "node-cond-l3" },
+                  { id: "e7", from: "node-cond-l3", to: "node-app-l3" },
+                  { id: "e8", from: "node-app-l3", to: "node-assign" },
+                  { id: "e9", from: "node-assign", to: "node-sla" },
+                  { id: "e10", from: "node-sla", to: "node-tg" },
+                  { id: "e11", from: "node-tg", to: "node-qc" },
+                  { id: "e12", from: "node-qc", to: "node-close" }
+                ]);
+                setWorkflowName('ប្រព័ន្ធរចនាសម្ព័ន្ធអនុម័តសំណើផ្លូវការ NSSF SOC Approval Flow');
+              }}
+              style={{ padding: '9px 16px', borderRadius: '12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', fontWeight: '800', fontSize: '12.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              📋 ផ្ទុក NSSF Flow ទម្រង់ដើម
+            </button>
+
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API_BASE}/workflows`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      id: activeWorkflowId,
+                      name: workflowName,
+                      description: workflowDesc,
+                      nodes: currentNodes,
+                      edges: currentEdges,
+                      is_published: false
+                    })
+                  });
+                  if (res.ok) {
+                    alert("បានរក្សាទុក Draft ដោយជោគជ័យ!");
+                  }
+                } catch (e) {
+                  alert("រក្សាទុក Draft បរាជ័យ");
+                }
+              }}
+              style={{ padding: '9px 18px', borderRadius: '12px', backgroundColor: '#eff6ff', color: '#2563eb', border: '1px solid #bfdbfe', fontWeight: '800', fontSize: '12.5px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              💾 រក្សាទុក Draft
+            </button>
+
+            <button
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API_BASE}/workflows/${activeWorkflowId || 1}/publish`, { method: 'POST' });
+                  if (res.ok) {
+                    setIsWfPublished(true);
+                    alert("Workflow ត្រូវបានផ្សព្វផ្សាយផ្លូវការ (Published) ដោយជោគជ័យ!");
+                  }
+                } catch (e) {
+                  alert("ការផ្សព្វផ្សាយរារាំងដោយ error");
+                }
+              }}
+              style={{ padding: '9px 20px', borderRadius: '12px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', fontWeight: '900', fontSize: '13px', cursor: 'pointer', boxShadow: '0 4px 14px rgba(16, 185, 129, 0.35)', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              🚀 ផ្សព្វផ្សាយ (Publish)
+            </button>
+
+          </div>
+
+        </div>
+
+        {/* View Switcher: Visual Builder vs Analytics */}
+        {wfViewMode === 'analytics' ? (
+          <div style={{ backgroundColor: 'var(--bg-card)', padding: '24px', borderRadius: '20px', border: '1px solid var(--border-color)', boxShadow: '0 4px 14px rgba(0,0,0,0.03)' }}>
+            <h3 style={{ margin: '0 0 16px 0', fontSize: '16px', fontWeight: '900', color: 'var(--text-primary)' }}>
+              📊 របាយការណ៍ និងការឃ្លាំមើល Workflow ប្រតិបត្តិការ (Live Workflow Analytics & Monitoring)
+            </h3>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+              <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>សរុប Executed Flow</span>
+                <div style={{ fontSize: '22px', fontWeight: '900', color: '#2563eb', marginTop: '4px' }}>142 សំណើ</div>
+              </div>
+              <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>មធ្យមភាគពេលអនុម័ត</span>
+                <div style={{ fontSize: '22px', fontWeight: '900', color: '#d97706', marginTop: '4px' }}>2.8 ម៉ោង</div>
+              </div>
+              <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>អត្រា SLA Compliance</span>
+                <div style={{ fontSize: '22px', fontWeight: '900', color: '#16a34a', marginTop: '4px' }}>99.1%</div>
+              </div>
+              <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>Bottleneck ធំបំផុត</span>
+                <div style={{ fontSize: '14px', fontWeight: '900', color: '#dc2626', marginTop: '6px' }}>L2 Dept Manager Review</div>
+              </div>
+            </div>
+
+            <div style={{ backgroundColor: 'var(--bg-primary)', padding: '20px', borderRadius: '16px', border: '1px solid var(--border-color)' }}>
+              <h4 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)' }}>
+                🔍 ស្ថានភាពសំណើកំពុងដំណើរការក្នុងប្រព័ន្ធ (Live Active Pipeline Tracking)
+              </h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {[
+                  { code: 'TKT-8021', title: 'ស្នើសុំបើកគណនី VPN ជូនមន្ត្រីការិយាល័យ SOC', step: '👤 អនុម័តថ្នាក់ប្រធាននាយកដ្ឋាន (L2)', actor: 'លោក ឡាយ ប៊ុនថុន', time: '10 នាទីមុន', status: '🟡 ឃ្លាំមើលរង់ចាំ' },
+                  { code: 'TKT-8020', title: 'ស្នើសុំកំណត់រចនាសម្ព័ន្ធ Firewall S2S Tunnel', step: '⚡ ចាត់ចែងស្វ័យប្រវត្តិ (Auto Assign IT)', actor: 'មន្ត្រីបច្ចេកទេស', time: '30 នាទីមុន', status: '🟢 កំពុងដំណើរការ' },
+                  { code: 'TKT-8019', title: 'ស្នើសុំផ្លាស់ប្តូរអាសយដ្ឋាន IP Public', step: '🔒 បិទសំណើ & រក្សាទុកក្នុងប័ណ្ណសារ', actor: 'ប្រព័ន្ធស្វ័យប្រវត្តិ', time: '1 ម៉ោងមុន', status: '✅ បានបញ្ចប់' }
+                ].map((row, idx) => (
+                  <div key={idx} style={{ padding: '12px 16px', borderRadius: '12px', backgroundColor: 'var(--bg-card)', border: '1px solid var(--border-color)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+                    <div>
+                      <span style={{ fontSize: '12px', fontWeight: '900', color: '#2563eb', marginRight: '8px' }}>#{row.code}</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: 'var(--text-primary)' }}>{row.title}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px', fontSize: '12px', color: 'var(--text-muted)' }}>
+                      <span><b>ដំណាក់កាល ៖</b> {row.step}</span>
+                      <span><b>អ្នកទទួលបន្ទុក ៖</b> {row.actor}</span>
+                      <span style={{ fontWeight: '800', color: 'var(--text-primary)' }}>{row.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          /* Visual Drag & Drop Builder View */
+          <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr 300px', gap: '16px', flex: 1, minHeight: '680px' }}>
+            
+            {/* Left Palette Sidebar */}
+            <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '20px', border: '1px solid var(--border-color)', padding: '16px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto', maxHeight: '720px' }}>
+              <div style={{ fontSize: '13px', fontWeight: '900', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                🧩 Node Palette (21 ប្រភេទ)
+              </div>
+
+              {nodeCategories.map(cat => (
+                <div key={cat.cat} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <span style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--text-muted)' }}>{cat.title}</span>
+                  {cat.nodes.map(n => (
+                    <div
+                      key={n.type}
+                      onClick={() => {
+                        const newId = `node-${Date.now()}`;
+                        const newNode = {
+                          id: newId,
+                          type: n.type,
+                          label: n.label,
+                          category: cat.cat,
+                          x: 140,
+                          y: (currentNodes.length * 100) + 50,
+                          props: { title: n.label }
+                        };
+                        const prevLast = currentNodes[currentNodes.length - 1];
+                        setWorkflowNodes([...currentNodes, newNode]);
+                        if (prevLast) {
+                          setWorkflowEdges([...currentEdges, { id: `e-${Date.now()}`, from: prevLast.id, to: newId }]);
+                        }
+                      }}
+                      style={{
+                        padding: '10px 12px',
+                        borderRadius: '10px',
+                        backgroundColor: n.bg,
+                        border: `1px solid ${n.border}`,
+                        color: n.color,
+                        fontSize: '12px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        transition: 'transform 0.15s ease-in-out',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justify: 'space-between'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.transform = 'translateX(4px)'}
+                      onMouseLeave={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+                    >
+                      <span>{n.label}</span>
+                      <span style={{ opacity: 0.6, fontSize: '14px' }}>➕</span>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+
+            {/* Central Interactive Visual Canvas */}
+            <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '20px', border: '1px solid var(--border-color)', position: 'relative', overflow: 'auto', padding: '24px', background: 'radial-gradient(circle, var(--border-color) 1px, transparent 1px)', backgroundSize: '24px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              
+              <div style={{ position: 'absolute', top: '16px', right: '16px', display: 'flex', alignItems: 'center', gap: '8px', backgroundColor: 'var(--bg-primary)', padding: '6px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', zIndex: 10 }}>
+                <span style={{ fontSize: '11px', fontWeight: '800', color: 'var(--text-muted)' }}>Zoom:</span>
+                <button onClick={() => setWfCanvasZoom(Math.max(0.6, wfCanvasZoom - 0.1))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: '800' }}>-</button>
+                <span style={{ fontSize: '11.5px', fontWeight: '800' }}>{Math.round(wfCanvasZoom * 100)}%</span>
+                <button onClick={() => setWfCanvasZoom(Math.min(1.4, wfCanvasZoom + 0.1))} style={{ background: 'none', border: 'none', cursor: 'pointer', fontWeight: '800' }}>+</button>
+              </div>
+
+              {/* Render Nodes Flow Diagram */}
+              <div style={{ transform: `scale(${wfCanvasZoom})`, transformOrigin: 'top center', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '24px', width: '100%', maxWidth: '520px', padding: '20px 0' }}>
+                {currentNodes.map((nd, idx) => {
+                  const isSelected = selectedWfNode?.id === nd.id;
+                  const categoryBorder = nd.category === 'trigger' ? '#2563eb' : nd.category === 'approval' ? '#7c3aed' : nd.category === 'condition' ? '#d97706' : nd.category === 'notification' ? '#10b981' : '#64748b';
+                  const categoryBg = nd.category === 'trigger' ? '#eff6ff' : nd.category === 'approval' ? '#faf5ff' : nd.category === 'condition' ? '#fefce8' : nd.category === 'notification' ? '#f0fdf4' : '#f8fafc';
+
+                  return (
+                    <React.Fragment key={nd.id}>
+                      <div
+                        onClick={() => setSelectedWfNode(nd)}
+                        style={{
+                          width: '100%',
+                          backgroundColor: 'var(--bg-primary)',
+                          borderRadius: '16px',
+                          border: `2px solid ${isSelected ? '#2563eb' : categoryBorder}`,
+                          padding: '16px 20px',
+                          boxShadow: isSelected ? '0 0 0 4px rgba(37, 99, 235, 0.2)' : '0 4px 12px rgba(0,0,0,0.04)',
+                          cursor: 'pointer',
+                          position: 'relative',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: '900', backgroundColor: categoryBg, color: categoryBorder, padding: '2px 8px', borderRadius: '6px', border: `1px solid ${categoryBorder}40` }}>
+                              STEP {idx + 1}
+                            </span>
+                            <h4 style={{ margin: 0, fontSize: '14px', fontWeight: '900', color: 'var(--text-primary)' }}>
+                              {nd.label}
+                            </h4>
+                          </div>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setWorkflowNodes(currentNodes.filter(n => n.id !== nd.id));
+                              setWorkflowEdges(currentEdges.filter(eg => eg.from !== nd.id && eg.to !== nd.id));
+                              if (selectedWfNode?.id === nd.id) setSelectedWfNode(null);
+                            }}
+                            style={{ background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px' }}
+                          >
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Directional Connector Arrow */}
+                      {idx < currentNodes.length - 1 && (
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', margin: '-8px 0' }}>
+                          <div style={{ width: '2px', height: '24px', backgroundColor: '#3b82f6' }} />
+                          <div style={{ width: 0, height: 0, borderLeft: '6px solid transparent', borderRight: '6px solid transparent', borderTop: '8px solid #3b82f6' }} />
+                        </div>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </div>
+
+            </div>
+
+            {/* Right Node Property Inspector Drawer */}
+            <div style={{ backgroundColor: 'var(--bg-card)', borderRadius: '20px', border: '1px solid var(--border-color)', padding: '18px', display: 'flex', flexDirection: 'column', gap: '16px', overflowY: 'auto' }}>
+              <div style={{ fontSize: '13.5px', fontWeight: '900', color: 'var(--text-primary)', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
+                ⚙️ Node Config Inspector
+              </div>
+
+              {selectedWfNode ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                  <div>
+                    <label style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                      ឈ្មោះ Step Node (Node Label)
+                    </label>
+                    <input 
+                      type="text" 
+                      value={selectedWfNode.label}
+                      onChange={(e) => {
+                        const updated = currentNodes.map(n => n.id === selectedWfNode.id ? { ...n, label: e.target.value } : n);
+                        setWorkflowNodes(updated);
+                        setSelectedWfNode({ ...selectedWfNode, label: e.target.value });
+                      }}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12.5px', fontWeight: '700' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                      ប្រភេទ Node Category
+                    </label>
+                    <input 
+                      type="text"
+                      disabled
+                      value={selectedWfNode.category ? selectedWfNode.category.toUpperCase() : 'ACTION'}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)', fontSize: '12px', fontWeight: '800' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                      លក្ខខណ្ឌអនុវត្ត (Execution Rule / Condition)
+                    </label>
+                    <select
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12px', fontWeight: '700' }}
+                    >
+                      <option value="always">Always Execute (អនុវត្តជានិច្ច)</option>
+                      <option value="cost_500">IF Cost &gt; $500</option>
+                      <option value="cost_5000">IF Cost &gt; $5,000</option>
+                      <option value="prio_high">IF Priority = High / Critical</option>
+                      <option value="dept_it">IF Department = IT / SOC</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label style={{ fontSize: '11.5px', fontWeight: '800', color: 'var(--text-primary)', marginBottom: '4px', display: 'block' }}>
+                      សារជូនដំណឹង Telegram (Telegram Template)
+                    </label>
+                    <textarea 
+                      rows={3}
+                      placeholder="សារជូនដំណឹងស្វ័យប្រវត្តិ..."
+                      defaultValue={`⚡ <b>[WORKFLOW ALERT]</b>\nលិខិតបានមកដល់ដំណាក់កាល ៖ ${selectedWfNode.label}`}
+                      style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1px solid var(--border-color)', backgroundColor: 'var(--bg-primary)', color: 'var(--text-primary)', fontSize: '12px' }}
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '40px 12px', color: 'var(--text-muted)', fontSize: '12px', fontStyle: 'italic', backgroundColor: 'var(--bg-primary)', borderRadius: '14px', border: '1px dashed var(--border-color)' }}>
+                  👈 សូមចុចលើ Node ណាមួយលើ Canvas ដើម្បីរៀបចំកំណត់រចនាសម្ព័ន្ធ
+                </div>
+              )}
+            </div>
+
+          </div>
+        )}
+
+      </div>
+    );
+  }
+
+
   // Render Official Tickets Tab
   function renderTicketsTab() {
     const filteredTickets = tickets.filter(t => {
@@ -4787,6 +5261,11 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>📋</span> កិច្ចការងារ Bitrix (Kanban)
             </li>
           )}
+          {hasPermission('tickets', 'read') && (
+            <li className={`menu-item ${activeTab === 'workflow' ? 'active' : ''}`} onClick={() => handleMenuClick('workflow')}>
+              <span className="menu-icon" style={{ fontSize: '15px' }}>⚡</span> កំណត់រចនាសម្ព័ន្ធ Workflow
+            </li>
+          )}
           {hasPermission('leave', 'read') && (
             <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => handleMenuClick('leave')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
@@ -4855,6 +5334,7 @@ export default function App() {
               {activeTab === 'switches' && 'បញ្ជីឧបករណ៍ Switch តាមសាខា'}
               {activeTab === 'storage' && 'ប្រព័ន្ធផ្ទុកឯកសាររួម Google Drive'}
               {activeTab === 'kanban' && 'ប្រព័ន្ធគ្រប់គ្រងកិច្ចការងារ Bitrix (Task Management & Kanban Board)'}
+              {activeTab === 'workflow' && 'ប្រព័ន្ធបង្កើត និងកំណត់រចនាសម្ព័ន្ធ Workflow (Visual Workflow & Approval Builder)'}
               {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
               {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
               {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់ (Night Shift Standby Roster)'}
@@ -4862,6 +5342,7 @@ export default function App() {
             <p>
               {activeTab === 'dashboard' && 'Security Operations Center (SOC) & Electronic Request Management System'}
               {activeTab === 'kanban' && 'Bitrix-Style Task Pipeline, Visual Stages, Assignees & Deadlines'}
+              {activeTab === 'workflow' && 'Bitrix24-Style Enterprise Drag & Drop Node Designer, Condition Engine & Multi-Level Approvals'}
               {activeTab === 'ipam' && (
                 ipamCategory === 'branches'
                   ? (selectedBranch ? `Subnet IP Range details for ${selectedBranch.name_kh} (${selectedBranch.name_en})` : 'Utilization and host mappings for NSSF branch subnets')
@@ -7341,6 +7822,12 @@ export default function App() {
 
         {/* Google Drive Storage Tab */}
         {activeTab === 'storage' && renderStorageTab()}
+
+        {/* Bitrix Task Management & Kanban Board Tab */}
+        {activeTab === 'kanban' && renderKanbanTab()}
+
+        {/* Enterprise Workflow & Approval Flow Builder Tab */}
+        {activeTab === 'workflow' && renderWorkflowTab()}
 
         {/* Official Tickets Tab */}
         {activeTab === 'tickets' && renderTicketsTab()}
