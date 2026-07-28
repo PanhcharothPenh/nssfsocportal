@@ -4139,23 +4139,19 @@ export default function App() {
       { id: 'on_hold', title: 'ON HOLD', label: '⏸️ រង់ចាំ (On Hold)', color: '#e11d48', bg: 'rgba(225, 29, 72, 0.08)', border: '#f43f5e', accent: 'linear-gradient(90deg, #e11d48, #fb7185)' }
     ];
 
-    // NSSF SOC official sample tasks dataset
-    const defaultSampleTasks = [
-      { id: 101, title: 'រៀបចំកំណត់រចនាសម្ព័ន្ធ VPN Connection សម្រាប់ សាខាសៀមរាប', description: 'Configure IPsec tunnel and routing rules for Siem Reap branch office.', status: 'todo', priority: 'Medium', assignee_name: 'Chantha', due_date: 'Jul 31, 2026', task_code: 'TK-20260728-001', tag: 'Network', department: 'SOC', progress: 0, comment_count: 2, attachment_count: 1 },
-      { id: 102, title: 'ពិនិត្យ និងកែសម្រួលគោលការណ៍ Firewall លើ Core Perimeter', description: 'Audit core perimeter firewall rules and eliminate redundant port forwarding.', status: 'in_progress', priority: 'High', assignee_name: 'Miller', due_date: 'Jul 30, 2026', task_code: 'TK-20260728-002', tag: 'Firewall', department: 'SOC', progress: 60, comment_count: 3, attachment_count: 2 },
-      { id: 103, title: 'ពិនិត្យអនុម័តសំណើសិទ្ធិចូលប្រើប្រាស់ (User Access Request)', description: 'Validate supervisor signatures and grant access to SOC database server.', status: 'review', priority: 'Medium', assignee_name: 'Kusial', due_date: 'Jul 29, 2026', task_code: 'TK-20260728-003', tag: 'Access', department: 'IT', progress: 80, comment_count: 1, attachment_count: 0 },
-      { id: 104, title: 'ធ្វើតេស្តប្រព័ន្ធ VPN Failover ស្វ័យប្រវត្តិ', description: 'Simulate primary ISP outage to verify automatic tunnel switching.', status: 'testing', priority: 'High', assignee_name: 'Samach', due_date: 'Jul 28, 2026', task_code: 'TK-20260728-004', tag: 'Network', department: 'SOC', progress: 50, comment_count: 2, attachment_count: 1 },
-      { id: 105, title: 'ធ្វើបច្ចុប្បន្នភាព Antivirus Signatures លើកុំព្យូទ័របុគ្គលិក', description: 'Deploy latest endpoint security definitions to all workstation endpoints.', status: 'todo', priority: 'Low', assignee_name: 'Sambo', due_date: 'Aug 02, 2026', task_code: 'TK-20260728-005', tag: 'Security', department: 'IT', progress: 0, comment_count: 0, attachment_count: 0 },
-      { id: 106, title: 'ដំឡើង OS Patch ប្រព័ន្ធ Linux Web Application Server', description: 'Apply critical OS security patches to Linux web application clusters.', status: 'in_progress', priority: 'Low', assignee_name: 'Sophal', due_date: 'Aug 01, 2026', task_code: 'TK-20260728-006', tag: 'Server', department: 'Server', progress: 40, comment_count: 1, attachment_count: 1 },
-      { id: 107, title: 'ពិនិត្យ និងធ្វើបច្ចុប្បន្នភាព ឯកសារបណ្តាញ (Network Documentation)', description: 'Update topology diagrams for newly added core switches and VLANs.', status: 'review', priority: 'Low', assignee_name: 'Linheng', due_date: 'Aug 03, 2026', task_code: 'TK-20260728-007', tag: 'Documentation', department: 'SOC', progress: 30, comment_count: 0, attachment_count: 2 },
-      { id: 108, title: 'ស្កេនស្វែងរកចន្លោះប្រហោងសន្តិសុខ App Security Scanning', description: 'Execute SAST/DAST security scan on internal SOC web portal code.', status: 'testing', priority: 'Medium', assignee_name: 'Kimhak', due_date: 'Aug 04, 2026', task_code: 'TK-20260728-008', tag: 'Security', department: 'SOC', progress: 20, comment_count: 1, attachment_count: 0 },
-      { id: 109, title: 'ផ្ទៀងផ្ទាត់ និងធ្វើតេស្តសង្គ្រោះ Backup (Disaster Recovery)', description: 'Test bare-metal restore from disaster recovery tape backups.', status: 'completed', priority: 'Medium', assignee_name: 'Bonthon', due_date: 'Jul 25, 2026', task_code: 'TK-20260728-009', tag: 'Hardware', department: 'Server', progress: 100, comment_count: 0, attachment_count: 1 },
-      { id: 110, title: 'ពិនិត្យសុខភាព Email Server (DKIM/DMARC SPF)', description: 'Verify SMTP queue and DKIM/DMARC SPF authentication records.', status: 'completed', priority: 'Low', assignee_name: 'Sophron', due_date: 'Jul 24, 2026', task_code: 'TK-20260728-010', tag: 'Project', department: 'IT', progress: 100, comment_count: 0, attachment_count: 0 },
-      { id: 111, title: 'គម្រោងលើកកម្ពស់គ្រឿងបន្លាស់ SAN Storage SSD Shelf', description: 'Replace aging SAN storage array controllers with SSD expansion shelves.', status: 'on_hold', priority: 'High', assignee_name: 'Miller', due_date: 'Aug 10, 2026', task_code: 'TK-20260728-011', tag: 'Hardware', department: 'Server', progress: 10, comment_count: 2, attachment_count: 0 },
-      { id: 112, title: 'រៀបចំសំណើស្ថាបត្យកម្មប្រព័ន្ធ Identity Central Directory', description: 'Prepare architectural proposal for central identity directory integration.', status: 'on_hold', priority: 'Medium', assignee_name: 'Chantha', due_date: 'Aug 15, 2026', task_code: 'TK-20260728-012', tag: 'Project', department: 'SOC', progress: 0, comment_count: 1, attachment_count: 2 }
-    ];
+    // Tasks loaded dynamically from system backend database
+    const activeTaskList = kanbanTasks || [];
 
-    const activeTaskList = kanbanTasks && kanbanTasks.length > 0 ? kanbanTasks : defaultSampleTasks;
+    // Assignees / Users fetched dynamically from system usersList function
+    const uniqueAssignees = Array.from(new Set(
+      (usersList || [])
+        .map(u => (u.full_name && u.full_name.trim()) ? u.full_name : u.username)
+        .filter(Boolean)
+    ));
+
+    if (uniqueAssignees.length === 0 && currentLoginUser) {
+      uniqueAssignees.push(currentLoginUser.full_name || currentLoginUser.username || 'User');
+    }
 
     // Filter tasks based on search, assignee, dept, priority, status, tag, myTasksMode
     const filteredTasks = activeTaskList.filter(task => {
@@ -4172,11 +4168,11 @@ export default function App() {
       const matchTag = kanbanFilterTag === 'ALL' || (task.tag || 'General') === kanbanFilterTag;
 
       let matchMyMode = true;
-      const meName = currentLoginUser?.full_name || currentLoginUser?.username || 'Miller';
+      const meName = currentLoginUser?.full_name || currentLoginUser?.username || '';
       if (kanbanMyTasksMode === 'assigned_me') {
-        matchMyMode = task.assignee_name && task.assignee_name.toLowerCase().includes(meName.toLowerCase());
+        matchMyMode = meName ? (task.assignee_name && task.assignee_name.toLowerCase().includes(meName.toLowerCase())) : true;
       } else if (kanbanMyTasksMode === 'created_me') {
-        matchMyMode = task.assignee_name === meName || task.id % 2 === 0;
+        matchMyMode = task.assignee_name === meName;
       } else if (kanbanMyTasksMode === 'following') {
         matchMyMode = (task.priority === 'High' || task.priority === 'Urgent' || (task.comment_count && task.comment_count > 0));
       } else if (kanbanMyTasksMode === 'bookmarks') {
@@ -4193,13 +4189,10 @@ export default function App() {
     const testingCount = activeTaskList.filter(t => t.status === 'testing').length;
     const completedCount = activeTaskList.filter(t => t.status === 'completed').length;
     const onHoldCount = activeTaskList.filter(t => t.status === 'on_hold').length;
-    const overdueCount = activeTaskList.filter(t => (t.due_date && t.due_date.includes('2026-07-28')) || t.status === 'on_hold').length || 12;
-
-    const teamMembersList = ['Chantha', 'Miller', 'Sambo', 'Sophal', 'Bonthon', 'Sophron', 'Kimsan', 'Kusial', 'Linheng', 'Kimhak', 'Samach', 'PA'];
-    const uniqueAssignees = Array.from(new Set([...teamMembersList, ...(usersList || []).map(u => u.full_name || u.username).filter(Boolean)]));
+    const overdueCount = activeTaskList.filter(t => t.status === 'on_hold' || (t.due_date && new Date(t.due_date) < new Date())).length;
 
     const totalDone = completedCount;
-    const completionRate = totalCount > 0 ? Math.round((totalDone / totalCount) * 100) : 72;
+    const completionRate = totalCount > 0 ? Math.round((totalDone / totalCount) * 100) : 0;
 
     return (
       <div className="kanban-container" style={{ padding: '4px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -4344,10 +4337,10 @@ export default function App() {
           <div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>បន្ទុកការងារក្រុម (Team Workload)</span>
-              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '800' }}>សរុប 16 រូប</span>
+              <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '800' }}>សរុប {uniqueAssignees.length} នាក់</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '4px', flexWrap: 'wrap' }}>
-              {teamMembersList.slice(0, 5).map(member => {
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              {uniqueAssignees.map(member => {
                 const assignedCount = activeTaskList.filter(t => t.assignee_name === member).length;
                 const isSelected = kanbanFilterAssignee === member;
 
@@ -4357,38 +4350,30 @@ export default function App() {
                     onClick={() => setKanbanFilterAssignee(isSelected ? 'ALL' : member)}
                     title={`ចុចដើម្បស្រង់មើលកិច្ចការងាររបស់ ${member} (សរុប ${assignedCount} Tasks)`}
                     style={{
-                      width: '34px',
-                      height: '34px',
-                      borderRadius: '50%',
-                      background: isSelected ? 'linear-gradient(135deg, #10b981, #059669)' : 'linear-gradient(135deg, #2563eb, #7c3aed)',
-                      color: '#fff',
+                      padding: '4px 10px',
+                      borderRadius: '20px',
+                      background: isSelected ? 'linear-gradient(135deg, #10b981, #059669)' : 'var(--bg-primary)',
+                      color: isSelected ? '#fff' : 'var(--text-primary)',
                       display: 'flex',
                       alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '12px',
-                      fontWeight: '900',
+                      gap: '6px',
+                      fontSize: '11.5px',
+                      fontWeight: '800',
                       cursor: 'pointer',
-                      border: isSelected ? '2px solid #10b981' : '2px solid var(--bg-card)',
-                      boxShadow: isSelected ? '0 0 10px rgba(16,185,129,0.5)' : '0 2px 6px rgba(0,0,0,0.1)',
-                      transition: 'all 0.2s',
-                      position: 'relative'
+                      border: isSelected ? '1px solid #10b981' : '1px solid var(--border-color)',
+                      transition: 'all 0.2s'
                     }}
                   >
-                    {member[0]}
-                    {assignedCount > 0 && (
-                      <span style={{ position: 'absolute', top: '-4px', right: '-4px', backgroundColor: '#ef4444', color: '#fff', fontSize: '9px', fontWeight: '900', padding: '1px 4px', borderRadius: '10px' }}>
-                        {assignedCount}
-                      </span>
-                    )}
+                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: isSelected ? '#fff' : '#2563eb', color: isSelected ? '#10b981' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: '900' }}>
+                      {member[0].toUpperCase()}
+                    </div>
+                    <span>{member}</span>
+                    <span style={{ backgroundColor: isSelected ? 'rgba(255,255,255,0.25)' : '#eff6ff', color: isSelected ? '#fff' : '#2563eb', fontSize: '10px', padding: '1px 6px', borderRadius: '10px' }}>
+                      {assignedCount}
+                    </span>
                   </div>
                 );
               })}
-              <div 
-                onClick={() => setKanbanFilterAssignee('ALL')}
-                style={{ width: '34px', height: '34px', borderRadius: '50%', backgroundColor: 'var(--bg-primary)', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '800', cursor: 'pointer', border: '1px solid var(--border-color)' }}
-              >
-                +8
-              </div>
             </div>
           </div>
 
