@@ -3608,6 +3608,181 @@ def get_tickets_reports(period: str = "monthly", year: int = 2026, month: int = 
         "by_category": cat_counts
     }
 
+# -------------------------------------------------------------
+# Bitrix Task Management & Interactive Kanban Board Endpoints
+# -------------------------------------------------------------
+
+def init_kanban_table():
+    try:
+        conn = get_db_connection()
+        if conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+            CREATE TABLE IF NOT EXISTS kanban_tasks (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(255) NOT NULL,
+                description TEXT,
+                status VARCHAR(50) DEFAULT 'todo',
+                priority VARCHAR(50) DEFAULT 'Medium',
+                assignee_name VARCHAR(255),
+                due_date VARCHAR(50),
+                created_at VARCHAR(100),
+                updated_at VARCHAR(100)
+            )
+            """)
+            conn.commit()
+            conn.close()
+    except Exception as e:
+        print("kanban_tasks init error:", e)
+
+try:
+    init_kanban_table()
+except Exception as _e:
+    pass
+
+
+@app.get("/api/kanban/tasks")
+def get_kanban_tasks():
+    conn = get_db_connection()
+    if not conn:
+        return []
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM kanban_tasks ORDER BY id DESC")
+        rows = cursor.fetchall()
+        tasks = [dict(r) for r in rows] if rows else []
+        return tasks
+    except Exception as e:
+        print("Get kanban tasks error:", e)
+        return []
+    finally:
+        conn.close()
+
+@app.post("/api/kanban/tasks")
+def create_kanban_task(payload: dict = Body(...)):
+    title = payload.get("title")
+    if not title:
+        raise HTTPException(status_code=400, detail="Title is required")
+
+    desc = payload.get("description", "")
+    status = payload.get("status", "todo")
+    priority = payload.get("priority", "Medium")
+    assignee_name = payload.get("assignee_name", "Unassigned")
+    due_date = payload.get("due_date", "")
+    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO kanban_tasks (title, description, status, priority, assignee_name, due_date, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            RETURNING id
+        """, (title, desc, status, priority, assignee_name, due_date, now_str, now_str))
+
+        new_id_row = cursor.fetchone()
+        new_id = new_id_row['id'] if isinstance(new_id_row, dict) else (new_id_row[0] if new_id_row else None)
+        conn.commit()
+
+        task_data = {
+            "id": new_id,
+            "title": title,
+            "description": desc,
+            "status": status,
+            "priority": priority,
+            "assignee_name": assignee_name,
+            "due_date": due_date,
+            "created_at": now_str,
+            "updated_at": now_str
+        }
+
+        # Telegram Alert
+        import threading
+        def async_kanban_tg():
+            try:
+                from telegram import send_kanban_telegram_alert
+                send_kanban_telegram_alert(task_data, is_update=False)
+            except Exception as ex:
+                print("Kanban TG error:", ex)
+
+        threading.Thread(target=async_kanban_tg).start()
+
+        return {"status": "success", "task": task_data}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.put("/api/kanban/tasks/{task_id}/status")
+def update_kanban_task_status(task_id: int, payload: dict = Body(...)):
+    new_status = payload.get("status")
+    changed_by = payload.get("changed_by", "User")
+    if not new_status:
+        raise HTTPException(status_code=400, detail="New status required")
+
+    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM kanban_tasks WHERE id = ?", (task_id,))
+        task_row = cursor.fetchone()
+        if not task_row:
+            raise HTTPException(status_code=404, detail="Task not found")
+
+        task = dict(task_row)
+        old_status = task.get("status")
+
+        cursor.execute("""
+            UPDATE kanban_tasks SET status = ?, updated_at = ? WHERE id = ?
+        """, (new_status, now_str, task_id))
+        conn.commit()
+
+        task["status"] = new_status
+        task["updated_at"] = now_str
+
+        # Telegram Alert
+        import threading
+        def async_kanban_move_tg():
+            try:
+                from telegram import send_kanban_telegram_alert
+                send_kanban_telegram_alert(task, is_update=True, old_status=old_status, changed_by=changed_by)
+            except Exception as ex:
+                print("Kanban Move TG error:", ex)
+
+        threading.Thread(target=async_kanban_move_tg).start()
+
+        return {"status": "success", "task": task}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+@app.delete("/api/kanban/tasks/{task_id}")
+def delete_kanban_task(task_id: int):
+    conn = get_db_connection()
+    if not conn:
+        raise HTTPException(status_code=500, detail="Database connection failed")
+
+    try:
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM kanban_tasks WHERE id = ?", (task_id,))
+        conn.commit()
+        return {"status": "success", "message": f"Task {task_id} deleted"}
+    except Exception as e:
+        conn.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        conn.close()
+
+
 # Serve Vite Frontend static files in production container (Railway Deployment)
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
 if not os.path.exists(frontend_dist):

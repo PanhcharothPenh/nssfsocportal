@@ -1298,3 +1298,87 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
     broadcast()
 
 
+def send_kanban_telegram_alert(task, is_update=False, old_status=None, changed_by=None):
+    try:
+        title = task.get('title', 'N/A')
+        desc = task.get('description', '')
+        assignee = task.get('assignee_name', 'Unassigned')
+        priority = task.get('priority', 'Medium')
+        due_date = task.get('due_date', '')
+        status = task.get('status', 'todo')
+
+        status_names = {
+            'todo': '📝 ត្រូវធ្វើ (To Do)',
+            'in_progress': '⚡ កំពុងធ្វើ (In Progress)',
+            'review': '👀 កំពុងពិនិត្យ (In Review)',
+            'completed': '✅ បានបញ្ចប់ (Completed)'
+        }
+
+        st_label = status_names.get(status, status)
+
+        if not is_update:
+            msg = (
+                f"<b>📋 កិច្ចការងារ Kanban ថ្មី (Bitrix Task Assigned)</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📌 <b>ចំណងជើង ៖</b> <b>{title}</b>\n"
+                f"👤 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee}</b>\n"
+                f"🚨 <b>កម្រិតអាទិភាព ៖</b> <b>{priority}</b>\n"
+                f"📌 <b>ដំណាក់កាល ៖</b> <b>{st_label}</b>\n"
+            )
+            if due_date:
+                msg += f"⏰ <b>ថ្ងៃឱសានវាទ ៖</b> <b>{due_date}</b>\n"
+            if desc:
+                msg += f"📝 <b>ពិពណ៌នា ៖</b> <b>{desc}</b>\n"
+            msg += f"🔗 <b>មើលក្នុងប្រព័ន្ធ ៖</b> <a href=\"https://nssfsocportal.vercel.app/\">https://nssfsocportal.vercel.app/</a>"
+        else:
+            old_label = status_names.get(old_status, old_status) if old_status else 'N/A'
+            msg = (
+                f"<b>⚡ បច្ចុប្បន្នភាពកិច្ចការងារ Kanban (Bitrix Task Moved)</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                f"📌 <b>ចំណងជើង ៖</b> <b>{title}</b>\n"
+                f"👤 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee}</b>\n"
+                f"🔄 <b>ការប្តូរដំណាក់កាល ៖</b> <b>{old_label}</b> ➔ <b>{st_label}</b>\n"
+            )
+            if changed_by:
+                msg += f"👤 <b>ធ្វើបច្ចុប្បន្នភាពដោយ ៖</b> <b>{changed_by}</b>\n"
+            msg += f"🔗 <b>មើលក្នុងប្រព័ន្ធ ៖</b> <a href=\"https://nssfsocportal.vercel.app/\">https://nssfsocportal.vercel.app/</a>"
+
+        target_chat = None
+        if assignee:
+            from database import get_db_connection
+            conn = get_db_connection()
+            if conn:
+                try:
+                    cursor = conn.cursor()
+                    clean_app = str(assignee).split("(")[0].replace("@", "").strip()
+                    cursor.execute("""
+                        SELECT telegram_chat_id FROM users 
+                        WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != '' AND (
+                            LOWER(full_name) = LOWER(?)
+                            OR LOWER(username) = LOWER(?)
+                            OR LOWER(telegram_username) = LOWER(?)
+                        )
+                    """, (clean_app, clean_app, clean_app))
+                    r = cursor.fetchone()
+                    if r:
+                        target_chat = str(r['telegram_chat_id'] if isinstance(r, dict) else r[0]).strip()
+                except Exception as e:
+                    print(f"Error getting assignee chat_id: {e}")
+                finally:
+                    conn.close()
+
+        chats_to_send = set()
+        if target_chat:
+            chats_to_send.add(target_chat)
+        default_chat = os.getenv("TELEGRAM_CHAT_ID")
+        if default_chat:
+            chats_to_send.add(str(default_chat).strip())
+
+        for cid in chats_to_send:
+            send_telegram_message(msg, chat_id=cid)
+
+    except Exception as e:
+        print(f"Error in send_kanban_telegram_alert: {e}")
+
+
+
