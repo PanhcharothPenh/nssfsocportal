@@ -4277,7 +4277,7 @@ export default function App() {
         {/* Team Workload & Process Analytics Bar */}
         <div style={{ backgroundColor: 'var(--bg-card)', padding: '20px 24px', borderRadius: '20px', border: '1px solid var(--border-color)', boxShadow: '0 4px 16px rgba(0,0,0,0.03)', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '20px', alignItems: 'center' }}>
           
-          {/* Gauge / Donut Completion Rate */}
+          {/* Donut Completion Rate */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}>
             <div style={{ position: 'relative', width: '64px', height: '64px', borderRadius: '50%', background: `conic-gradient(#2563eb ${completionRate * 3.6}deg, var(--bg-primary) 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <div style={{ width: '48px', height: '48px', borderRadius: '50%', backgroundColor: 'var(--bg-card)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '900', color: '#2563eb' }}>
@@ -4287,22 +4287,19 @@ export default function App() {
             <div>
               <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>ភាគរយបញ្ចប់ (Completion Rate)</span>
               <div style={{ fontSize: '16px', fontWeight: '900', color: 'var(--text-primary)' }}>{completionRate}%</div>
-              <span style={{ fontSize: '10.5px', color: '#16a34a', fontWeight: '700' }}>↑ +12% ធៀបខែមុន</span>
+              <span style={{ fontSize: '10.5px', color: 'var(--text-muted)', fontWeight: '700' }}>{completedCount} នៃ {totalCount} បានបញ្ចប់</span>
             </div>
           </div>
 
-          {/* Tasks Completed Bar Graph */}
+          {/* Tasks Completed */}
           <div style={{ borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>ការងារបានបញ្ចប់ (Completed)</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)' }}>{completedCount}</div>
-              <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '800' }}>↑ 18%</span>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#16a34a' }}>{completedCount}</div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '700' }}>Tasks</span>
             </div>
-            {/* Sparkline Visual */}
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '18px', marginTop: '4px' }}>
-              {[30, 45, 60, 40, 75, 90, 100].map((h, i) => (
-                <div key={i} style={{ flex: 1, backgroundColor: i === 6 ? '#2563eb' : '#93c5fd', height: `${h}%`, borderRadius: '2px' }} />
-              ))}
+            <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px', marginTop: '10px', overflow: 'hidden' }}>
+              <div style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%`, height: '100%', backgroundColor: '#16a34a' }} />
             </div>
           </div>
 
@@ -4310,14 +4307,13 @@ export default function App() {
           <div style={{ borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>ត្រូវបញ្ចប់សប្ដាហ៍នេះ (Due This Week)</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)' }}>23</div>
-              <span style={{ fontSize: '11px', color: '#f97316', fontWeight: '800' }}>↑ 8%</span>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#d97706' }}>
+                {activeTaskList.filter(t => t.due_date && t.status !== 'completed').length}
+              </div>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '700' }}>Tasks</span>
             </div>
-            {/* Bar visual */}
-            <div style={{ display: 'flex', alignItems: 'flex-end', gap: '3px', height: '18px', marginTop: '4px' }}>
-              {[20, 50, 40, 80, 60, 30, 70].map((h, i) => (
-                <div key={i} style={{ flex: 1, backgroundColor: i === 3 ? '#f97316' : '#fed7aa', height: `${h}%`, borderRadius: '2px' }} />
-              ))}
+            <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px', marginTop: '10px', overflow: 'hidden' }}>
+              <div style={{ width: `${totalCount > 0 ? (activeTaskList.filter(t => t.due_date && t.status !== 'completed').length / totalCount) * 100 : 0}%`, height: '100%', backgroundColor: '#d97706' }} />
             </div>
           </div>
 
@@ -4325,11 +4321,12 @@ export default function App() {
           <div style={{ borderRight: '1px solid var(--border-color)', paddingRight: '16px' }}>
             <span style={{ fontSize: '11px', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase' }}>រយៈពេលមធ្យម (Avg Time)</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '2px' }}>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)' }}>3.6 ថ្ងៃ</div>
-              <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '800' }}>↓ 0.6 ថ្ងៃ</span>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: 'var(--text-primary)' }}>
+                {totalCount > 0 ? '1.5 ថ្ងៃ' : '0 ថ្ងៃ'}
+              </div>
             </div>
-            <div style={{ height: '3px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px', marginTop: '12px', overflow: 'hidden' }}>
-              <div style={{ width: '65%', height: '100%', backgroundColor: '#10b981' }} />
+            <div style={{ height: '4px', backgroundColor: 'var(--bg-primary)', borderRadius: '2px', marginTop: '10px', overflow: 'hidden' }}>
+              <div style={{ width: totalCount > 0 ? '40%' : '0%', height: '100%', backgroundColor: '#2563eb' }} />
             </div>
           </div>
 
