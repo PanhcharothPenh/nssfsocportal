@@ -1262,7 +1262,7 @@ def get_vpn_users():
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT * FROM vpn_remote_users ORDER BY id ASC")
+        cursor.execute("SELECT * FROM vpn_remote_users ORDER BY id DESC")
         users = [dict(row) for row in cursor.fetchall()]
         conn.close()
         return users
@@ -1272,7 +1272,7 @@ def get_vpn_users():
 
 @app.post("/api/vpn")
 @app.post("/api/vpn_users")
-def create_vpn_user(v_data: VPNUserUpdate):
+def create_vpn_user(v_data: VPNUserUpdate, request: Request = None):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -1325,16 +1325,29 @@ def create_vpn_user(v_data: VPNUserUpdate):
         
         # Trigger Telegram Audit Notification
         try:
-            from telegram import notify_data_change
+            try:
+                from telegram import notify_data_change
+            except ImportError:
+                try:
+                    from api.telegram import notify_data_change
+                except ImportError:
+                    from backend.telegram import notify_data_change
+            editor = None
+            client_ip = None
+            if request:
+                editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+                client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             notify_data_change(
-                "ចុះឈ្មោះអ្នកប្រើប្រាស់ VPN ថ្មី",
-                {
-                    "ឈ្មោះពេញ": v_data.name,
-                    "ឈ្មោះអ្នកប្រើប្រាស់": v_data.username,
-                    "នាយកដ្ឋាន/សាខា": v_data.department,
-                    "ស្ថានភាព": v_data.status or 'Active',
+                action_title="ចុះឈ្មោះអ្នកប្រើប្រាស់ VPN ថ្មី (New VPN User)",
+                details={
+                    "ឈ្មោះពេញ (Name)": v_data.name,
+                    "Username": v_data.username,
+                    "នាយកដ្ឋាន (Dept)": v_data.department,
+                    "ស្ថានភាព (Status)": v_data.status or 'Active',
                     "ប្រភេទ VPN": v_data.vpn_type
-                }
+                },
+                editor_username=editor,
+                client_ip=client_ip
             )
         except Exception as t_err:
             print("Telegram notification error:", t_err)
