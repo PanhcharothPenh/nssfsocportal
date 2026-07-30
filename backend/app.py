@@ -1276,17 +1276,23 @@ def create_vpn_user(v_data: VPNUserUpdate):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        # Get next no for the department
+        # Get next no for the department safely in Python to prevent SQL CAST errors on non-numeric strings
         next_no = 1.0
         try:
-            cursor.execute("SELECT MAX(CAST(no AS FLOAT)) FROM vpn_remote_users WHERE department = ?", (v_data.department or '',))
-            row = cursor.fetchone()
-            if row:
-                val = row['max'] if hasattr(row, 'keys') and 'max' in row else (row[0] if isinstance(row, (tuple, list)) else None)
+            cursor.execute("SELECT no FROM vpn_remote_users WHERE department = ?", (v_data.department or '',))
+            rows = cursor.fetchall()
+            valid_nos = []
+            for r in rows:
+                val = r['no'] if hasattr(r, 'keys') and 'no' in r else (r[0] if isinstance(r, (tuple, list)) else None)
                 if val is not None:
-                    next_no = float(val) + 1.0
-        except Exception:
-            pass
+                    try:
+                        valid_nos.append(float(str(val).strip()))
+                    except (ValueError, TypeError):
+                        pass
+            if valid_nos:
+                next_no = max(valid_nos) + 1.0
+        except Exception as calc_err:
+            print("Error calculating next_no:", calc_err)
                 
         cursor.execute("""
         INSERT INTO vpn_remote_users (no, name, position, username, password, department, company, status, purpose, vpn_type, other)
