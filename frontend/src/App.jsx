@@ -8592,11 +8592,11 @@ export default function App() {
                 <label className="form-label">Status</label>
                 <select
                   className="form-input"
-                  value={editingData.status || 'inactive'}
+                  value={editingData.status || 'Active'}
                   onChange={(e) => setEditingData({ ...editingData, status: e.target.value })}
                 >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
                 </select>
               </div>
               <div className="form-group">
