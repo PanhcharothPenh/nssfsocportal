@@ -1351,54 +1351,35 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
         conn.commit()
         conn.close()
         
-        # Audit Log Notification
+        # Trigger Telegram Audit Notification
         try:
-            ed_user = request.headers.get("x-editor-username") or "System"
             from telegram import notify_data_change
+            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+            client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             notify_data_change(
-                "កែប្រែព័ត៌មានអ្នកប្រើប្រាស់ VPN",
-                {
-                    "ឈ្មោះពេញ": v_data.name,
-                    "ឈ្មោះអ្នកប្រើប្រាស់": v_data.username,
-                    "នាយកដ្ឋាន/សាខា": v_data.department,
-                    "ស្ថានភាព": v_data.status
+                action_title="ធ្វើបច្ចុប្បន្នភាព Remote VPN User (VPN User Update)",
+                details={
+                    "ឈ្មោះ (Name)": v_data.name,
+                    "Username": v_data.username,
+                    "នាយកដ្ឋាន (Dept)": v_data.department,
+                    "ប្រភេទ (VPN Type)": v_data.vpn_type,
+                    "ស្ថានភាព (Status)": v_data.status
                 },
-                editor_username=ed_user
+                editor_username=editor,
+                client_ip=client_ip
             )
         except Exception as t_err:
             print("Telegram notification error:", t_err)
-
-        return {"status": "success", "db_update": "success"}
-    except Exception as e:
-        conn.close()
-        raise HTTPException(status_code=500, detail=str(e))
-            id
-        ))
-        
-        conn.commit()
-        conn.close()
-        
-        # Trigger Telegram Audit Notification
-        from telegram import notify_data_change
-        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
-        client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
-        notify_data_change(
-            action_title="ធ្វើបច្ចុប្បន្នភាព Remote VPN User (VPN User Update)",
-            details={
-                "ឈ្មោះ (Name)": v_data.name,
-                "Username": v_data.username,
-                "នាយកដ្ឋាន (Dept)": v_data.department,
-                "ប្រភេទ (VPN Type)": v_data.vpn_type,
-                "ស្ថានភាព (Status)": v_data.status
-            },
-            editor_username=editor,
-            client_ip=client_ip
-        )
         
         # Sync to Excel
-        updates = v_data.dict(exclude_unset=True)
-        success, msg = sync_vpn_user_to_excel(id, updates)
-        
+        success = True
+        msg = ""
+        try:
+            updates = v_data.dict(exclude_unset=True)
+            success, msg = sync_vpn_user_to_excel(id, updates)
+        except Exception as ex_err:
+            print("Excel sync error:", ex_err)
+
         return {
             "status": "success",
             "db_update": "success",
