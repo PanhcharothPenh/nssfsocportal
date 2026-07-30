@@ -2249,7 +2249,13 @@ export default function App() {
 
   // Save / Edit Handlers
   const handleIPEditClick = (ipNode, type) => {
-    if (!hasPermission('ipam', 'write')) return;
+    if (type === 'vpn_user' || type === 'vpn_user_add') {
+      if (!hasPermission('vpn_remote', 'write')) return;
+    } else if (type === 's2s_vpn') {
+      if (!hasPermission('hospital_vpn', 'write')) return;
+    } else if (!hasPermission('ipam', 'write')) {
+      return;
+    }
     setEditingModal(type);
     setEditingData({ ...ipNode });
   };

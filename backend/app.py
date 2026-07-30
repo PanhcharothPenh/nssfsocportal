@@ -1349,7 +1349,11 @@ def create_vpn_user(v_data: VPNUserUpdate):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/vpn/{id}")
+@app.put("/api/vpn/{id}")
+@app.patch("/api/vpn/{id}")
 @app.post("/api/vpn_users/{id}")
+@app.put("/api/vpn_users/{id}")
+@app.patch("/api/vpn_users/{id}")
 def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1414,6 +1418,46 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
             "db_update": "success",
             "excel_sync": "success" if success else f"failed ({msg})"
         }
+    except Exception as e:
+        conn.close()
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.delete("/api/vpn/{id}")
+@app.delete("/api/vpn_users/{id}")
+def delete_vpn_user(id: int, request: Request):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT id, name, username FROM vpn_remote_users WHERE id = ?", (id,))
+        user_rec = cursor.fetchone()
+        if not user_rec:
+            conn.close()
+            raise HTTPException(status_code=404, detail="VPN user not found")
+        
+        cursor.execute("DELETE FROM vpn_remote_users WHERE id = ?", (id,))
+        conn.commit()
+        conn.close()
+        
+        try:
+            from telegram import notify_data_change
+            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+            client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
+            user_name = user_rec['name'] if hasattr(user_rec, 'keys') and 'name' in user_rec else (user_rec[1] if isinstance(user_rec, (tuple, list)) and len(user_rec) > 1 else '')
+            user_uname = user_rec['username'] if hasattr(user_rec, 'keys') and 'username' in user_rec else (user_rec[2] if isinstance(user_rec, (tuple, list)) and len(user_rec) > 2 else '')
+            notify_data_change(
+                action_title="លុប Remote VPN User (Delete VPN User)",
+                details={
+                    "ID": id,
+                    "ឈ្មោះ (Name)": user_name,
+                    "Username": user_uname
+                },
+                editor_username=editor,
+                client_ip=client_ip
+            )
+        except Exception as t_err:
+            print("Telegram notification error:", t_err)
+            
+        return {"status": "success", "message": f"VPN user {id} deleted"}
     except Exception as e:
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))
