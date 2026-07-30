@@ -2325,26 +2325,33 @@ export default function App() {
           alert(`❌ មានបញ្ហាក្នុងការរក្សាទុក ៖ ${err.detail || 'Error updating VPN user'}`);
         }
       } else if (editingModal === 'vpn_user_add') {
+        if (!editingData.name && !editingData.username) {
+          setModalError('សូមបញ្ចូលឈ្មោះពេញ ឬ ឈ្មោះអ្នកប្រើប្រាស់ (Please enter Full Name or Username)');
+          alert('⚠️ សូមបញ្ចូលឈ្មោះពេញ ឬ ឈ្មោះអ្នកប្រើប្រាស់ (Please enter Full Name or Username)');
+          setIsSubmitting(false);
+          return;
+        }
         const res = await fetch(`${API_BASE}/vpn`, {
           method: 'POST',
           headers: jsonHeaders,
           body: JSON.stringify({
-            name: editingData.name,
-            position: editingData.position,
-            username: editingData.username,
-            password: editingData.password,
-            department: editingData.department,
-            company: editingData.company,
-            status: editingData.status || 'Active',
-            purpose: editingData.purpose,
-            vpn_type: editingData.vpn_type,
-            other: editingData.other
+            name: editingData.name || '',
+            position: editingData.position || '',
+            username: editingData.username || '',
+            password: editingData.password || '',
+            department: editingData.department || '',
+            company: editingData.company || '',
+            status: editingData.status === 'active' ? 'Active' : (editingData.status || 'Active'),
+            purpose: editingData.purpose || '',
+            vpn_type: editingData.vpn_type || '',
+            other: editingData.other || ''
           })
         });
         if (res.ok) {
           await fetchVpnUsers();
           await fetchDashboardStats();
           setEditingModal(null);
+          setModalError(null);
           alert('✅ ចុះឈ្មោះអ្នកប្រើប្រាស់ VPN ជោគជ័យ!');
         } else {
           const err = await res.json().catch(() => ({ detail: 'Error adding VPN user' }));
@@ -7414,6 +7421,7 @@ export default function App() {
                         className="btn btn-primary" 
                         style={{ display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#2563eb', border: 'none', borderRadius: '6px', padding: '8px 16px', color: '#fff', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
                         onClick={() => {
+                          setModalError(null);
                           setEditingModal('vpn_user_add');
                           setEditingData({
                             name: '',
@@ -7422,7 +7430,7 @@ export default function App() {
                             password: '',
                             department: '',
                             company: '',
-                            status: 'active',
+                            status: 'Active',
                             purpose: '',
                             vpn_type: '',
                             other: ''
