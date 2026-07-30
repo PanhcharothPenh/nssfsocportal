@@ -8534,6 +8534,11 @@ export default function App() {
               <button type="button" className="modal-close" onClick={() => setEditingModal(null)}>×</button>
             </div>
             <div className="modal-body">
+              {modalError && (
+                <div style={{ padding: '10px 14px', marginBottom: '16px', borderRadius: '8px', backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#991b1b', fontSize: '13px', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>⚠️</span> {modalError}
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">Full Name (ឈ្មោះពេញ)</label>
                 <input
