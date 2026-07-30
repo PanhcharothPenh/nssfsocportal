@@ -21,10 +21,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy backend code, static datasets, and SQLite DB
+# Copy backend code, static datasets, and SQLite DB (safely handling optional files)
 COPY backend/ ./backend/
-COPY *.xlsx ./
-COPY soc_network.db ./
+COPY *.xls[x] ./
+COPY soc_network.d[b] ./
 
 # Copy built frontend assets from Stage 1
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
