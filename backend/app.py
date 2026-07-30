@@ -1257,6 +1257,7 @@ def get_switches():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/vpn")
+@app.get("/api/vpn_users")
 def get_vpn_users():
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1270,51 +1271,79 @@ def get_vpn_users():
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/vpn")
+@app.post("/api/vpn_users")
 def create_vpn_user(v_data: VPNUserUpdate):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         # Get next no for the department
-        cursor.execute("SELECT MAX(no) FROM vpn_remote_users WHERE department = ?", (v_data.department or '',))
-        row = cursor.fetchone()
         next_no = 1.0
-        if row and row[0]:
-            try:
-                next_no = float(row[0]) + 1.0
-            except:
-                pass
+        try:
+            cursor.execute("SELECT MAX(CAST(no AS FLOAT)) FROM vpn_remote_users WHERE department = ?", (v_data.department or '',))
+            row = cursor.fetchone()
+            if row:
+                val = row['max'] if hasattr(row, 'keys') and 'max' in row else (row[0] if isinstance(row, (tuple, list)) else None)
+                if val is not None:
+                    next_no = float(val) + 1.0
+        except Exception:
+            pass
                 
         cursor.execute("""
         INSERT INTO vpn_remote_users (no, name, position, username, password, department, company, status, purpose, vpn_type, other)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            next_no,
-            v_data.name,
-            v_data.position,
-            v_data.username,
-            v_data.password,
-            v_data.department,
-            v_data.company,
-            v_data.status,
-            v_data.purpose,
-            v_data.vpn_type,
-            v_data.other
+            str(next_no),
+            v_data.name or '',
+            v_data.position or '',
+            v_data.username or '',
+            v_data.password or '',
+            v_data.department or '',
+            v_data.company or '',
+            v_data.status or 'Active',
+            v_data.purpose or '',
+            v_data.vpn_type or '',
+            v_data.other or ''
         ))
-        new_id = cursor.lastrowid
         conn.commit()
+        
+        new_id = None
+        try:
+            cursor.execute("SELECT MAX(id) FROM vpn_remote_users")
+            r = cursor.fetchone()
+            if r:
+                new_id = r['max'] if hasattr(r, 'keys') and 'max' in r else (r[0] if isinstance(r, (tuple, list)) else None)
+        except Exception:
+            pass
+
         conn.close()
         
+        # Trigger Telegram Audit Notification
+        try:
+            from telegram import notify_data_change
+            notify_data_change(
+                "ចុះឈ្មោះអ្នកប្រើប្រាស់ VPN ថ្មី",
+                {
+                    "ឈ្មោះពេញ": v_data.name,
+                    "ឈ្មោះអ្នកប្រើប្រាស់": v_data.username,
+                    "នាយកដ្ឋាន/សាខា": v_data.department,
+                    "ស្ថានភាព": v_data.status or 'Active',
+                    "ប្រភេទ VPN": v_data.vpn_type
+                }
+            )
+        except Exception as t_err:
+            print("Telegram notification error:", t_err)
+
         return {
             "status": "success",
             "id": new_id,
-            "db_update": "success",
-            "excel_sync": "skipped (new user)"
+            "db_update": "success"
         }
     except Exception as e:
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/vpn/{id}")
+@app.post("/api/vpn_users/{id}")
 def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -1324,22 +1353,21 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
             conn.close()
             raise HTTPException(status_code=404, detail="VPN user not found")
             
-        # Update SQLite
         cursor.execute("""
         UPDATE vpn_remote_users
         SET name = ?, position = ?, username = ?, password = ?, department = ?, company = ?, status = ?, purpose = ?, vpn_type = ?, other = ?
         WHERE id = ?
         """, (
-            v_data.name,
-            v_data.position,
-            v_data.username,
-            v_data.password,
-            v_data.department,
-            v_data.company,
-            v_data.status,
-            v_data.purpose,
-            v_data.vpn_type,
-            v_data.other,
+            v_data.name or '',
+            v_data.position or '',
+            v_data.username or '',
+            v_data.password or '',
+            v_data.department or '',
+            v_data.company or '',
+            v_data.status or 'Active',
+            v_data.purpose or '',
+            v_data.vpn_type or '',
+            v_data.other or '',
             id
         ))
         
@@ -1347,7 +1375,9 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from telegram import notify_data_change
+        try:
+            ed_user = request.headers.get("x-editor-username") or "System"
+            from telegram import notify_data_change
         editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         notify_data_change(

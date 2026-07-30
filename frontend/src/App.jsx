@@ -2316,20 +2316,40 @@ export default function App() {
           body: JSON.stringify(editingData)
         });
         if (res.ok) {
-          fetchVpnUsers();
-          fetchDashboardStats();
+          await fetchVpnUsers();
+          await fetchDashboardStats();
           setEditingModal(null);
+        } else {
+          const err = await res.json().catch(() => ({ detail: 'Error updating VPN user' }));
+          setModalError(err.detail || 'Error updating VPN user');
+          alert(`❌ មានបញ្ហាក្នុងការរក្សាទុក ៖ ${err.detail || 'Error updating VPN user'}`);
         }
       } else if (editingModal === 'vpn_user_add') {
         const res = await fetch(`${API_BASE}/vpn`, {
           method: 'POST',
           headers: jsonHeaders,
-          body: JSON.stringify(editingData)
+          body: JSON.stringify({
+            name: editingData.name,
+            position: editingData.position,
+            username: editingData.username,
+            password: editingData.password,
+            department: editingData.department,
+            company: editingData.company,
+            status: editingData.status || 'Active',
+            purpose: editingData.purpose,
+            vpn_type: editingData.vpn_type,
+            other: editingData.other
+          })
         });
         if (res.ok) {
-          fetchVpnUsers();
-          fetchDashboardStats();
+          await fetchVpnUsers();
+          await fetchDashboardStats();
           setEditingModal(null);
+          alert('✅ ចុះឈ្មោះអ្នកប្រើប្រាស់ VPN ជោគជ័យ!');
+        } else {
+          const err = await res.json().catch(() => ({ detail: 'Error adding VPN user' }));
+          setModalError(err.detail || 'Error adding VPN user');
+          alert(`❌ មានបញ្ហាក្នុងការចុះឈ្មោះ ៖ ${err.detail || 'Error adding VPN user'}`);
         }
       } else if (editingModal === 's2s_vpn') {
         const res = await fetch(`${API_BASE}/hospital_vpns/${editingData.id}`, {
