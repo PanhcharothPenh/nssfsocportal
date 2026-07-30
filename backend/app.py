@@ -2372,6 +2372,14 @@ def create_user(payload: UserCreatePayload):
         ))
         conn.commit()
         new_id = cursor.lastrowid
+        if not new_id:
+            try:
+                cursor.execute("SELECT MAX(id) FROM users")
+                r = cursor.fetchone()
+                if r:
+                    new_id = r['max'] if hasattr(r, 'keys') and 'max' in r else (r[0] if isinstance(r, (tuple, list)) else None)
+            except Exception:
+                pass
         conn.close()
         return {"status": "success", "id": new_id}
     except Exception as e:

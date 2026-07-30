@@ -42,10 +42,18 @@ class PostgresCursorWrapper:
     @property
     def lastrowid(self):
         try:
+            self.pg_cursor.execute("SAVEPOINT lastval_sp")
             self.pg_cursor.execute("SELECT lastval()")
-            return self.pg_cursor.fetchone()[0]
+            res = self.pg_cursor.fetchone()
+            self.pg_cursor.execute("RELEASE SAVEPOINT lastval_sp")
+            if res:
+                return res[0]
         except Exception:
-            return None
+            try:
+                self.pg_cursor.execute("ROLLBACK TO SAVEPOINT lastval_sp")
+            except Exception:
+                pass
+        return None
 
     def execute(self, sql, params=None):
         # Translate SQLite syntax to PostgreSQL
