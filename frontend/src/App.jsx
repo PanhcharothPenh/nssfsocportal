@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import nssfLogo from './assets/nssf_logo.png';
+import NssfFormGenerator from './components/NssfFormGenerator';
+import PdfFormAutoFillHub from './components/PdfFormAutoFillHub';
 
 const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
   ? 'http://127.0.0.1:8000/api'
@@ -229,6 +231,7 @@ export default function App() {
   const [ticketStatusFilter, setTicketStatusFilter] = useState('all');
   const [ticketSearchQuery, setTicketSearchQuery] = useState('');
   const [showNewTicketModal, setShowNewTicketModal] = useState(false);
+  const [showFormModal, setShowFormModal] = useState(false);
   const [ticketDetailModal, setTicketDetailModal] = useState({ open: false, ticket: null });
   const [ticketModalLoading, setTicketModalLoading] = useState(false);
   const [ticketApprovalComment, setTicketApprovalComment] = useState('');
@@ -5380,6 +5383,13 @@ export default function App() {
           <div style={{ display: 'flex', gap: '10px' }}>
             <button
               className="btn btn-secondary"
+              onClick={() => setShowFormModal(true)}
+              style={{ borderRadius: '10px', padding: '10px 16px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe' }}
+            >
+              📄 ទម្រង់ស្នើសុំ PDF (Form Generator)
+            </button>
+            <button
+              className="btn btn-secondary"
               onClick={handleExportTicketsReport}
               style={{ borderRadius: '10px', padding: '10px 16px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' }}
             >
@@ -5558,6 +5568,9 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
             </li>
           )}
+          <li className={`menu-item ${activeTab === 'pdf_hub' || activeTab === 'forms' ? 'active' : ''}`} onClick={() => handleMenuClick('pdf_hub')}>
+            <span className="menu-icon" style={{ fontSize: '15px' }}>📄</span> ទម្រង់ឯកសារស្នើសុំ PDF (PDF Form Hub)
+          </li>
           {hasPermission('tickets', 'read') && (
             <li className={`menu-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => handleMenuClick('tickets')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>🎫</span> ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
@@ -5638,6 +5651,7 @@ export default function App() {
               {activeTab === 'kanban' && 'ប្រព័ន្ធគ្រប់គ្រងកិច្ចការងារ Bitrix (Task Management & Kanban Board)'}
               {activeTab === 'workflow' && 'ប្រព័ន្ធបង្កើត និងកំណត់រចនាសម្ព័ន្ធ Workflow (Visual Workflow & Approval Builder)'}
               {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
+              {(activeTab === 'pdf_hub' || activeTab === 'forms') && 'ប្រព័ន្ធទម្រង់ PDF តាមប្រភេទ (Categorized PDF Form Hub)'}
               {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
               {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់ (Night Shift Standby Roster)'}
             </h1>
@@ -5657,6 +5671,7 @@ export default function App() {
               {activeTab === 'switches' && 'Management IP addresses and switch models deployed across NSSF branches'}
               {activeTab === 'storage' && 'Upload, view, and organize files in the shared Google Drive folder'}
               {activeTab === 'tickets' && 'បង្កើត ពិនិត្យតាមដាន និងអនុម័តសំណើការងារអេឡិចត្រូនិកតាមលំដាប់ថ្នាក់រដ្ឋបាល'}
+              {activeTab === 'forms' && 'ប្រព័ន្ធបង្កើត និងបោះពុម្ពទម្រង់ឯកសារស្នើសុំផ្លូវការ (Auto-Fill, ហត្ថលេខាឌីជីថល, ភ្ជាប់ឯកសារ និងទាញយក PDF)'}
               {activeTab === 'leave' && 'Generate formatted Khmer requests and post them automatically to the Telegram group'}
               {activeTab === 'shift' && 'Roster of active on-duty standby officers and daily notification alert dispatcher'}
             </p>
@@ -5689,6 +5704,14 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            <button
+              className="btn btn-secondary"
+              onClick={() => handleMenuClick('forms')}
+              style={{ borderRadius: '20px', padding: '6px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', cursor: 'pointer' }}
+            >
+              📄 ទម្រង់ឯកសារស្នើសុំផ្សេងៗ
+            </button>
 
             {/* Google Sheets Sync Status & Trigger */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -8132,6 +8155,14 @@ export default function App() {
         {/* Official Tickets Tab */}
         {activeTab === 'tickets' && renderTicketsTab()}
 
+        {/* Categorized PDF Form Auto-Fill Hub */}
+        {(activeTab === 'pdf_hub' || activeTab === 'forms') && (
+          <PdfFormAutoFillHub
+            currentUser={currentLoginUser}
+            usersList={usersList}
+          />
+        )}
+
         {/* Leave Requests Tab */}
         {activeTab === 'leave' && renderLeaveTab()}
 
@@ -10284,6 +10315,15 @@ export default function App() {
         </div>
       )}
 
+
+      {/* NSSF Form Request Generator Modal */}
+      {showFormModal && (
+        <NssfFormGenerator
+          currentUser={currentLoginUser}
+          onSubmitAsTicket={handleFormTicketSubmit}
+          onClose={() => setShowFormModal(false)}
+        />
+      )}
 
       {/* Create New Ticket Modal */}
       {showNewTicketModal && (
