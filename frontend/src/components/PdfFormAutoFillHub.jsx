@@ -17,7 +17,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
   const [activeCategory, setActiveCategory] = useState('system_change');
   const [selectedStaffId, setSelectedStaffId] = useState('');
 
-  // Universal Applicant State
+  // Section 1: Universal Applicant Info
   const [applicantName, setApplicantName] = useState(currentUser?.full_name || currentUser?.username || '');
   const [gender, setGender] = useState('ប្រុស');
   const [position, setPosition] = useState(currentUser?.position || 'មន្ត្រី');
@@ -26,26 +26,18 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
   const [phone, setPhone] = useState(currentUser?.phone || '012 345 678');
   const [email, setEmail] = useState(currentUser?.email || '');
 
-  // System Change Specific Fields
+  // Section 2: Details & Purpose
   const [details, setDetails] = useState('');
   const [changeTypes, setChangeTypes] = useState({ dataEdit: false, configuration: true, feature: false, other: false });
-  const [impactLevel, setImpactLevel] = useState('medium');
+  const [changeTypeOtherText, setChangeTypeOtherText] = useState('');
+  const [impactLevel, setImpactLevel] = useState('medium'); // low, medium, high, other
+  const [impactOtherText, setImpactOtherText] = useState('');
   const [reason, setReason] = useState('');
 
   // Leave Form Specific Fields (សុំច្បាប់)
-  const [leaveType, setLeaveType] = useState('ច្បាប់ឈប់សម្រាក'); // ច្បាប់ឈប់សម្រាក, ចេញក្រៅផ្លូវការ, ជំងឺ
+  const [leaveType, setLeaveType] = useState('ច្បាប់ឈប់សម្រាក'); 
   const [leaveDays, setLeaveDays] = useState('1');
-  const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
   const [leaveReason, setLeaveReason] = useState('មានធុរៈផ្ទាល់ខ្លួនប្រញាប់');
-
-  // Account / Access Form Fields
-  const [systemName, setSystemName] = useState('ប្រព័ន្ធគ្រប់គ្រងទិន្នន័យ ប.ស.ស. (NSSF Core)');
-  const [accountRole, setAccountRole] = useState('Operator / User');
-
-  // VPN Specific Fields
-  const [vpnTargetIp, setVpnTargetIp] = useState('10.10.x.x');
-  const [userIpAddress, setUserIpAddress] = useState('192.168.1.100');
 
   // Dates
   const now = new Date();
@@ -53,6 +45,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
   const [month, setMonth] = useState(KHMER_MONTHS[now.getMonth()]);
   const [year, setYear] = useState(toKhmerNum(now.getFullYear()));
   const [buddhistYear, setBuddhistYear] = useState(toKhmerNum(now.getFullYear() + 543));
+  const [lunarDate, setLunarDate] = useState('......................................');
 
   // Signature State
   const canvasRef = useRef(null);
@@ -70,9 +63,17 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
       setGender(currentUser.gender || 'ប្រុស');
       setPosition(currentUser.position || 'ប្រធានការិយាល័យ');
       setOffice(currentUser.office || 'ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន');
-      setDepartment(currentUser.department || 'នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន');
+      setDepartment(currentUser.department || 'នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន (IT Department)');
       setPhone(currentUser.phone || '012 888 999');
       setEmail(currentUser.email || 'soc.admin@nssf.gov.kh');
+    } else {
+      setApplicantName('ហ៊ាង ចាន់ថន');
+      setGender('ប្រុស');
+      setPosition('មន្ត្រីបច្ចេកវិទ្យាព័ត៌មាន');
+      setOffice('ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន');
+      setDepartment('នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន');
+      setPhone('012 999 888');
+      setEmail('heang.chanthorn@nssf.gov.kh');
     }
     if (!details) {
       setDetails('ស្នើសុំធ្វើការកែប្រែ និងកំណត់រចនាសម្ព័ន្ធ Firewalls / Route Policy និងការបើកសិទ្ធិចរាចរណ៍ IP Public សម្រាប់ប្រព័ន្ធ SOC Web Portal ។');
@@ -98,7 +99,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
     }
   };
 
-  // Canvas Drawing
+  // Canvas Drawing Logic
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -161,7 +162,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
     setAttachedFiles(prev => [...prev, ...fileObjects]);
   };
 
-  // Generate HTML for printing or PDF download
+  // Generate Exact PDF HTML matching NSSF_Form Request_Change_System_SOC.pdf
   const generateFormHTML = () => {
     if (activeCategory === 'system_change') {
       return `
@@ -169,96 +170,147 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
         <html lang="km">
         <head>
           <meta charset="UTF-8">
-          <title>ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ (NSSF System Change Request Form)</title>
-          <link href="https://fonts.googleapis.com/css2?family=Moul&family=Battambang:wght@400;700&display=swap" rel="stylesheet">
+          <title>ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC (NSSF System Change Request Form)</title>
+          <link rel="preconnect" href="https://fonts.googleapis.com">
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+          <link href="https://fonts.googleapis.com/css2?family=Moul&family=Battambang:wght@400;700&family=Kantumruy+Pro:wght@400;600;700&display=swap" rel="stylesheet">
           <style>
-            @page { size: A4 portrait; margin: 15mm; }
-            body { font-family: 'Battambang', sans-serif; font-size: 13.5px; line-height: 1.6; color: #000; background: #fff; margin: 0; }
+            @page { size: A4 portrait; margin: 12mm 15mm 12mm 15mm; }
+            * { box-sizing: border-box; }
+            body { font-family: 'Battambang', 'Kantumruy Pro', sans-serif; font-size: 13px; line-height: 1.55; color: #000; background: #fff; margin: 0; padding: 0; }
             .moul { font-family: 'Moul', serif; }
-            .header-table { width: 100%; margin-bottom: 8px; }
-            .logo { width: 75px; }
-            .form-title { text-align: center; font-family: 'Moul', serif; font-size: 18px; margin: 18px 0; }
-            .dotted { border-bottom: 1px dotted #333; display: inline-block; padding: 0 4px; }
-            .section-header { font-weight: bold; font-size: 14.5px; margin-top: 14px; margin-bottom: 6px; }
-            .box { display: inline-block; width: 14px; height: 14px; border: 1px solid #000; text-align: center; line-height: 12px; font-weight: bold; }
-            .disclaimer { font-size: 12px; font-style: italic; margin-top: 10px; }
-            .table-approvals { width: 100%; border-collapse: collapse; margin-top: 15px; }
-            .table-approvals th, .table-approvals td { border: 1px solid #000; padding: 8px; text-align: center; font-size: 12px; }
-            .table-approvals td { height: 90px; }
+            .header-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
+            .logo { width: 72px; height: auto; }
+            .country-title { font-size: 14.5px; font-family: 'Moul', serif; margin-bottom: 2px; text-align: center; }
+            .motto { font-size: 12.5px; font-family: 'Moul', serif; text-align: center; }
+            .divider { text-align: center; letter-spacing: 3px; font-size: 9px; margin-top: 2px; }
+            .form-title { text-align: center; font-family: 'Moul', serif; font-size: 17.5px; margin: 14px 0 12px 0; }
+            .section-header { font-weight: bold; font-size: 14px; margin-top: 10px; margin-bottom: 5px; }
+            .dotted { border-bottom: 1px dotted #222; display: inline-block; padding: 0 4px; min-height: 16px; }
+            .box { display: inline-block; width: 13px; height: 13px; border: 1.2px solid #000; text-align: center; line-height: 11px; font-size: 10px; font-weight: bold; margin-right: 2px; }
+            .disclaimer { font-size: 11.5px; font-style: italic; margin-top: 10px; margin-bottom: 6px; text-align: justify; line-height: 1.5; }
+            .table-approvals { width: 100%; border-collapse: collapse; margin-top: 10px; clear: both; }
+            .table-approvals th, .table-approvals td { border: 1px solid #000; padding: 6px 3px; text-align: center; font-size: 11.5px; vertical-align: top; }
+            .table-approvals th { font-weight: bold; background-color: #f8fafc; height: 42px; }
+            .table-approvals td { height: 95px; }
           </style>
         </head>
         <body>
+          <!-- Header -->
           <table class="header-table">
             <tr>
-              <td style="width: 45%;">
-                <img src="/nssf_logo.png" class="logo" onerror="this.src='/Nssf_Resize_Logo.png';" /><br/>
-                <b>បេឡាជាតិសន្តិសុខសង្គម</b><br/>
-                <b>នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</b><br/>
-                ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន
+              <td style="width: 48%; vertical-align: top;">
+                <img src="/nssf_logo.png" class="logo" alt="NSSF Logo" onerror="this.onerror=null; this.src='/Nssf_Resize_Logo.png';" /><br/>
+                <div style="font-size: 12.5px; font-weight: bold; line-height: 1.45; margin-top: 2px;">
+                  បេឡាជាតិសន្តិសុខសង្គម<br/>
+                  នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន<br/>
+                  <span style="font-weight: normal;">ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</span>
+                </div>
               </td>
-              <td style="width: 55%; text-align: center; vertical-align: top;">
-                <div class="moul" style="font-size: 15px;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                <div class="moul" style="font-size: 13px;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-                <div>─── ❖ ───</div>
+              <td style="width: 52%; text-align: center; vertical-align: top;">
+                <div class="country-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                <div class="divider">─── ❖ ───</div>
               </td>
             </tr>
           </table>
 
           <div class="form-title">ទម្រង់ស្នើសុំ</div>
 
+          <!-- Section 1 -->
           <div class="section-header">១. ព័ត៌មានអ្នកស្នើសុំ ៖</div>
-          <div>គោត្តនាម និងនាម ៖ <span class="dotted" style="width: 200px; font-weight: bold;">${applicantName}</span> &nbsp;&nbsp;ភេទ ៖ <span class="dotted" style="width: 60px;">${gender}</span> &nbsp;&nbsp;មុខតំណែង ៖ <span class="dotted" style="width: 180px;">${position}</span></div>
-          <div style="margin-top: 6px;">ការិយាល័យ ៖ <span class="dotted" style="width: 220px;">${office}</span> &nbsp;&nbsp;នាយកដ្ឋាន/អង្គភាព/សាខា ៖ <span class="dotted" style="width: 220px;">${department}</span></div>
-          <div style="margin-top: 6px;">លេខទូរស័ព្ទ ៖ <span class="dotted" style="width: 200px;">${phone}</span> &nbsp;&nbsp;អ៊ីមែល ៖ <span class="dotted" style="width: 250px;">${email}</span></div>
+          <div style="margin-bottom: 5px;">
+            គោត្តនាម និងនាម ៖ <span class="dotted" style="width: 210px; font-weight: bold;">${applicantName || ''}</span>
+            &nbsp;&nbsp;ភេទ ៖ <span class="dotted" style="width: 55px; text-align: center;">${gender || ''}</span>
+            &nbsp;&nbsp;មុខតំណែង ៖ <span class="dotted" style="width: 210px;">${position || ''}</span>
+          </div>
+          <div style="margin-bottom: 5px;">
+            ការិយាល័យ ៖ <span class="dotted" style="width: 230px;">${office || ''}</span>
+            &nbsp;&nbsp;នាយកដ្ឋាន/អង្គភាព/សាខា ៖ <span class="dotted" style="width: 250px;">${department || ''}</span>
+          </div>
+          <div style="margin-bottom: 5px;">
+            លេខទូរស័ព្ទទំនាក់ទំនង ៖ <span class="dotted" style="width: 200px;">${phone || ''}</span>
+            &nbsp;&nbsp;អ៊ីមែល ៖ <span class="dotted" style="width: 280px;">${email || ''}</span>
+          </div>
 
+          <!-- Section 2 -->
           <div class="section-header">២. ព័ត៌មានលម្អិត និងគោលបំណង ៖</div>
-          <div style="min-height: 40px; margin-bottom: 8px;">${details || '...........................................................................................................................................................'}</div>
+          <div style="min-height: 48px; line-height: 1.8;">
+            ${(details || '').split('\n').map(line => `<div>${line}</div>`).join('')}
+            ${!details ? '<div>...........................................................................................................................................................</div><div>...........................................................................................................................................................</div>' : ''}
+          </div>
 
-          <div style="margin: 8px 0;">
+          <div style="margin: 6px 0;">
             ប្រភេទការកែប្រែ ៖ 
-            <span class="box">${changeTypes.dataEdit ? '✓' : ''}</span> កែទិន្នន័យ &nbsp;&nbsp;
-            <span class="box">${changeTypes.configuration ? '✓' : ''}</span> កែប្រព័ន្ធ (Configuration) &nbsp;&nbsp;
-            <span class="box">${changeTypes.feature ? '✓' : ''}</span> បន្ថែមមុខងារ &nbsp;&nbsp;
-            <span class="box">${changeTypes.other ? '✓' : ''}</span> ផ្សេងៗ
+            &nbsp;<span class="box">${changeTypes.dataEdit ? '✓' : ''}</span> កែទិន្នន័យ
+            &nbsp;&nbsp;<span class="box">${changeTypes.configuration ? '✓' : ''}</span> កែប្រព័ន្ធ (Configuration)
+            &nbsp;&nbsp;<span class="box">${changeTypes.feature ? '✓' : ''}</span> បន្ថែមមុខងារ (Feature)
+            &nbsp;&nbsp;<span class="box">${changeTypes.other ? '✓' : ''}</span> ផ្សេងៗ${changeTypeOtherText ? ` (${changeTypeOtherText})` : ''}
           </div>
 
-          <div style="margin: 8px 0;">
+          <div style="margin: 6px 0;">
             កម្រិតនៃផលប៉ះពាល់ ៖ 
-            <span class="box">${impactLevel === 'low' ? '✓' : ''}</span> ទាប &nbsp;&nbsp;
-            <span class="box">${impactLevel === 'medium' ? '✓' : ''}</span> មធ្យម &nbsp;&nbsp;
-            <span class="box">${impactLevel === 'high' ? '✓' : ''}</span> ខ្ពស់
+            &nbsp;<span class="box">${impactLevel === 'low' ? '✓' : ''}</span> ទាប
+            &nbsp;&nbsp;<span class="box">${impactLevel === 'medium' ? '✓' : ''}</span> មធ្យម
+            &nbsp;&nbsp;<span class="box">${impactLevel === 'high' ? '✓' : ''}</span> ខ្ពស់
+            &nbsp;&nbsp;<span class="box">${impactLevel === 'other' ? '✓' : ''}</span> ផ្សេងៗ${impactOtherText ? ` (${impactOtherText})` : ''}
           </div>
 
-          <div style="margin-top: 8px;">មូលហេតុនៃការស្នើសុំ ៖ <span class="dotted" style="width: 80%;">${reason}</span></div>
+          <div style="margin-top: 6px;">
+            មូលហេតុនៃការស្នើសុំ ៖ <span class="dotted" style="width: 80%;">${reason || '............................................................................................................................................'}</span>
+          </div>
 
           <div class="disclaimer">
-            <b>ចំណាំ ៖</b> ខ្ញុំបាទ/នាងខ្ញុំ សូមធានាថា រាល់ការកែប្រែព័ត៌មានដែលបានស្នើសុំខាងលើ គឺស្របតាមលំហូរនៃប្រព័ន្ធ (System Flow) និងផ្អែកលើខ្លឹមសារនៃការស្នើសុំជាផ្លូវការ។ ខ្ញុំបាទ/នាងខ្ញុំ ជាអ្នកស្នើសុំ សុខចិត្តទទួលខុសត្រូវចំពោះមុខច្បាប់ជាធរមាន។
+            <b>ចំណាំ ៖</b><br/>
+            ខ្ញុំបាទ/នាងខ្ញុំសូមធានាថា រាល់ការកែប្រែព័ត៌មានដែលបានស្នើសុំខាងលើ គឺស្របតាមលំហូរនៃប្រព័ន្ធ (System Flow) និងផ្អែកលើខ្លឹមសារនៃការស្នើសុំជាផ្លូវការ។ ខ្ញុំបាទ/នាងខ្ញុំ សូមសន្យាថាក្នុងករណីមានការប្រែប្រួលខុសពីការស្នើសុំដើម ឬមានផលប៉ះពាល់ដល់លំហូរការងាររបស់ប្រព័ន្ធ ដែលបណ្តាលមកពីការស្នើសុំមិនច្បាស់លាស់ ខ្ញុំបាទ/នាងខ្ញុំ ជាអ្នកស្នើសុំ សុខចិត្តទទួលខុសត្រូវចំពោះមុខច្បាប់ជាធរមាន។
           </div>
 
-          <div style="float: right; text-align: center; margin-top: 15px; width: 280px;">
-            <div>ថ្ងៃទី ${day} ខែ ${month} ឆ្នាំ២០២${year.length > 3 ? year.substring(3) : year}</div>
+          <!-- Signature Block -->
+          <div style="float: right; text-align: center; margin-top: 4px; width: 310px;">
+            <div>ថ្ងៃ ${lunarDate || '.................................'} ខែ ............... ឆ្នាំ .................... ព.ស. ២៥៦${buddhistYear || '.....'}</div>
+            <div>ថ្ងៃទី <span style="font-weight: bold;">${day}</span> ខែ <span style="font-weight: bold;">${month}</span> ឆ្នាំ២០២<span style="font-weight: bold;">${year.length > 3 ? year.substring(3) : year}</span></div>
             <div style="margin-top: 4px; font-weight: bold;">ហត្ថលេខាសាម៉ីខ្លួន</div>
-            <div style="height: 60px; margin-top: 4px;">
-              ${signatureImage ? `<img src="${signatureImage}" style="max-height: 55px;" />` : `<b>${applicantName}</b>`}
+            <div style="height: 60px; display: flex; align-items: center; justify-content: center; margin-top: 4px;">
+              ${signatureImage ? `<img src="${signatureImage}" style="max-height: 55px; max-width: 170px;" />` : `<div style="font-weight: bold; color: #1e3a8a;">${applicantName}</div>`}
             </div>
           </div>
 
-          <div class="section-header" style="clear: both; padding-top: 10px;">៣. យោបល់របស់ថ្នាក់ដឹកនាំមានសមត្ថកិច្ច ៖</div>
+          <!-- Section 3 -->
+          <div class="section-header" style="clear: both; padding-top: 4px;">៣. យោបល់របស់ថ្នាក់ដឹកនាំមានសមត្ថកិច្ច ៖</div>
           <table class="table-approvals">
-            <tr>
-              <th>ប្រធាននាយកដ្ឋាន</th>
-              <th>អនុ.នាយកដ្ឋានទទួលបន្ទុក</th>
-              <th>ប្រធានការិយាល័យ ស.ប.ត</th>
-              <th>អនុ.ប្រធាននាយកដ្ឋានទទួលបន្ទុក</th>
-              <th>ប្រធានការិយាល័យសាម៉ី</th>
-            </tr>
-            <tr><td></td><td></td><td></td><td></td><td></td></tr>
+            <thead>
+              <tr>
+                <th style="width: 20%;">ព្រធាននាយកដ្ឋាន</th>
+                <th style="width: 20%;">អនុ.នាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
+                <th style="width: 20%;">ព្រធានការិយាល័យ<br/>ស.ប.ត</th>
+                <th style="width: 20%;">អនុ.ព្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
+                <th style="width: 20%;">ព្រធានការិយាល័យ<br/>សាម៉ី</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+                <td></td>
+              </tr>
+            </tbody>
           </table>
+
+          ${attachedFiles.length > 0 ? `
+            <div style="margin-top: 10px; font-size: 11.5px; border-top: 1px dashed #666; padding-top: 6px;">
+              <b>📎 ឯកសារភ្ជាប់បន្ថែម (${attachedFiles.length}) ៖</b>
+              <ul>
+                ${attachedFiles.map(f => `<li>${f.name} (${f.size})</li>`).join('')}
+              </ul>
+            </div>
+          ` : ''}
         </body>
         </html>
       `;
     } else {
-      // Form: Leave / Other Request Forms
+      // General Forms HTML Template
       return `
         <!DOCTYPE html>
         <html lang="km">
@@ -271,7 +323,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             body { font-family: 'Battambang', sans-serif; font-size: 13.5px; line-height: 1.6; color: #000; background: #fff; margin: 0; }
             .moul { font-family: 'Moul', serif; }
             .header-table { width: 100%; margin-bottom: 12px; }
-            .logo { width: 75px; }
+            .logo { width: 72px; }
             .form-title { text-align: center; font-family: 'Moul', serif; font-size: 18px; margin: 20px 0; }
             .dotted { border-bottom: 1px dotted #333; display: inline-block; padding: 0 4px; }
           </style>
@@ -279,14 +331,14 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
         <body>
           <table class="header-table">
             <tr>
-              <td style="width: 45%;">
-                <img src="/nssf_logo.png" class="logo" onerror="this.src='/Nssf_Resize_Logo.png';" /><br/>
+              <td style="width: 48%;">
+                <img src="/nssf_logo.png" class="logo" onerror="this.onerror=null; this.src='/Nssf_Resize_Logo.png';" /><br/>
                 <b>បេឡាជាតិសន្តិសុខសង្គម (NSSF)</b><br/>
                 <b>${department}</b>
               </td>
-              <td style="width: 55%; text-align: center; vertical-align: top;">
-                <div class="moul" style="font-size: 15px;">ព្រះរាជាណាចក្រកម្ពុជា</div>
-                <div class="moul" style="font-size: 13px;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+              <td style="width: 52%; text-align: center; vertical-align: top;">
+                <div class="moul" style="font-size: 14.5px;">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="moul" style="font-size: 12.5px;">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
                 <div>─── ❖ ───</div>
               </td>
             </tr>
@@ -334,10 +386,10 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
       <div style={{ marginBottom: '20px', borderBottom: '2px solid #e2e8f0', paddingBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <h2 style={{ margin: 0, fontSize: '22px', fontWeight: '800', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <span>📄</span> ប្រព័ន្ធទម្រង់ PDF តាមប្រភេទ (Categorized PDF Form Hub)
+            <span>📄</span> ទម្រង់ឯកសារស្នើសុំ PDF (PDF Form Hub)
           </h2>
           <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-            ជ្រើសរើសប្រភេទឯកសារស្នើសុំ, Auto-Fill ទិន្នន័យ, ចុះហត្ថលេខាឌីជីថល និង បោះពុម្ព PDF ជាផ្លូវការ
+            រក្សាទម្រង់ដើម ១០០% នៃឯកសារ NSSF_Form Request_Change_System_SOC.pdf (Auto-Fill, ហត្ថលេខាឌីជីថល និងបោះពុម្ព A4)
           </div>
         </div>
 
@@ -357,7 +409,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             onClick={handlePrintPDF}
             style={{ borderRadius: '10px', padding: '8px 20px', fontWeight: '800', fontSize: '13px', backgroundColor: '#10b981', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            🖨️ បោះពុម្ព / នាំចេញ PDF
+            🖨️ បោះពុម្ព / នាំចេញ PDF (រក្សាទម្រង់ដើម)
           </button>
         </div>
       </div>
@@ -370,7 +422,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           onClick={() => setActiveCategory('system_change')}
           style={{ borderRadius: '10px', padding: '10px 18px', fontWeight: '800', fontSize: '13px', backgroundColor: activeCategory === 'system_change' ? '#2563eb' : '#f8fafc' }}
         >
-          🔴 ១. ស្នើសុំកែប្រែប្រព័ន្ធ SOC (NSSF PDF Form)
+          🔴 ១. ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC (NSSF Form ដើម)
         </button>
         <button
           type="button"
@@ -437,7 +489,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', marginBottom: '12px' }}>
           <div>
             <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>ការិយាល័យ</label>
             <input type="text" className="form-input" value={office} onChange={(e) => setOffice(e.target.value)} style={{ padding: '9px', fontSize: '13px' }} />
@@ -447,12 +499,23 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             <input type="text" className="form-input" value={department} onChange={(e) => setDepartment(e.target.value)} style={{ padding: '9px', fontSize: '13px' }} />
           </div>
         </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
+          <div>
+            <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>លេខទូរស័ព្ទទំនាក់ទំនង</label>
+            <input type="text" className="form-input" value={phone} onChange={(e) => setPhone(e.target.value)} style={{ padding: '9px', fontSize: '13px' }} />
+          </div>
+          <div>
+            <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>អ៊ីមែល</label>
+            <input type="email" className="form-input" value={email} onChange={(e) => setEmail(e.target.value)} style={{ padding: '9px', fontSize: '13px' }} />
+          </div>
+        </div>
       </div>
 
       {/* Dynamic Form Content by Category */}
       {activeCategory === 'system_change' && (
         <div style={{ backgroundColor: '#fff', padding: '18px', borderRadius: '12px', border: '1px solid #cbd5e1', marginBottom: '20px' }}>
-          <h4 style={{ margin: '0 0 14px 0', color: '#1e3a8a', fontSize: '15px' }}>២. ព័ត៌មានលម្អិត និងគោលបំណងកែប្រែប្រព័ន្ធ (NSSF_Form Request_Change_System_SOC.pdf)</h4>
+          <h4 style={{ margin: '0 0 14px 0', color: '#1e3a8a', fontSize: '15px' }}>២. ព័ត៌មានលម្អិត និងគោលបំណង (NSSF_Form Request_Change_System_SOC.pdf)</h4>
           <div style={{ marginBottom: '14px' }}>
             <label className="form-label" style={{ fontWeight: '700', fontSize: '12px' }}>ព័ត៌មានលម្អិតនៃសំណើ</label>
             <textarea className="form-input" rows={3} value={details} onChange={(e) => setDetails(e.target.value)} style={{ padding: '10px', fontSize: '13px', width: '100%' }} />
@@ -460,7 +523,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
 
           <div style={{ marginBottom: '14px' }}>
             <label className="form-label" style={{ fontWeight: '700', fontSize: '12px', marginBottom: '6px', display: 'block' }}>ប្រភេទការកែប្រែ ៖</label>
-            <div style={{ display: 'flex', gap: '20px' }}>
+            <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
               <label style={{ cursor: 'pointer', fontSize: '13px' }}>
                 <input type="checkbox" checked={changeTypes.dataEdit} onChange={(e) => setChangeTypes({ ...changeTypes, dataEdit: e.target.checked })} /> កែទិន្នន័យ
               </label>
@@ -469,6 +532,27 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
               </label>
               <label style={{ cursor: 'pointer', fontSize: '13px' }}>
                 <input type="checkbox" checked={changeTypes.feature} onChange={(e) => setChangeTypes({ ...changeTypes, feature: e.target.checked })} /> បន្ថែមមុខងារ (Feature)
+              </label>
+              <label style={{ cursor: 'pointer', fontSize: '13px' }}>
+                <input type="checkbox" checked={changeTypes.other} onChange={(e) => setChangeTypes({ ...changeTypes, other: e.target.checked })} /> ផ្សេងៗ
+              </label>
+            </div>
+            {changeTypes.other && (
+              <input type="text" className="form-input" placeholder="បញ្ជាក់ផ្សេងៗ..." value={changeTypeOtherText} onChange={(e) => setChangeTypeOtherText(e.target.value)} style={{ marginTop: '6px', padding: '6px', fontSize: '12px', width: '200px' }} />
+            )}
+          </div>
+
+          <div style={{ marginBottom: '14px' }}>
+            <label className="form-label" style={{ fontWeight: '700', fontSize: '12px', marginBottom: '6px', display: 'block' }}>កម្រិតនៃផលប៉ះពាល់ ៖</label>
+            <div style={{ display: 'flex', gap: '20px' }}>
+              <label style={{ cursor: 'pointer', fontSize: '13px' }}>
+                <input type="radio" name="imp" value="low" checked={impactLevel === 'low'} onChange={() => setImpactLevel('low')} /> 🟢 ទាប
+              </label>
+              <label style={{ cursor: 'pointer', fontSize: '13px' }}>
+                <input type="radio" name="imp" value="medium" checked={impactLevel === 'medium'} onChange={() => setImpactLevel('medium')} /> 🟡 មធ្យម
+              </label>
+              <label style={{ cursor: 'pointer', fontSize: '13px' }}>
+                <input type="radio" name="imp" value="high" checked={impactLevel === 'high'} onChange={() => setImpactLevel('high')} /> 🔴 ខ្ពស់
               </label>
             </div>
           </div>
@@ -545,7 +629,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
       {/* Action Bar */}
       <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
         <button type="button" className="btn btn-primary" onClick={handlePrintPDF} style={{ borderRadius: '10px', padding: '10px 24px', fontWeight: '800', backgroundColor: '#10b981', borderColor: '#10b981' }}>
-          🖨️ បោះពុម្ព / នាំចេញ PDF ជាផ្លូវការ
+          🖨️ បោះពុម្ព / នាំចេញ PDF (ទម្រង់ដើម ១០០%)
         </button>
       </div>
 
