@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import nssfLogo from './assets/nssf_logo.png';
 import NssfFormGenerator from './components/NssfFormGenerator';
 import PdfFormAutoFillHub from './components/PdfFormAutoFillHub';
+import DirectPdfAutoFiller from './components/DirectPdfAutoFiller';
 
 const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
   ? 'http://127.0.0.1:8000/api'
@@ -8155,9 +8156,9 @@ export default function App() {
         {/* Official Tickets Tab */}
         {activeTab === 'tickets' && renderTicketsTab()}
 
-        {/* Categorized PDF Form Auto-Fill Hub */}
+        {/* Direct Original PDF Auto-Fill Hub */}
         {(activeTab === 'pdf_hub' || activeTab === 'forms') && (
-          <PdfFormAutoFillHub
+          <DirectPdfAutoFiller
             currentUser={currentLoginUser}
             usersList={usersList}
           />
