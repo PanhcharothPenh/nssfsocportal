@@ -1807,7 +1807,10 @@ export default function App() {
     const userVal = perms[moduleName];
     
     // Respect explicit permissions override if defined
-    if (userVal && userVal !== 'none') {
+    if (userVal === 'none') {
+      return false;
+    }
+    if (userVal) {
       if (level === 'read') {
         return userVal === 'read' || userVal === 'readwrite';
       }
@@ -1818,15 +1821,11 @@ export default function App() {
     
     // Default role permissions fallback
     const role = (currentLoginUser.role || '').toLowerCase();
-    if (role === 'staff' || !role || moduleName === 'tickets') {
-      return true;
-      return true; // Staff has readwrite by default
-    }
-    if (role === 'viewer') {
-      return level === 'read'; // Viewer has read-only by default
+    if (moduleName === 'user_management') {
+      return role === 'admin';
     }
     
-    return false;
+    return true;
   };
 
   useEffect(() => {
