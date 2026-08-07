@@ -56,6 +56,96 @@ def send_telegram_message(message: str, chat_id: str = None, reply_markup: dict 
     except Exception as e:
         return False, f"Connection failed: {str(e)}"
 
+def send_telegram_chat_action(chat_id: str, action: str = "typing"):
+    """Sends a chat action (like 'typing') to Telegram so chat status shows 'typing...'"""
+    bot_token = None
+    try:
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
+        row = cursor.fetchone()
+        if row and row['value']:
+            bot_token = row['value']
+        conn.close()
+    except Exception:
+        pass
+    if not bot_token:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not bot_token or not chat_id:
+        return False
+    try:
+        url = f"https://api.telegram.org/bot{bot_token}/sendChatAction"
+        requests.post(url, json={"chat_id": chat_id, "action": action}, timeout=3)
+        return True
+    except Exception:
+        return False
+
+def send_telegram_message_raw(message: str, chat_id: str = None, reply_markup: dict = None):
+    """Sends message to Telegram and returns (success, result_dict containing message_id)"""
+    bot_token = None
+    try:
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
+        row = cursor.fetchone()
+        if row and row['value']:
+            bot_token = row['value']
+        if not chat_id:
+            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
+            row = cursor.fetchone()
+            if row and row['value']:
+                chat_id = row['value']
+        conn.close()
+    except Exception:
+        pass
+    if not bot_token:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not chat_id:
+        chat_id = os.getenv("TELEGRAM_CHAT_ID")
+    if not bot_token or not chat_id:
+        return False, {}
+    url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
+    payload = {'chat_id': chat_id, 'text': message, 'parse_mode': 'HTML'}
+    if reply_markup:
+        payload['reply_markup'] = reply_markup
+    try:
+        res = requests.post(url, json=payload, timeout=10)
+        if res.status_code == 200:
+            return True, res.json().get("result", {})
+        return False, {}
+    except Exception:
+        return False, {}
+
+def edit_telegram_message(chat_id: str, message_id: int, message: str, reply_markup: dict = None):
+    """Edits an existing Telegram message in place"""
+    bot_token = None
+    try:
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
+        row = cursor.fetchone()
+        if row and row['value']:
+            bot_token = row['value']
+        conn.close()
+    except Exception:
+        pass
+    if not bot_token:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not bot_token or not chat_id or not message_id:
+        return False
+    url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
+    payload = {'chat_id': chat_id, 'message_id': message_id, 'text': message, 'parse_mode': 'HTML'}
+    if reply_markup:
+        payload['reply_markup'] = reply_markup
+    try:
+        res = requests.post(url, json=payload, timeout=10)
+        return res.status_code == 200
+    except Exception:
+        return False
+
 def notify_data_change(action_title: str, details: dict, editor_username: str = None, client_ip: str = None):
     """
     Sends a beautifully formatted Audit Notification to the configured Telegram Chat / Channel
@@ -1107,10 +1197,27 @@ def process_telegram_incoming_update(update: dict):
             f"✨ <b>Google Gemini AI Assistant ៖</b>\n\n"
             f"លោកអ្នកអាចសួរសំណួរទូទៅ ឬសួរទិន្នន័យបណ្តាញ NSSF SOC Portal បានគ្រប់ពេលវេលា!"
         )
+        send_telegram_message(reply_msg, chat_id=chat_id, reply_markup=main_menu_kb)
     else:
+        # 1. Send 'typing' chat action to Telegram header
+        send_telegram_chat_action(chat_id, "typing")
+        
+        # 2. Send immediate waiting/thinking message
+        waiting_text = "⏳ <b>កំពុងគិត... សូមរង់ចាំមួយភ្លែត</b>\n<i>(Gemini AI is generating response...)</i>"
+        success, sent_info = send_telegram_message_raw(waiting_text, chat_id=chat_id)
+        waiting_msg_id = sent_info.get("message_id") if success and isinstance(sent_info, dict) else None
+        
+        # 3. Call Gemini AI to get response
         reply_msg = ask_gemini_ai(text, username=username)
-
-    send_telegram_message(reply_msg, chat_id=chat_id, reply_markup=main_menu_kb)
+        
+        # 4. Edit the waiting message with final AI answer (or send new if edit fails)
+        if waiting_msg_id:
+            edited = edit_telegram_message(chat_id=chat_id, message_id=waiting_msg_id, message=reply_msg, reply_markup=main_menu_kb)
+            if not edited:
+                send_telegram_message(reply_msg, chat_id=chat_id, reply_markup=main_menu_kb)
+        else:
+            send_telegram_message(reply_msg, chat_id=chat_id, reply_markup=main_menu_kb)
+        return
 
 
 def send_ticket_telegram_alert(ticket: dict, level: int = 1):
