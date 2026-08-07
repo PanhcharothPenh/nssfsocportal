@@ -1387,7 +1387,9 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
                     send_telegram_message(msg, chat_id=app_chat, reply_markup=reply_markup)
 
             # 2. Send to main Telegram Group Channel ONLY if default_chat is a group channel (starts with - or -100) OR if no approver chat ID was found
-            default_chat = os.getenv("TELEGRAM_CHAT_ID")
+            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
+            row_gc = cursor.fetchone()
+            default_chat = row_gc["value"] if row_gc else os.getenv("TELEGRAM_CHAT_ID")
             if default_chat and str(default_chat).strip():
                 group_id = str(default_chat).strip()
                 is_group = group_id.startswith("-")
@@ -1538,6 +1540,22 @@ def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
         
     for cid in target_chats:
         send_telegram_message(msg, chat_id=cid)
+
+    # Also send to Group Chat so the team sees assignment/approval updates
+    try:
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
+        row_gc = cursor.fetchone()
+        group_chat_id = row_gc["value"] if row_gc else os.getenv("TELEGRAM_CHAT_ID")
+        conn.close()
+        if group_chat_id:
+            group_chat_id = str(group_chat_id).strip()
+            if group_chat_id.startswith("-") and group_chat_id not in target_chats:
+                send_telegram_message(msg, chat_id=group_chat_id)
+    except Exception as ex_gc:
+        print("Error sending assignee alert to Group Chat:", ex_gc)
 
 
 

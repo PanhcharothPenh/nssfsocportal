@@ -188,6 +188,7 @@ def check_ticket_due_alerts():
                             f"សូមពិនិត្យ និងចាត់ចែងបញ្ចប់ការងារឲ្យបានទាន់ពេលវេលា! 🙏"
                         )
                         
+                        # Send to target users (Personal DMs)
                         for cid in target_chat_ids:
                             try:
                                 res = requests.post(
@@ -201,6 +202,24 @@ def check_ticket_due_alerts():
                                     errors.append(f"Telegram error for {cid}: {res.text}")
                             except Exception as ex_send:
                                 errors.append(f"Send exception for {cid}: {str(ex_send)}")
+
+                        # Also send to Group Chat (so the whole team sees the due date reminder)
+                        try:
+                            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
+                            row_gc = cursor.fetchone()
+                            group_chat_id = row_gc["value"] if row_gc else os.getenv("TELEGRAM_CHAT_ID")
+                            if group_chat_id:
+                                group_chat_id = str(group_chat_id).strip()
+                                if group_chat_id.startswith("-") and group_chat_id not in target_chat_ids:
+                                    res = requests.post(
+                                        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                                        json={"chat_id": group_chat_id, "text": alert_text, "parse_mode": "HTML"},
+                                        timeout=5
+                                    )
+                                    if not res.ok:
+                                        errors.append(f"Telegram Group Chat error for {group_chat_id}: {res.text}")
+                        except Exception as ex_gc:
+                            errors.append(f"Send exception for Group Chat: {str(ex_gc)}")
             except Exception as ex_tkt:
                 print(f"Error checking due date for ticket {ticket['ticket_code']}: {ex_tkt}")
                 
