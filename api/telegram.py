@@ -1397,6 +1397,13 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
                             if r['telegram_chat_id']:
                                 approver_chat_ids.add(str(r['telegram_chat_id']).strip())
 
+            # 2. Fetch main Telegram Group Channel setting BEFORE closing database connection
+            row_gc = None
+            try:
+                cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
+                row_gc = cursor.fetchone()
+            except Exception:
+                pass
             conn.close()
 
             # 1. Direct 1-on-1 Telegram notification to designated approver chat IDs
@@ -1407,8 +1414,6 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
                     send_telegram_message(msg, chat_id=app_chat, reply_markup=reply_markup)
 
             # 2. Send to main Telegram Group Channel ONLY if default_chat is a group channel (starts with - or -100) OR if no approver chat ID was found
-            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
-            row_gc = cursor.fetchone()
             default_chat = row_gc["value"] if row_gc else os.getenv("TELEGRAM_CHAT_ID")
             if default_chat and str(default_chat).strip():
                 group_id = str(default_chat).strip()
