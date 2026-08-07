@@ -3370,7 +3370,7 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
         except Exception as ex:
             print("Telegram Ticket Approval Notify Exception:", ex)
 
-    async_tg_approve()
+    threading.Thread(target=async_tg_approve, daemon=True).start()
         
     return {"status": "success", "ticket_id": ticket_id, "new_status": new_status}
 
