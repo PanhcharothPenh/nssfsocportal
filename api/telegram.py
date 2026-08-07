@@ -301,11 +301,18 @@ def notify_data_change(action_title: str, details: dict, editor_username: str = 
     t.start()
 
 
+_portal_context_cache = {"timestamp": 0, "data": ""}
+
 def get_full_web_portal_context() -> str:
     """
     Fetches real-time live data from the web portal DB (branches, HQ subnets, 
-    hospital VPNs, occupied IP allocations) to give Gemini AI complete context of the website.
+    hospital VPNs, occupied IP allocations) with 60s TTL in-memory caching for ultra-fast responses.
     """
+    global _portal_context_cache
+    now = time.time()
+    if now - _portal_context_cache["timestamp"] < 60 and _portal_context_cache["data"]:
+        return _portal_context_cache["data"]
+
     try:
         from database import get_db_connection
         conn = get_db_connection()
@@ -360,10 +367,11 @@ def get_full_web_portal_context() -> str:
             f"4. OCCUPIED IP ALLOCATIONS (Sample):\n" + "\n".join([f"   • {ip}" for ip in ip_allocations[:20]]) + "\n"
             f"--- END LIVE WEBSITE DATA ---"
         )
+        _portal_context_cache = {"timestamp": now, "data": context_str}
         return context_str
     except Exception as e:
         print(f"Error reading web portal context: {e}")
-        return ""
+        return _portal_context_cache.get("data", "")
 
 
 def ask_gemini_ai(user_query: str, username: str = None) -> str:
@@ -385,15 +393,6 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
             k = str(row['value']).strip()
             if k.startswith("AIzaSy"):
                 gemini_key = k
-            
-        cursor.execute("SELECT COUNT(*) as cnt FROM branches")
-        branch_cnt = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COUNT(*) as cnt FROM hq_departments")
-        hq_cnt = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COUNT(*) as cnt FROM hospital_vpns")
-        hospital_cnt = cursor.fetchone()['cnt']
-        cursor.execute("SELECT COUNT(*) as cnt FROM hospital_vpns WHERE (reopen_requested = 1 OR LOWER(status) = 'reopen') AND (status IS NOT NULL AND LOWER(status) NOT IN ('completed', 'open', 'close', 'closed'))")
-        reopen_cnt = cursor.fetchone()['cnt']
 
         import re
         ip_matches = re.findall(r'\d+\.\d+\.\d+\.\d+', user_query)
@@ -456,14 +455,13 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
 
         if strict_matches:
             matched_results.extend(strict_matches)
-        else:
+        elif terms:
             # 4. Fallback to OR Search across HQ IPs, Branch IPs, Hospital VPNs, and Branches
             scored_results = {}
             for term in terms:
                 term_like = f"%{term}%"
                 
-                # Search HQ IPs
-                cursor.execute("SELECT ip, user_name_kh, user_name_en, position, status FROM hq_ips WHERE LOWER(user_name_kh) LIKE LOWER(?) OR LOWER(user_name_en) LIKE LOWER(?) OR LOWER(ip) LIKE LOWER(?) LIMIT 10", (term_like, term_like, term_like))
+                cursor.execute("SELECT ip, user_name_kh, user_name_en, position, status FROM hq_ips WHERE LOWER(user_name_kh) LIKE LOWER(?) OR LOWER(user_name_en) LIKE LOWER(?) OR LOWER(ip) LIKE LOWER(?) LIMIT 5", (term_like, term_like, term_like))
                 for ip_r in cursor.fetchall():
                     d = dict(ip_r)
                     key = f"hq_{d['ip']}"
@@ -474,8 +472,7 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
                     else:
                         scored_results[key]["score"] += 1
 
-                # Search Branch IPs
-                cursor.execute("SELECT ip, user_name, position, status FROM branch_ips WHERE LOWER(user_name) LIKE LOWER(?) OR LOWER(ip) LIKE LOWER(?) LIMIT 10", (term_like, term_like))
+                cursor.execute("SELECT ip, user_name, position, status FROM branch_ips WHERE LOWER(user_name) LIKE LOWER(?) OR LOWER(ip) LIKE LOWER(?) LIMIT 5", (term_like, term_like))
                 for ip_r in cursor.fetchall():
                     d = dict(ip_r)
                     key = f"branch_{d['ip']}"
@@ -486,7 +483,6 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
                     else:
                         scored_results[key]["score"] += 1
 
-                # Search Hospital VPNs
                 cursor.execute("SELECT name, status, lan_ip, public_ip, reopen_requested FROM hospital_vpns WHERE LOWER(name) LIKE LOWER(?) OR LOWER(lan_ip) LIKE LOWER(?) OR LOWER(public_ip) LIKE LOWER(?) LIMIT 5", (term_like, term_like, term_like))
                 for h in cursor.fetchall():
                     h_dict = dict(h)
@@ -498,7 +494,6 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
                     else:
                         scored_results[key]["score"] += 1
 
-                # Search Branches
                 cursor.execute("SELECT name_kh, name_en, subnet, gateway FROM branches WHERE LOWER(name_kh) LIKE LOWER(?) OR LOWER(name_en) LIKE LOWER(?) LIMIT 5", (term_like, term_like))
                 for b in cursor.fetchall():
                     b_dict = dict(b)
@@ -530,7 +525,7 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
 
     # 2. Second priority: Gemini AI with Full Website Live Context!
     if gemini_key:
-        models_to_try = ["gemini-2.0-flash", "gemini-2.0-flash-lite", "gemini-flash-latest"]
+        models_to_try = ["gemini-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"]
         live_web_data = get_full_web_portal_context()
         prompt_text = (
             f"You are the NSSF SOC Portal Gemini AI Assistant, an expert AI created for the National Social Security Fund (NSSF) Security Operations Center.\n"
@@ -546,13 +541,13 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
 
         payload = {
             "contents": [{"role": "user", "parts": [{"text": prompt_text}]}],
-            "generationConfig": {"temperature": 0.7, "maxOutputTokens": 800}
+            "generationConfig": {"temperature": 0.3, "maxOutputTokens": 400}
         }
 
         for m in models_to_try:
             api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
             try:
-                res = requests.post(api_url, json=payload, timeout=8)
+                res = requests.post(api_url, json=payload, timeout=4)
                 if res.status_code == 200:
                     data = res.json()
                     reply = data['candidates'][0]['content']['parts'][0]['text']
