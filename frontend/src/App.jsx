@@ -3325,6 +3325,10 @@ export default function App() {
     // List of modules for fine-grained permissions mapping
     const modulesList = [
       { key: 'dashboard', name: 'Dashboard', desc: 'ផ្ទាំងគ្រប់គ្រងទិន្នន័យទូទៅ', icon: '📊' },
+      { key: 'tickets', name: 'សំណើអេឡិចត្រូនិក (Tickets)', desc: 'ប្រព័ន្ធបង្កើត និងអនុម័តលិខិតស្នើសុំ Electronic', icon: '🎫' },
+      { key: 'kanban', name: 'កិច្ចការ Bitrix (Kanban)', desc: 'គ្រប់គ្រងកិច្ចការ Task, Board & Deadlines', icon: '📋' },
+      { key: 'workflow', name: 'Workflow Builder', desc: 'បង្កើត និងកំណត់រចនាសម្ព័ន្ធដំណាក់កាលអនុម័ត', icon: '🔄' },
+      { key: 'pdf_hub', name: 'PDF Form Hub', desc: 'ទម្រង់ឯកសារស្នើសុំ PDF តាមប្រភេទ', icon: '📄' },
       { key: 'ipam', name: 'IPAM / IP Address', desc: 'គ្រប់គ្រង subnet និងទីតាំងឧបករណ៍', icon: '🏢' },
       { key: 'vpn_remote', name: 'VPN Remote Access', desc: 'គណនីបុគ្គលិកភ្ជាប់ VPN ពីក្រៅ', icon: '🔑' },
       { key: 'hospital_vpn', name: 'Hospital VPNs', desc: 'ការភ្ជាប់ VPN មន្ទីរពេទ្យ / ឯកសារយោង', icon: '🏥' },
@@ -3333,27 +3337,28 @@ export default function App() {
       { key: 'switches', name: 'Switches List', desc: 'បញ្ជីរាយនាមឧបករណ៍ Switch', icon: '🔌' },
       { key: 'storage', name: 'File Storage', desc: 'ការរក្សាទុក និងបើកមើលឯកសារ Drive', icon: '📂' },
       { key: 'leave', name: 'សុំច្បាប់ / ចេញក្រៅ', desc: 'បង្កើតលិខិតសុំច្បាប់ និងផ្ញើទៅ Telegram', icon: '📝' },
+      { key: 'shift', name: 'វេនប្រចាំការ (Shift Roster)', desc: 'កាលវិភាគវេនប្រចាំការយប់', icon: '🌙' },
       { key: 'user_management', name: 'User Management', desc: 'គ្រប់គ្រងអ្នកប្រើប្រាស់ និងសិទ្ធិប្រព័ន្ធ', icon: '👥' },
     ];
 
     const getRolePresetPermissions = (roleName) => {
       if (roleName === 'admin') {
         return {
-          dashboard: "readwrite", ipam: "readwrite", vpn_remote: "readwrite", hospital_vpn: "readwrite",
-          bank_vpn: "readwrite", public_ip: "readwrite", switches: "readwrite", storage: "readwrite",
-          leave: "readwrite", user_management: "readwrite"
+          dashboard: "readwrite", tickets: "readwrite", kanban: "readwrite", workflow: "readwrite", pdf_hub: "readwrite",
+          ipam: "readwrite", vpn_remote: "readwrite", hospital_vpn: "readwrite", bank_vpn: "readwrite", public_ip: "readwrite",
+          switches: "readwrite", storage: "readwrite", leave: "readwrite", shift: "readwrite", user_management: "readwrite"
         };
       } else if (roleName === 'staff') {
         return {
-          dashboard: "readwrite", ipam: "readwrite", vpn_remote: "readwrite", hospital_vpn: "readwrite",
-          bank_vpn: "readwrite", public_ip: "readwrite", switches: "readwrite", storage: "readwrite",
-          leave: "readwrite", user_management: "none"
+          dashboard: "readwrite", tickets: "readwrite", kanban: "readwrite", workflow: "readwrite", pdf_hub: "readwrite",
+          ipam: "readwrite", vpn_remote: "readwrite", hospital_vpn: "readwrite", bank_vpn: "readwrite", public_ip: "readwrite",
+          switches: "readwrite", storage: "readwrite", leave: "readwrite", shift: "readwrite", user_management: "none"
         };
       } else { // viewer
         return {
-          dashboard: "read", ipam: "read", vpn_remote: "read", hospital_vpn: "read",
-          bank_vpn: "read", public_ip: "read", switches: "read", storage: "read",
-          leave: "read", user_management: "none"
+          dashboard: "read", tickets: "read", kanban: "read", workflow: "read", pdf_hub: "read",
+          ipam: "read", vpn_remote: "read", hospital_vpn: "read", bank_vpn: "read", public_ip: "read",
+          switches: "read", storage: "read", leave: "read", shift: "read", user_management: "none"
         };
       }
     };
