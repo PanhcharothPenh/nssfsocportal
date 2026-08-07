@@ -290,11 +290,11 @@ async def telegram_webhook(request: Request):
                     conn.close()
             return {"status": "ok"}
             
-        # 2. Check if this is a message from a user we can auto-link
-        elif username and chat_id and not text.startswith("/"):
-            conn = get_db_connection()
-            cursor = conn.cursor()
+        # 2. Check if this is a message from a user we can auto-link (non-blocking)
+        if username and chat_id and not text.startswith("/"):
             try:
+                conn = get_db_connection()
+                cursor = conn.cursor()
                 cursor.execute("SELECT * FROM users WHERE LOWER(telegram_username) = LOWER(?) OR LOWER(username) = LOWER(?)", (username, username))
                 user = cursor.fetchone()
                 if user and not user['telegram_chat_id']:
@@ -326,16 +326,11 @@ async def telegram_webhook(request: Request):
                             ]
                         }
                     }, timeout=5)
-            except Exception as ex:
-                try:
-                    conn.rollback()
-                except Exception:
-                    pass
-                print("Error in Telegram auto-link:", ex)
-            finally:
                 conn.close()
+            except Exception as ex:
+                print("Error in Telegram auto-link:", ex)
 
-        # 3. Otherwise, delegate to process_telegram_incoming_update in telegram.py
+        # 3. ALWAYS delegate to process_telegram_incoming_update in telegram.py
         from telegram import process_telegram_incoming_update
         process_telegram_incoming_update(payload)
         return {"status": "ok"}
