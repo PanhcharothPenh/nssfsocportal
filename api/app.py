@@ -3337,7 +3337,7 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
     import threading
     def async_tg_approve():
         try:
-            from telegram import send_ticket_telegram_alert, send_telegram_alert
+            from telegram import send_ticket_telegram_alert, send_telegram_message
             c2 = get_db_connection()
             cur2 = c2.cursor()
             cur2.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
@@ -3354,19 +3354,20 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
                     if action != "reject":
                         from telegram import send_ticket_assignee_alert
                         send_ticket_assignee_alert(up_tkt, event_type="approved")
-                    st_desc = "បដិសេធ" if action == "reject" else "បានអនុម័តផ្លូវការ"
+                    st_desc = "❌ បដិសេធ" if action == "reject" else "✅ បានអនុម័តផ្លូវការ (Approved)"
                     c_txt = comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if action != "reject" else "បដិសេធដោយថ្នាក់ដឹកនាំ")
                     msg = (
-                        f"⚡ <b>[NSSF SOC WORKFLOW UPDATE]</b>\n"
+                        f"🎉 <b>[NSSF SOC WORKFLOW UPDATE - ការអនុម័តសម្រេច]</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━\n"
                         f"📩 <b>លិខិត #{up_tkt['ticket_code']} — {up_tkt['title']}</b>\n"
                         f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{approver}</b>\n"
                         f"📊 <b>ស្ថានភាព ៖</b> <b>{st_desc}</b>\n"
-                        f"📝 <b>ចំណារ / មតិយោបល់ ៖</b> <b>\"{c_txt}\"</b>\n"
-                        f"⏰ <code>{now_str}</code>"
+                        f"📝 <b>ចំណារ / មតិយោបល់ ៖</b> <i>\"{c_txt}\"</i>\n"
+                        f"⏰ <code>{now_str}</code>\n\n"
+                        f"👉 សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!"
                     )
-                    send_telegram_alert(msg)
+                    send_telegram_message(msg)
         except Exception as ex:
             print("Telegram Ticket Approval Notify Exception:", ex)
 
