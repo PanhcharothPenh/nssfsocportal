@@ -1394,7 +1394,15 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
                 group_id = str(default_chat).strip()
                 is_group = group_id.startswith("-")
                 if (is_group or not sent_chats) and group_id not in sent_chats:
-                    send_telegram_message(msg, chat_id=group_id, reply_markup=reply_markup)
+                    # For Group Chat: Remove the Approve/Reject buttons, only show "Open Web Portal"
+                    group_reply_markup = {
+                        "inline_keyboard": [
+                            [
+                                {"text": "🌐 បើកមើលលើ Web Portal", "url": "https://nssfsocportal.vercel.app"}
+                            ]
+                        ]
+                    }
+                    send_telegram_message(msg, chat_id=group_id, reply_markup=group_reply_markup)
 
         except Exception as ex:
             print("Error sending ticket approval alert:", ex)
