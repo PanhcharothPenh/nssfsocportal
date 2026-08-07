@@ -255,6 +255,8 @@ export default function App() {
   });
   const [newTicketFile, setNewTicketFile] = useState(null);
   const [newTicketSubmitting, setNewTicketSubmitting] = useState(false);
+  const [approverRows, setApproverRows] = useState([{ selected: '', custom: '' }]);
+  const [assigneeRows, setAssigneeRows] = useState([{ selected: '', custom: '' }]);
 
   const [telegramTemplatesForm, setTelegramTemplatesForm] = useState({
     telegram_leave_template: '',
@@ -872,15 +874,40 @@ export default function App() {
         }
       }
 
+      // Resolve Approvers
+      let finalApprovalRequired = newTicketForm.approval_level_required; // 0 or 1 from selector
+      let l1 = "";
+      let l2 = "";
+      let l3 = "";
+      
+      if (finalApprovalRequired > 0) {
+        const resolvedApprovers = approverRows
+          .map(r => r.selected === 'ផ្សេងៗ' ? r.custom : r.selected)
+          .filter(name => name && name.trim() !== "");
+        
+        finalApprovalRequired = resolvedApprovers.length > 0 ? resolvedApprovers.length : 1;
+        l1 = resolvedApprovers[0] || "";
+        l2 = resolvedApprovers[1] || "";
+        l3 = resolvedApprovers[2] || "";
+      } else {
+        finalApprovalRequired = 0;
+      }
+
+      // Resolve Assignees
+      const resolvedAssignees = assigneeRows
+        .map(r => r.selected === 'ផ្សេងៗ' ? r.custom : r.selected)
+        .filter(name => name && name.trim() !== "");
+      const finalAssignee = resolvedAssignees.join(', ') || "SOC Duty Officer";
+
       const formData = new FormData();
       formData.append('title', newTicketForm.title);
       formData.append('category', newTicketForm.category);
       formData.append('priority', newTicketForm.priority);
-      formData.append('approval_level_required', newTicketForm.approval_level_required);
-      formData.append('l1_approver', newTicketForm.l1_approver);
-      formData.append('l2_approver', newTicketForm.l2_approver);
-      formData.append('l3_approver', newTicketForm.l3_approver);
-      formData.append('assignee_name', newTicketForm.assignee_name);
+      formData.append('approval_level_required', finalApprovalRequired);
+      formData.append('l1_approver', l1);
+      formData.append('l2_approver', l2);
+      formData.append('l3_approver', l3);
+      formData.append('assignee_name', finalAssignee);
       formData.append('start_date', newTicketForm.start_date);
       formData.append('end_date', newTicketForm.end_date);
       formData.append('due_date', newTicketForm.due_date);
@@ -915,6 +942,8 @@ export default function App() {
           department: '',
           assignee_name: ''
         });
+        setApproverRows([{ selected: '', custom: '' }]);
+        setAssigneeRows([{ selected: '', custom: '' }]);
         setNewTicketFile(null);
         fetchTickets();
         alert("✅ បានបង្កើតលិខិតស្នើសុំដោយជោគជ័យ និងបានផ្ញើសារទៅកាន់ Telegram!");
@@ -10449,7 +10478,7 @@ export default function App() {
                   return null;
                 })()}
               </div>
-              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '16px' }}>
                 
                 {/* 1. Approval Type / Requirement */}
                 <div className="form-group" style={{ margin: 0 }}>
@@ -10463,8 +10492,7 @@ export default function App() {
                       const req = parseInt(e.target.value);
                       setNewTicketForm({
                         ...newTicketForm,
-                        approval_level_required: req,
-                        l1_approver: req === 0 ? '' : newTicketForm.l1_approver
+                        approval_level_required: req
                       });
                     }}
                     style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#1e3a8a', backgroundColor: '#ffffff' }}
@@ -10474,83 +10502,157 @@ export default function App() {
                   </select>
                 </div>
 
-                {/* 2. Approver Selection (Only if requires approval) */}
+                {/* 2. Dynamic Approvers (Only if requires approval) */}
                 {newTicketForm.approval_level_required === 1 && (
-                  <div className="form-group" style={{ margin: 0 }}>
-                    <label className="form-label" style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
-                      👤 ជ្រើសរើសអ្នកអនុម័ត (Select Approver) *
-                    </label>
-                    <select
-                      className="form-input"
-                      value={newTicketForm.l1_approver}
-                      onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
-                      required={newTicketForm.approval_level_required === 1}
-                      style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', backgroundColor: '#ffffff', color: '#0f172a' }}
-                    >
-                      <option value="">-- ជ្រើសរើសឈ្មោះអ្នកអនុម័ត --</option>
-                      {usersList.map((u) => {
-                        const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
-                        const details = u.position ? u.position : (u.department || u.role || '');
-                        return (
-                          <option key={u.id || u.username} value={name}>
-                            👤 {name} {details ? `(${details})` : ''}
-                          </option>
-                        );
-                      })}
-                      <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
-                    </select>
-                    
-                    {/* Custom text input for Approver */}
-                    {(newTicketForm.l1_approver === 'ផ្សេងៗ' || (newTicketForm.l1_approver && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.l1_approver))) && (
-                      <input
-                        type="text"
-                        className="form-input"
-                        placeholder="បញ្ចូលឈ្មោះអ្នកអនុម័តដោយផ្ទាល់..."
-                        value={newTicketForm.l1_approver === 'ផ្សេងៗ' ? '' : newTicketForm.l1_approver}
-                        onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
-                        required
-                        style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
-                      />
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                    <div style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
+                      👤 បញ្ជីអ្នកអនុម័ត (Approvers List)
+                    </div>
+                    {approverRows.map((row, index) => (
+                      <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '11px', fontWeight: '800', color: '#475569' }}>
+                            អ្នកអនុម័តទី {index + 1} (Approver {index + 1}) *
+                          </span>
+                          {approverRows.length > 1 && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setApproverRows(approverRows.filter((_, idx) => idx !== index));
+                              }}
+                              style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                            >
+                              🗑️ លុបចេញ
+                            </button>
+                          )}
+                        </div>
+                        <select
+                          className="form-input"
+                          value={row.selected}
+                          onChange={(e) => {
+                            const newRows = [...approverRows];
+                            newRows[index].selected = e.target.value;
+                            if (e.target.value !== 'ផ្សេងៗ') {
+                              newRows[index].custom = '';
+                            }
+                            setApproverRows(newRows);
+                          }}
+                          required
+                          style={{ padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: '700', backgroundColor: '#ffffff', color: '#0f172a' }}
+                        >
+                          <option value="">-- ជ្រើសរើសឈ្មោះអ្នកអនុម័ត --</option>
+                          {usersList.map((u) => {
+                            const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
+                            const details = u.position ? u.position : (u.department || u.role || '');
+                            return (
+                              <option key={u.id || u.username} value={name}>
+                                👤 {name} {details ? `(${details})` : ''}
+                              </option>
+                            );
+                          })}
+                          <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
+                        </select>
+                        {(row.selected === 'ផ្សេងៗ' || (row.selected && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === row.selected))) && (
+                          <input
+                            type="text"
+                            className="form-input"
+                            placeholder="បញ្ចូលឈ្មោះអ្នកអនុម័តដោយផ្ទាល់..."
+                            value={row.selected === 'ផ្សេងៗ' ? row.custom : row.selected}
+                            onChange={(e) => {
+                              const newRows = [...approverRows];
+                              newRows[index].custom = e.target.value;
+                              setApproverRows(newRows);
+                            }}
+                            required
+                            style={{ padding: '8px 12px', borderRadius: '6px', fontSize: '12px' }}
+                          />
+                        )}
+                      </div>
+                    ))}
+                    {approverRows.length < 3 && (
+                      <button
+                        type="button"
+                        onClick={() => setApproverRows([...approverRows, { selected: '', custom: '' }])}
+                        style={{ alignSelf: 'flex-start', padding: '6px 12px', borderRadius: '6px', border: '1px dashed #2563eb', background: '#eff6ff', color: '#2563eb', fontSize: '11.5px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' }}
+                      >
+                        ➕ បន្ថែមអ្នកអនុម័តបន្ទាប់ (Add Next Approver)
+                      </button>
                     )}
                   </div>
                 )}
 
-                {/* 3. Assignee / Member Selection */}
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label className="form-label" style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
-                    👥 ជ្រើសរើសអ្នកទទួលបន្ទុក / សមាជិក (Select Assignee / Member)
-                  </label>
-                  <select
-                    className="form-input"
-                    value={newTicketForm.assignee_name}
-                    onChange={(e) => setNewTicketForm({ ...newTicketForm, assignee_name: e.target.value })}
-                    style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', backgroundColor: '#ffffff', color: '#0f172a' }}
+                {/* 3. Dynamic Assignees / Members */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '12px' }}>
+                  <div style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
+                    👥 អ្នកទទួលបន្ទុក / សមាជិក (Assignees / Members)
+                  </div>
+                  {assigneeRows.map((row, index) => (
+                    <div key={index} style={{ display: 'flex', flexDirection: 'column', gap: '6px', backgroundColor: '#ffffff', padding: '12px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '800', color: '#475569' }}>
+                          សមាជិកទី {index + 1} (Member {index + 1})
+                        </span>
+                        {assigneeRows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAssigneeRows(assigneeRows.filter((_, idx) => idx !== index));
+                            }}
+                            style={{ border: 'none', background: 'none', color: '#ef4444', fontSize: '11px', fontWeight: '800', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '2px' }}
+                          >
+                            🗑️ លុបចេញ
+                          </button>
+                        )}
+                      </div>
+                      <select
+                        className="form-input"
+                        value={row.selected}
+                        onChange={(e) => {
+                          const newRows = [...assigneeRows];
+                          newRows[index].selected = e.target.value;
+                          if (e.target.value !== 'ផ្សេងៗ') {
+                            newRows[index].custom = '';
+                          }
+                          setAssigneeRows(newRows);
+                        }}
+                        style={{ padding: '9px 12px', borderRadius: '6px', fontSize: '12.5px', fontWeight: '700', backgroundColor: '#ffffff', color: '#0f172a' }}
+                      >
+                        <option value="">-- ជ្រើសរើសឈ្មោះអ្នកទទួលបន្ទុក / សមាជិក --</option>
+                        {usersList.map((u) => {
+                          const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
+                          const details = u.position ? u.position : (u.department || u.role || '');
+                          return (
+                            <option key={u.id || u.username} value={name}>
+                              👤 {name} {details ? `(${details})` : ''}
+                            </option>
+                          );
+                        })}
+                        <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
+                      </select>
+                      {(row.selected === 'ផ្សេងៗ' || (row.selected && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === row.selected))) && (
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="បញ្ចូលឈ្មោះអ្នកទទួលបន្ទុកដោយផ្ទាល់..."
+                          value={row.selected === 'ផ្សេងៗ' ? row.custom : row.selected}
+                          onChange={(e) => {
+                            const newRows = [...assigneeRows];
+                            newRows[index].custom = e.target.value;
+                            setAssigneeRows(newRows);
+                          }}
+                          required
+                          style={{ padding: '8px 12px', borderRadius: '6px', fontSize: '12px' }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setAssigneeRows([...assigneeRows, { selected: '', custom: '' }])}
+                    style={{ alignSelf: 'flex-start', padding: '6px 12px', borderRadius: '6px', border: '1px dashed #2563eb', background: '#eff6ff', color: '#2563eb', fontSize: '11.5px', fontWeight: '800', cursor: 'pointer', transition: 'all 0.2s' }}
                   >
-                    <option value="">-- ជ្រើសរើសឈ្មោះអ្នកទទួលបន្ទុក / សមាជិក --</option>
-                    {usersList.map((u) => {
-                      const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
-                      const details = u.position ? u.position : (u.department || u.role || '');
-                      return (
-                        <option key={u.id || u.username} value={name}>
-                          👤 {name} {details ? `(${details})` : ''}
-                        </option>
-                      );
-                    })}
-                    <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
-                  </select>
-                  
-                  {/* Custom text input for Assignee */}
-                  {(newTicketForm.assignee_name === 'ផ្សេងៗ' || (newTicketForm.assignee_name && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.assignee_name))) && (
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="បញ្ចូលឈ្មោះអ្នកទទួលបន្ទុកដោយផ្ទាល់..."
-                      value={newTicketForm.assignee_name === 'ផ្សេងៗ' ? '' : newTicketForm.assignee_name}
-                      onChange={(e) => setNewTicketForm({ ...newTicketForm, assignee_name: e.target.value })}
-                      required
-                      style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
-                    />
-                  )}
+                    ➕ បន្ថែមសមាជិកបន្ទាប់ (Add Next Member)
+                  </button>
                 </div>
               </div>
 
