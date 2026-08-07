@@ -1506,41 +1506,40 @@ def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
         
         prio_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡"
         
+        req_name = ticket.get("requester_name") or "System Administrator"
+        
         if event_type == "approved":
             msg = (
-                f"✅ <b>[ការអនុម័តលិខិតស្នើសុំ NSSF SOC]</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📩 <b>លិខិត #{code} — {title}</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"🎉 <b>លិខិតស្នើសុំរបស់លោក/លោកស្រីត្រូវបានយល់ព្រម និងអនុម័តរួចរាល់ហើយ!</b>\n\n"
-                f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
+                f"✅ <b>កិច្ចការត្រូវបានអនុម័តផ្លូវការ</b>\n\n"
+                f"📄 <b>{title}</b>\n"
+                f"🎫 <code>#{code}</code>\n\n"
+                f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
+                f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
                 f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-                f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
-                f"👉 សូមលោក/លោកស្រីរៀបចំ និងចាត់ចែងអនុវត្តការងារនេះឱ្យបានរួសរាន់! 🙏"
+                f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+                f"🎉 <b>ស្ថានភាព ៖</b> <b>បានអនុម័តផ្លូវការ (Approved)</b>"
             )
         elif event_type == "auto_approved":
             msg = (
-                f"⚡ <b>[ការចាត់ចែងការងារ NSSF SOC]</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📩 <b>លិខិត #{code} — {title}</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"📌 <b>លោក/លោកស្រីត្រូវបានចាត់ចែងការងារថ្មី (មិនបាច់មានការអនុម័តទេ) ៖</b>\n\n"
-                f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
+                f"⚡ <b>កិច្ចការងារថ្មី (អនុម័តស្វ័យប្រវត្តិ)</b>\n\n"
+                f"📄 <b>{title}</b>\n"
+                f"🎫 <code>#{code}</code>\n\n"
+                f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
+                f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
                 f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-                f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
-                f"👉 សូមលោក/លោកស្រីចាត់ចែងអនុវត្តការងារនេះ! 🙏"
+                f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+                f"📌 <b>ស្ថានភាព ៖</b> <b>ត្រូវបានចាត់ចែងអនុវត្ត</b>"
             )
         else: # created (pending approval)
             msg = (
-                f"📩 <b>[កិច្ចការងារថ្មីរង់ចាំការអនុម័ត NSSF SOC]</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"លិខិត ៖ <b>{title}</b> (កូដ ៖ <code>#{code}</code>)\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                f"⌛ <b>កិច្ចការងារនេះត្រូវបានចាត់ជូនលោក/លោកស្រី ប៉ុន្តែកំពុងស្ថិតក្នុងដំណាក់កាលរង់ចាំការអនុម័តពីថ្នាក់ដឹកនាំជាមុនសិន។</b>\n\n"
-                f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
-                f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-                f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
-                f"ប្រព័ន្ធនឹងផ្ញើសារជូនដំណឹងម្តងទៀត នៅពេលមានការអនុម័តសម្រេចជាផ្លូវការ! 🙏"
+                f"📩 <b>កិច្ចការថ្មី — រង់ចាំអនុម័ត</b>\n\n"
+                f"📄 <b>{title}</b>\n"
+                f"🎫 <code>#{code}</code>\n\n"
+                f"👤 <b>{req_name}</b>\n"
+                f"📅 <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+                f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+                f"⌛ <b>ស្ថានភាព ៖</b> <b>រង់ចាំថ្នាក់ដឹកនាំអនុម័ត</b>\n\n"
+                f"🔔 <i>នឹងជូនដំណឹងម្តងទៀត ក្រោយពេលអនុម័ត។</i>"
             )
 
         # Find chat IDs of all assignees
