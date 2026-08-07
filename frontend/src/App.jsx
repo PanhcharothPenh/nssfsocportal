@@ -1196,6 +1196,196 @@ export default function App() {
     setShowExportModal(false);
   };
 
+  const handleDownloadFilteredReportPDF = () => {
+    const list = getFilteredReportTickets();
+    if (!list || list.length === 0) {
+      alert("ពុំមានទិន្នន័យស្របតាមការចម្រោះដើម្បីទាញយករបាយការណ៍ PDF ឡើយ!");
+      return;
+    }
+
+    // Build filter summary text
+    let periodText = "គ្រប់កាលបរិច្ឆេទទាំងអស់";
+    if (exportFilters.dateType === 'day') periodText = `ថ្ងៃទី ៖ ${exportFilters.selectedDate || 'N/A'}`;
+    else if (exportFilters.dateType === 'month') periodText = `ប្រចាំខែ ៖ ${exportFilters.selectedMonth || 'N/A'}`;
+    else if (exportFilters.dateType === 'year') periodText = `ប្រចាំឆ្នាំ ៖ ${exportFilters.selectedYear || 'N/A'}`;
+    else if (exportFilters.dateType === 'custom') periodText = `ពីថ្ងៃ ៖ ${exportFilters.fromDate || 'N/A'} ដល់ ${exportFilters.toDate || 'N/A'}`;
+
+    let userText = exportFilters.userFilter === 'all' ? "គ្រប់បុគ្គលិកទាំងអស់" : exportFilters.userFilter;
+    let statusText = exportFilters.statusFilter === 'all' ? "គ្រប់ស្ថានភាពទាំងអស់" : exportFilters.statusFilter;
+
+    const now = new Date();
+    const printDate = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear()} ${now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+
+    const totalCount = list.length;
+    const pendingCount = list.filter(t => (t.status || '').toLowerCase().includes('pending')).length;
+    const approvedCount = list.filter(t => (t.status || '').toLowerCase().includes('approved')).length;
+    const rejectedCount = list.filter(t => (t.status || '').toLowerCase().includes('reject')).length;
+
+    const printWindow = window.open('', '_blank', 'width=1150,height=850');
+    if (!printWindow) {
+      alert("សូមអនុញ្ញាត Popup Window នៅក្នុង Browser ដើម្បីមើល និងទាញយក PDF!");
+      return;
+    }
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>របាយការណ៍លិខិតស្នើសុំ NSSF SOC</title>
+        <meta charset="utf-8" />
+        <style>
+          @page { size: landscape; margin: 12mm; }
+          body { font-family: 'MiSans Khmer', 'Kantumruy Pro', 'Khmer OS Battambang', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; margin: 0; padding: 20px; font-size: 12px; line-height: 1.5; }
+          .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 12px; }
+          .king-header { text-align: center; font-size: 13px; font-weight: bold; color: #1e3a8a; }
+          .org-title { font-size: 15px; font-weight: 800; color: #1e3a8a; }
+          .org-sub { font-size: 12px; color: #475569; font-weight: 700; }
+          .report-title { text-align: center; margin: 20px 0 15px 0; }
+          .report-title h2 { margin: 0; font-size: 20px; font-weight: 900; color: #1e3a8a; text-transform: uppercase; }
+          .report-title p { margin: 4px 0 0 0; font-size: 12px; color: #64748b; font-weight: 700; }
+          
+          .info-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+          .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; text-align: center; }
+          .card-val { font-size: 18px; font-weight: 800; }
+          .card-lbl { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; }
+
+          .filter-meta { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 24px; font-size: 11.5px; font-weight: 700; color: #1e40af; }
+          
+          table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 11px; }
+          th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
+          th { background-color: #1e3a8a; color: #ffffff; font-weight: 800; text-align: center; text-transform: uppercase; font-size: 10.5px; }
+          tr:nth-child(even) { background-color: #f8fafc; }
+          
+          .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 800; text-align: center; }
+          .badge-approved { background-color: #dcfce7; color: #15803d; }
+          .badge-pending { background-color: #fef3c7; color: #b45309; }
+          .badge-rejected { background-color: #fee2e2; color: #b91c1c; }
+          
+          .footer-sign { display: flex; justify-content: space-between; margin-top: 30px; page-break-inside: avoid; }
+          .sign-col { text-align: center; width: 45%; font-weight: 700; font-size: 12px; }
+          .sign-title { font-weight: 800; color: #1e3a8a; margin-top: 6px; }
+          .sign-space { height: 70px; }
+          
+          @media print {
+            body { padding: 0; }
+            .no-print { display: none; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header-top">
+          <div>
+            <div class="org-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
+            <div class="king-header">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+            <div style="font-size: 16px; margin-top: 4px;">🇰🇭</div>
+          </div>
+          <div style="text-align: right;">
+            <div class="org-title">បេឡាជាតិសន្តិសុខសង្គម (NSSF)</div>
+            <div class="org-sub">មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC Operations Center)</div>
+            <div style="font-size: 11px; color: #64748b; margin-top: 4px;">ថ្ងៃចេញរបាយការណ៍ ៖ ${printDate}</div>
+          </div>
+        </div>
+
+        <div class="report-title">
+          <h2>របាយការណ៍សង្ខេបលិខិតស្នើសុំ និងកិច្ចការងារ (Ticket Request Report)</h2>
+          <p>Security Operations Center — Electronic Request Management System</p>
+        </div>
+
+        <div class="filter-meta">
+          <div>📅 <b>កាលបរិច្ឆេទ ៖</b> ${periodText}</div>
+          <div>👤 <b>បុគ្គលិក/អ្នកប្រើប្រាស់ ៖</b> ${userText}</div>
+          <div>⏳ <b>ស្ថានភាព ៖</b> ${statusText}</div>
+        </div>
+
+        <div class="info-cards">
+          <div class="card">
+            <div class="card-val" style="color: #1e3a8a;">${totalCount}</div>
+            <div class="card-lbl">សរុបសំបុត្រ (Total)</div>
+          </div>
+          <div class="card">
+            <div class="card-val" style="color: #15803d;">${approvedCount}</div>
+            <div class="card-lbl">បានអនុម័ត (Approved)</div>
+          </div>
+          <div class="card">
+            <div class="card-val" style="color: #b45309;">${pendingCount}</div>
+            <div class="card-lbl">រង់ចាំ (Pending)</div>
+          </div>
+          <div class="card">
+            <div class="card-val" style="color: #b91c1c;">${rejectedCount}</div>
+            <div class="card-lbl">បដិសេធ (Rejected)</div>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr>
+              <th style="width: 35px;">ល.រ</th>
+              <th style="width: 85px;">កូដលិខិត</th>
+              <th>កម្មវត្ថុ/ប្រធានបទស្នើសុំ</th>
+              <th>អ្នកស្នើសុំ</th>
+              <th>អង្គភាព/ការិយាល័យ</th>
+              <th>អ្នកទទួលបន្ទុក</th>
+              <th style="width: 70px;">អាទិភាព</th>
+              <th style="width: 90px;">ស្ថានភាព</th>
+              <th style="width: 85px;">ថ្ងៃឱសានវាទ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${list.map((t, idx) => {
+              const statusStr = t.status || 'Pending Approval';
+              let badgeCls = 'badge-pending';
+              if (statusStr.toLowerCase().includes('approved')) badgeCls = 'badge-approved';
+              else if (statusStr.toLowerCase().includes('reject')) badgeCls = 'badge-rejected';
+
+              return `
+                <tr>
+                  <td style="text-align: center;">${idx + 1}</td>
+                  <td style="text-align: center; font-weight: bold; color: #1e3a8a;">#${t.ticket_code || '-'}</td>
+                  <td><b>${t.title || '-'}</b></td>
+                  <td>${t.requester_name || '-'}</td>
+                  <td>${t.department || 'SOC Operations Center'}</td>
+                  <td>${t.assignee_name || 'SOC Duty Officer'}</td>
+                  <td style="text-align: center;"><b>${t.priority || 'Medium'}</b></td>
+                  <td style="text-align: center;"><span class="badge ${badgeCls}">${statusStr}</span></td>
+                  <td style="text-align: center;">${t.due_date || t.end_date || '-'}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+
+        <div class="footer-sign">
+          <div class="sign-col">
+            <div>បានពិនិត្យ និងឯកភាព</div>
+            <div class="sign-title">ប្រធាន/អនុប្រធានការិយាល័យ SOC</div>
+            <div class="sign-space"></div>
+            <div>....................................................</div>
+          </div>
+          <div class="sign-col">
+            <div>រាជធានីភ្នំពេញ, ថ្ងៃទី...... ខែ...... ឆ្នាំ២០២...</div>
+            <div class="sign-title">អ្នករៀបចំរបាយការណ៍</div>
+            <div class="sign-space"></div>
+            <div><b>${currentLoginUser?.full_name || 'អ្នកទទួលបន្ទុក SOC'}</b></div>
+          </div>
+        </div>
+
+        <script>
+          window.onload = function() {
+            setTimeout(function() {
+              window.print();
+            }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
+    setShowExportModal(false);
+  };
+
   const fetchUsersList = async () => {
     try {
       const res = await fetch(`${API_BASE}/users`);
@@ -11315,21 +11505,30 @@ export default function App() {
               })()}
 
               {/* Action Buttons */}
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '8px', flexWrap: 'wrap' }}>
                 <button
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => setShowExportModal(false)}
-                  style={{ borderRadius: '8px', padding: '10px 20px', fontWeight: '800' }}
+                  style={{ borderRadius: '8px', padding: '10px 18px', fontWeight: '800' }}
                 >
                   បោះបង់ (Cancel)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleDownloadFilteredReportPDF}
+                  disabled={getFilteredReportTickets().length === 0}
+                  style={{ borderRadius: '8px', padding: '10px 20px', fontWeight: '800', backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', opacity: getFilteredReportTickets().length === 0 ? 0.6 : 1 }}
+                >
+                  📄 ទាញយកជា PDF
                 </button>
                 <button
                   type="button"
                   className="btn btn-primary"
                   onClick={handleDownloadFilteredReport}
                   disabled={getFilteredReportTickets().length === 0}
-                  style={{ borderRadius: '8px', padding: '10px 24px', fontWeight: '800', backgroundColor: '#16a34a', borderColor: '#16a34a', opacity: getFilteredReportTickets().length === 0 ? 0.6 : 1 }}
+                  style={{ borderRadius: '8px', padding: '10px 20px', fontWeight: '800', backgroundColor: '#16a34a', borderColor: '#16a34a', opacity: getFilteredReportTickets().length === 0 ? 0.6 : 1 }}
                 >
                   📥 ទាញយកជា Excel/CSV
                 </button>
