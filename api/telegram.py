@@ -1515,6 +1515,40 @@ def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
             f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
             f"🎉 <b>ស្ថានភាព ៖</b> <b>បានអនុម័តផ្លូវការ (Approved)</b>"
         )
+    elif event_type in ("rejected", "reject"):
+        reason = ticket.get("rejection_reason") or ticket.get("l1_comment") or "គ្មានការបញ្ជាក់"
+        msg = (
+            f"❌ <b>កិច្ចការត្រូវបានបដិសេធ (Rejected)</b>\n\n"
+            f"📄 <b>{title}</b>\n"
+            f"🎫 <code>#{code}</code>\n\n"
+            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
+            f"📝 <b>មូលហេតុបដិសេធ ៖</b> <i>\"{reason}\"</i>\n"
+            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+            f"🚫 <b>ស្ថានភាព ៖</b> <b>ត្រូវបានបដិសេធ (Rejected)</b>"
+        )
+    elif event_type in ("completed", "done", "finished"):
+        msg = (
+            f"🏁 <b>កិច្ចការងារត្រូវបានបញ្ចប់សព្វគ្រប់ (Completed)</b>\n\n"
+            f"📄 <b>{title}</b>\n"
+            f"🎫 <code>#{code}</code>\n\n"
+            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
+            f"👥 <b>អ្នកអនុវត្តបញ្ចប់ ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+            f"✅ <b>ស្ថានភាព ៖</b> <b>បានបញ្ចប់សព្វគ្រប់ 100%</b>"
+        )
+    elif event_type in ("in_progress", "working", "processing"):
+        msg = (
+            f"🔄 <b>កិច្ចការងារកំពុងដំណើរការអនុវត្ត (In Progress)</b>\n\n"
+            f"📄 <b>{title}</b>\n"
+            f"🎫 <code>#{code}</code>\n\n"
+            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+            f"⏱️ <b>ស្ថានភាព ៖</b> <b>កំពុងអនុវត្ត</b>"
+        )
     elif event_type == "auto_approved":
         msg = (
             f"⚡ <b>កិច្ចការងារថ្មី (អនុម័តស្វ័យប្រវត្តិ)</b>\n\n"

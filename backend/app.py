@@ -3398,6 +3398,18 @@ def update_ticket_status(ticket_id: int, payload: dict = Body(...)):
         """, (new_status, now_str, ticket_id))
         
     conn.commit()
+
+    # Query updated ticket and trigger Telegram notification for new status (e.g. approved, in_progress, completed, rejected)
+    try:
+        cursor.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
+        up_row = cursor.fetchone()
+        if up_row:
+            from telegram import send_ticket_assignee_alert
+            send_ticket_assignee_alert(dict(up_row), event_type=new_status)
+    except Exception as ex_st:
+        print("Error sending ticket status change alert to Telegram:", ex_st)
+
+    conn.close()
     return {"status": "success", "ticket_id": ticket_id, "new_status": new_status}
 
 @app.delete("/api/tickets/{ticket_id}")
