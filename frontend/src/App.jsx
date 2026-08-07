@@ -10361,7 +10361,7 @@ export default function App() {
       {/* Create New Ticket Modal */}
       {showNewTicketModal && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
-          <div className="modal-content" style={{ maxWidth: '650px', padding: '24px', borderRadius: '16px' }}>
+          <div className="modal-content" style={{ maxWidth: '650px', padding: '24px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', pb: '12px' }}>
               <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <span>🎫</span> បង្កើតលិខិតស្នើសុំថ្មី (New Ticket Request)
@@ -10710,7 +10710,7 @@ export default function App() {
       {/* Ticket Detail Modal */}
       {ticketDetailModal.open && ticketDetailModal.ticket && (
         <div className="modal-overlay" style={{ zIndex: 1210 }}>
-          <div className="modal-content" style={{ maxWidth: '750px', padding: '24px', borderRadius: '16px' }}>
+          <div className="modal-content" style={{ maxWidth: '750px', padding: '24px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', pb: '12px' }}>
               <div>
                 <span style={{ fontSize: '12px', fontWeight: '800', color: '#2563eb', backgroundColor: '#eff6ff', padding: '3px 10px', borderRadius: '8px' }}>
