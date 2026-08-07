@@ -219,9 +219,6 @@ def check_ticket_due_alerts():
         "errors": errors
     }
 
-@app.api_route("/api/tickets/check-due-alerts", methods=["GET", "POST"])
-def api_check_due_alerts():
-    return check_ticket_due_alerts()
 
 def auto_sync_loop():
     # Initial sleep to let server boot up and avoid rate limit hit during restarts
@@ -3022,6 +3019,11 @@ def generate_ticket_timeline(ticket):
         })
 
     return timeline
+
+@app.get("/api/tickets/check-due-alerts")
+@app.post("/api/tickets/check-due-alerts")
+def api_check_due_alerts():
+    return check_ticket_due_alerts()
 
 @app.get("/api/tickets/{ticket_id}")
 def get_ticket_detail(ticket_id: int):
