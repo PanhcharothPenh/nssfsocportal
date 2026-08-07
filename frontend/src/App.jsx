@@ -1234,8 +1234,22 @@ export default function App() {
         <title>របាយការណ៍លិខិតស្នើសុំ NSSF SOC</title>
         <meta charset="utf-8" />
         <style>
+          * {
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+            color-adjust: exact !important;
+          }
           @page { size: landscape; margin: 12mm; }
-          body { font-family: 'MiSans Khmer', 'Kantumruy Pro', 'Khmer OS Battambang', 'Segoe UI', Tahoma, sans-serif; color: #0f172a; margin: 0; padding: 20px; font-size: 12px; line-height: 1.5; }
+          body { 
+            font-family: 'MiSans Khmer', 'Kantumruy Pro', 'Khmer OS Battambang', 'Segoe UI', Tahoma, sans-serif; 
+            color: #0f172a; 
+            margin: 0; 
+            padding: 20px; 
+            font-size: 12px; 
+            line-height: 1.5; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
           .header-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px; border-bottom: 2px solid #1e3a8a; padding-bottom: 12px; }
           .king-header { text-align: center; font-size: 13px; font-weight: bold; color: #1e3a8a; }
           .org-title { font-size: 15px; font-weight: 800; color: #1e3a8a; }
@@ -1245,21 +1259,70 @@ export default function App() {
           .report-title p { margin: 4px 0 0 0; font-size: 12px; color: #64748b; font-weight: 700; }
           
           .info-cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
-          .card { background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px; padding: 10px 14px; text-align: center; }
+          .card { 
+            background-color: #f8fafc !important; 
+            border: 1px solid #cbd5e1 !important; 
+            border-radius: 8px; 
+            padding: 10px 14px; 
+            text-align: center; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
           .card-val { font-size: 18px; font-weight: 800; }
           .card-lbl { font-size: 10px; color: #64748b; font-weight: 700; text-transform: uppercase; }
 
-          .filter-meta { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; display: flex; gap: 24px; font-size: 11.5px; font-weight: 700; color: #1e40af; }
+          .filter-meta { 
+            background-color: #eff6ff !important; 
+            border: 1px solid #bfdbfe !important; 
+            border-radius: 8px; 
+            padding: 10px 14px; 
+            margin-bottom: 16px; 
+            display: flex; 
+            gap: 24px; 
+            font-size: 11.5px; 
+            font-weight: 700; 
+            color: #1e40af !important; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
           
           table { width: 100%; border-collapse: collapse; margin-bottom: 25px; font-size: 11px; }
           th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: left; }
-          th { background-color: #1e3a8a; color: #ffffff; font-weight: 800; text-align: center; text-transform: uppercase; font-size: 10.5px; }
-          tr:nth-child(even) { background-color: #f8fafc; }
+          th { 
+            background-color: #1e3a8a !important; 
+            color: #ffffff !important; 
+            font-weight: 800; 
+            text-align: center; 
+            text-transform: uppercase; 
+            font-size: 10.5px; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
+          tr:nth-child(even) { 
+            background-color: #f8fafc !important; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
           
           .badge { display: inline-block; padding: 3px 8px; border-radius: 12px; font-size: 10px; font-weight: 800; text-align: center; }
-          .badge-approved { background-color: #dcfce7; color: #15803d; }
-          .badge-pending { background-color: #fef3c7; color: #b45309; }
-          .badge-rejected { background-color: #fee2e2; color: #b91c1c; }
+          .badge-approved { 
+            background-color: #dcfce7 !important; 
+            color: #15803d !important; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
+          .badge-pending { 
+            background-color: #fef3c7 !important; 
+            color: #b45309 !important; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
+          .badge-rejected { 
+            background-color: #fee2e2 !important; 
+            color: #b91c1c !important; 
+            -webkit-print-color-adjust: exact !important; 
+            print-color-adjust: exact !important; 
+          }
           
           .footer-sign { display: flex; justify-content: space-between; margin-top: 30px; page-break-inside: avoid; }
           .sign-col { text-align: center; width: 45%; font-weight: 700; font-size: 12px; }
@@ -1267,7 +1330,16 @@ export default function App() {
           .sign-space { height: 70px; }
           
           @media print {
-            body { padding: 0; }
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            body { 
+              padding: 0; 
+              -webkit-print-color-adjust: exact !important; 
+              print-color-adjust: exact !important; 
+            }
             .no-print { display: none; }
           }
         </style>
