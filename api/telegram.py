@@ -1581,17 +1581,29 @@ def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
         conn = get_db_connection()
         cursor = conn.cursor()
         
-        cursor.execute("SELECT telegram_chat_id, full_name, username, telegram_username FROM users WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != ''")
+        cursor.execute("SELECT telegram_chat_id, full_name, username, telegram_username, position FROM users WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != ''")
         all_users = cursor.fetchall()
         conn.close()
         
         for name in assignees:
             clean_name = name.split("(")[0].replace("@", "").strip().lower()
+            tokens = [t for t in clean_name.split() if len(t) >= 2]
             for u in all_users:
                 u_fn = (u["full_name"] or "").strip().lower()
                 u_un = (u["username"] or "").strip().lower()
                 u_tg = (u["telegram_username"] or "").strip().lower()
-                if clean_name == u_fn or clean_name == u_un or clean_name == u_tg or (clean_name in u_fn and len(clean_name) >= 3):
+                u_pos = (u["position"] if "position" in u.keys() and u["position"] else "").strip().lower()
+
+                is_match = False
+                if clean_name and (clean_name == u_fn or clean_name == u_un or clean_name == u_tg or clean_name in u_fn or clean_name in u_un or clean_name in u_tg):
+                    is_match = True
+                elif tokens:
+                    for tok in tokens:
+                        if len(tok) >= 2 and (tok in u_fn or tok in u_un or tok in u_tg or (u_pos and tok in u_pos)):
+                            is_match = True
+                            break
+
+                if is_match and u["telegram_chat_id"]:
                     target_chats.add(str(u["telegram_chat_id"]).strip())
     except Exception as e_c:
         print("Error looking up ticket assignee chat ID:", e_c)
