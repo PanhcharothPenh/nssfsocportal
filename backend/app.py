@@ -78,6 +78,151 @@ def get_ict_now():
     from datetime import datetime, timedelta, timezone
     return datetime.now(timezone.utc) + timedelta(hours=7)
 
+def check_ticket_due_alerts():
+    from datetime import datetime
+    import requests
+    import os
+    
+    ict_now = get_ict_now()
+    today_str = ict_now.strftime("%Y-%m-%d")
+    
+    # 1. Date Lock to prevent spamming
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT value FROM settings WHERE key = 'last_due_alert_date'")
+        row = cursor.fetchone()
+        if row and row['value'] == today_str:
+            print(f"Due date alerts already sent today ({today_str}). Skipping.")
+            conn.close()
+            return {"status": "skipped", "message": "Already checked today"}
+    except Exception as e_lock:
+        print("Error checking due date lock:", e_lock)
+
+    # 2. Get bot token
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        try:
+            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
+            row_tok = cursor.fetchone()
+            if row_tok and row_tok['value']:
+                bot_token = row_tok['value']
+        except Exception:
+            pass
+            
+    if not bot_token:
+        print("Cannot send due date alerts: Telegram bot token not configured.")
+        conn.close()
+        return {"status": "error", "message": "Bot token not configured"}
+
+    print("Checking active tickets for due date alerts...")
+    alerts_sent = 0
+    errors = []
+    
+    try:
+        # 3. Find active tickets that are not approved or rejected
+        cursor.execute("""
+            SELECT * FROM tickets 
+            WHERE status NOT IN ('approved', 'rejected') 
+              AND due_date IS NOT NULL 
+              AND due_date != ''
+        """)
+        active_tickets = cursor.fetchall()
+        
+        # 4. Fetch all users once for quick matching
+        cursor.execute("SELECT id, username, full_name, telegram_chat_id, telegram_username FROM users")
+        all_users = cursor.fetchall()
+        
+        for ticket in active_tickets:
+            due_str = ticket["due_date"].strip()
+            try:
+                due_date = datetime.strptime(due_str, "%Y-%m-%d").date()
+                diff_days = (due_date - ict_now.date()).days
+                
+                # Trigger notifications if due date is today, tomorrow, or in 2 days (0 <= diff_days <= 2)
+                if 0 <= diff_days <= 2:
+                    # Resolve names to notify:
+                    # a) Assignees/Members (split by comma)
+                    assignee_str = ticket["assignee_name"] or ""
+                    assignees = [a.strip() for a in assignee_str.split(",") if a.strip()]
+                    
+                    # b) Current Level Approver
+                    current_level = ticket["current_approval_level"] or 1
+                    approver_field = f"l{current_level}_approver"
+                    approver = ticket[approver_field] if approver_field in ticket.keys() else ""
+                    
+                    names_to_notify = assignees + ([approver] if approver and approver != "ផ្សេងៗ" else [])
+                    unique_names = list(set(names_to_notify))
+                    
+                    # Find their chat IDs
+                    target_chat_ids = set()
+                    for name in unique_names:
+                        clean_name = name.split("(")[0].replace("@", "").strip().lower()
+                        for u in all_users:
+                            u_fn = (u["full_name"] or "").strip().lower()
+                            u_un = (u["username"] or "").strip().lower()
+                            u_tg = (u["telegram_username"] or "").strip().lower()
+                            if clean_name == u_fn or clean_name == u_un or clean_name == u_tg or (clean_name in u_fn and len(clean_name) >= 3):
+                                if u["telegram_chat_id"]:
+                                    target_chat_ids.add(str(u["telegram_chat_id"]).strip())
+                    
+                    # Send alert
+                    if target_chat_ids:
+                        remaining_label = ""
+                        if diff_days == 0:
+                            remaining_label = "⚠️ ថ្ងៃនេះជាថ្ងៃឱសានវាទ (Due Today)"
+                        elif diff_days == 1:
+                            remaining_label = "⏱️ នៅសល់ ១ ថ្ងៃទៀត (Due Tomorrow)"
+                        else:
+                            remaining_label = f"⏱️ នៅសល់ {diff_days} ថ្ងៃទៀត"
+                            
+                        prio_emoji = "🔴" if ticket["priority"] == "Urgent" else "🟠" if ticket["priority"] == "High" else "🟡"
+                        
+                        alert_text = (
+                            f"🚨 <b>[រំលឹកកាលបរិច្ឆេទឱសានវាទ / Task Due Alert]</b>\n\n"
+                            f"លិខិតស្នើសុំ/ភារកិច្ច ៖ <b>{ticket['title']}</b> (កូដ ៖ <code>#{ticket['ticket_code']}</code>)\n"
+                            f"📅 <b>ថ្ងៃឱសានវាទ (Due Date) ៖</b> <code>{due_str}</code> (<b>{remaining_label}</b>)\n"
+                            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{ticket['assignee_name'] or 'SOC Duty Officer'}</b>\n"
+                            f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{ticket['priority']}</b>\n"
+                            f"⏳ <b>ស្ថានភាពបច្ចុប្បន្ន ៖</b> <code>{ticket['status']}</code>\n\n"
+                            f"សូមពិនិត្យ និងចាត់ចែងបញ្ចប់ការងារឲ្យបានទាន់ពេលវេលា! 🙏"
+                        )
+                        
+                        for cid in target_chat_ids:
+                            try:
+                                res = requests.post(
+                                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                                    json={"chat_id": cid, "text": alert_text, "parse_mode": "HTML"},
+                                    timeout=5
+                                )
+                                if res.ok:
+                                    alerts_sent += 1
+                                else:
+                                    errors.append(f"Telegram error for {cid}: {res.text}")
+                            except Exception as ex_send:
+                                errors.append(f"Send exception for {cid}: {str(ex_send)}")
+            except Exception as ex_tkt:
+                print(f"Error checking due date for ticket {ticket['ticket_code']}: {ex_tkt}")
+                
+        # Save/Update Date Lock in settings
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_due_alert_date', ?)", (today_str,))
+        conn.commit()
+    except Exception as e_run:
+        print("Error running due date checks:", e_run)
+        errors.append(str(e_run))
+        
+    conn.close()
+    return {
+        "status": "success",
+        "date": today_str,
+        "alerts_sent": alerts_sent,
+        "errors": errors
+    }
+
+@app.api_route("/api/tickets/check-due-alerts", methods=["GET", "POST"])
+def api_check_due_alerts():
+    return check_ticket_due_alerts()
+
 def auto_sync_loop():
     # Initial sleep to let server boot up and avoid rate limit hit during restarts
     time.sleep(60)
@@ -105,6 +250,13 @@ def auto_sync_loop():
                     print(f"Scheduled background pull sync failed/skipped: Branch={b_msg}, HQ={h_msg}, Hospital={hos_msg}")
             except Exception as e:
                 print(f"Error in scheduled background pull sync: {e}")
+            
+            # Periodically check and trigger ticket due alerts
+            try:
+                check_ticket_due_alerts()
+            except Exception as e_alert:
+                print("Error running due date checks in background sync:", e_alert)
+                
         # Sync every 5 minutes (300 seconds)
         time.sleep(300)
 

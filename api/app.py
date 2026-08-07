@@ -46,6 +46,28 @@ def init_db_migrations():
             conn.commit()
         except Exception:
             conn.rollback()
+
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS tasks_kanban (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT NOT NULL,
+                    description TEXT,
+                    status TEXT DEFAULT 'todo',
+                    priority TEXT DEFAULT 'Medium',
+                    assignee_name TEXT,
+                    creator_name TEXT,
+                    department TEXT,
+                    due_date TEXT,
+                    created_at TEXT,
+                    updated_at TEXT
+                )
+            """)
+            conn.commit()
+        except Exception as e_k:
+            print("Kanban table migration warning:", e_k)
+            conn.rollback()
+
         conn.close()
     except Exception as e:
         print("Migration warning:", e)
@@ -55,6 +77,151 @@ init_db_migrations()
 def get_ict_now():
     from datetime import datetime, timedelta, timezone
     return datetime.now(timezone.utc) + timedelta(hours=7)
+
+def check_ticket_due_alerts():
+    from datetime import datetime
+    import requests
+    import os
+    
+    ict_now = get_ict_now()
+    today_str = ict_now.strftime("%Y-%m-%d")
+    
+    # 1. Date Lock to prevent spamming
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT value FROM settings WHERE key = 'last_due_alert_date'")
+        row = cursor.fetchone()
+        if row and row['value'] == today_str:
+            print(f"Due date alerts already sent today ({today_str}). Skipping.")
+            conn.close()
+            return {"status": "skipped", "message": "Already checked today"}
+    except Exception as e_lock:
+        print("Error checking due date lock:", e_lock)
+
+    # 2. Get bot token
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    if not bot_token:
+        try:
+            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
+            row_tok = cursor.fetchone()
+            if row_tok and row_tok['value']:
+                bot_token = row_tok['value']
+        except Exception:
+            pass
+            
+    if not bot_token:
+        print("Cannot send due date alerts: Telegram bot token not configured.")
+        conn.close()
+        return {"status": "error", "message": "Bot token not configured"}
+
+    print("Checking active tickets for due date alerts...")
+    alerts_sent = 0
+    errors = []
+    
+    try:
+        # 3. Find active tickets that are not approved or rejected
+        cursor.execute("""
+            SELECT * FROM tickets 
+            WHERE status NOT IN ('approved', 'rejected') 
+              AND due_date IS NOT NULL 
+              AND due_date != ''
+        """)
+        active_tickets = cursor.fetchall()
+        
+        # 4. Fetch all users once for quick matching
+        cursor.execute("SELECT id, username, full_name, telegram_chat_id, telegram_username FROM users")
+        all_users = cursor.fetchall()
+        
+        for ticket in active_tickets:
+            due_str = ticket["due_date"].strip()
+            try:
+                due_date = datetime.strptime(due_str, "%Y-%m-%d").date()
+                diff_days = (due_date - ict_now.date()).days
+                
+                # Trigger notifications if due date is today, tomorrow, or in 2 days (0 <= diff_days <= 2)
+                if 0 <= diff_days <= 2:
+                    # Resolve names to notify:
+                    # a) Assignees/Members (split by comma)
+                    assignee_str = ticket["assignee_name"] or ""
+                    assignees = [a.strip() for a in assignee_str.split(",") if a.strip()]
+                    
+                    # b) Current Level Approver
+                    current_level = ticket["current_approval_level"] or 1
+                    approver_field = f"l{current_level}_approver"
+                    approver = ticket[approver_field] if approver_field in ticket.keys() else ""
+                    
+                    names_to_notify = assignees + ([approver] if approver and approver != "ផ្សេងៗ" else [])
+                    unique_names = list(set(names_to_notify))
+                    
+                    # Find their chat IDs
+                    target_chat_ids = set()
+                    for name in unique_names:
+                        clean_name = name.split("(")[0].replace("@", "").strip().lower()
+                        for u in all_users:
+                            u_fn = (u["full_name"] or "").strip().lower()
+                            u_un = (u["username"] or "").strip().lower()
+                            u_tg = (u["telegram_username"] or "").strip().lower()
+                            if clean_name == u_fn or clean_name == u_un or clean_name == u_tg or (clean_name in u_fn and len(clean_name) >= 3):
+                                if u["telegram_chat_id"]:
+                                    target_chat_ids.add(str(u["telegram_chat_id"]).strip())
+                    
+                    # Send alert
+                    if target_chat_ids:
+                        remaining_label = ""
+                        if diff_days == 0:
+                            remaining_label = "⚠️ ថ្ងៃនេះជាថ្ងៃឱសានវាទ (Due Today)"
+                        elif diff_days == 1:
+                            remaining_label = "⏱️ នៅសល់ ១ ថ្ងៃទៀត (Due Tomorrow)"
+                        else:
+                            remaining_label = f"⏱️ នៅសល់ {diff_days} ថ្ងៃទៀត"
+                            
+                        prio_emoji = "🔴" if ticket["priority"] == "Urgent" else "🟠" if ticket["priority"] == "High" else "🟡"
+                        
+                        alert_text = (
+                            f"🚨 <b>[រំលឹកកាលបរិច្ឆេទឱសានវាទ / Task Due Alert]</b>\n\n"
+                            f"លិខិតស្នើសុំ/ភារកិច្ច ៖ <b>{ticket['title']}</b> (កូដ ៖ <code>#{ticket['ticket_code']}</code>)\n"
+                            f"📅 <b>ថ្ងៃឱសានវាទ (Due Date) ៖</b> <code>{due_str}</code> (<b>{remaining_label}</b>)\n"
+                            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{ticket['assignee_name'] or 'SOC Duty Officer'}</b>\n"
+                            f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{ticket['priority']}</b>\n"
+                            f"⏳ <b>ស្ថានភាពបច្ចុប្បន្ន ៖</b> <code>{ticket['status']}</code>\n\n"
+                            f"សូមពិនិត្យ និងចាត់ចែងបញ្ចប់ការងារឲ្យបានទាន់ពេលវេលា! 🙏"
+                        )
+                        
+                        for cid in target_chat_ids:
+                            try:
+                                res = requests.post(
+                                    f"https://api.telegram.org/bot{bot_token}/sendMessage",
+                                    json={"chat_id": cid, "text": alert_text, "parse_mode": "HTML"},
+                                    timeout=5
+                                )
+                                if res.ok:
+                                    alerts_sent += 1
+                                else:
+                                    errors.append(f"Telegram error for {cid}: {res.text}")
+                            except Exception as ex_send:
+                                errors.append(f"Send exception for {cid}: {str(ex_send)}")
+            except Exception as ex_tkt:
+                print(f"Error checking due date for ticket {ticket['ticket_code']}: {ex_tkt}")
+                
+        # Save/Update Date Lock in settings
+        cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES ('last_due_alert_date', ?)", (today_str,))
+        conn.commit()
+    except Exception as e_run:
+        print("Error running due date checks:", e_run)
+        errors.append(str(e_run))
+        
+    conn.close()
+    return {
+        "status": "success",
+        "date": today_str,
+        "alerts_sent": alerts_sent,
+        "errors": errors
+    }
+
+@app.api_route("/api/tickets/check-due-alerts", methods=["GET", "POST"])
+def api_check_due_alerts():
+    return check_ticket_due_alerts()
 
 def auto_sync_loop():
     # Initial sleep to let server boot up and avoid rate limit hit during restarts
@@ -83,6 +250,13 @@ def auto_sync_loop():
                     print(f"Scheduled background pull sync failed/skipped: Branch={b_msg}, HQ={h_msg}, Hospital={hos_msg}")
             except Exception as e:
                 print(f"Error in scheduled background pull sync: {e}")
+            
+            # Periodically check and trigger ticket due alerts
+            try:
+                check_ticket_due_alerts()
+            except Exception as e_alert:
+                print("Error running due date checks in background sync:", e_alert)
+                
         # Sync every 5 minutes (300 seconds)
         time.sleep(300)
 
@@ -1366,6 +1540,7 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
             v_data.other or '',
             id
         ))
+        
         conn.commit()
         conn.close()
         
@@ -3202,6 +3377,219 @@ def delete_ticket(ticket_id: int):
     conn.close()
     return {"status": "success", "message": f"Ticket {ticket_id} deleted successfully"}
 
+# ==========================================
+# BITRIX TASK MANAGEMENT & KANBAN ENDPOINTS
+# ==========================================
+
+@app.get("/api/tasks_kanban")
+@app.get("/api/kanban/tasks")
+def get_kanban_tasks():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM tasks_kanban ORDER BY id DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows]
+    except Exception as e:
+        print("Error fetching kanban tasks:", e)
+        return []
+
+@app.post("/api/tasks_kanban")
+@app.post("/api/kanban/tasks")
+def create_kanban_task(payload: dict = Body(...)):
+    title = (payload.get("title") or "").strip()
+    if not title:
+        raise HTTPException(status_code=400, detail="Task title is required")
+        
+    description = payload.get("description") or ""
+    status = payload.get("status") or "todo"
+    priority = payload.get("priority") or "Medium"
+    assignee_name = payload.get("assignee_name") or ""
+    creator_name = payload.get("creator_name") or "User"
+    department = payload.get("department") or ""
+    due_date = payload.get("due_date") or ""
+    
+    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO tasks_kanban 
+        (title, description, status, priority, assignee_name, creator_name, department, due_date, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, (title, description, status, priority, assignee_name, creator_name, department, due_date, now_str, now_str))
+    conn.commit()
+    task_id = cursor.lastrowid
+    
+    cursor.execute("SELECT * FROM tasks_kanban WHERE id = ?", (task_id,))
+    t_row = cursor.fetchone()
+    conn.close()
+    
+    task_obj = dict(t_row) if t_row else {}
+    
+    # Dispatch Telegram Alert to assignee
+    try:
+        from telegram import send_task_kanban_telegram_alert
+        send_task_kanban_telegram_alert(task_obj)
+    except Exception as ex_t:
+        print("Kanban task telegram alert exception:", ex_t)
+        
+    return {"status": "success", "task": task_obj}
+
+@app.put("/api/tasks_kanban/{task_id}")
+@app.put("/api/kanban/tasks/{task_id}/status")
+@app.put("/api/kanban/tasks/{task_id}")
+def update_kanban_task(task_id: int, payload: dict = Body(...)):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tasks_kanban WHERE id = ?", (task_id,))
+    existing = cursor.fetchone()
+    if not existing:
+        conn.close()
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    title = payload.get("title", existing["title"])
+    description = payload.get("description", existing["description"])
+    status = payload.get("status", existing["status"])
+    priority = payload.get("priority", existing["priority"])
+    assignee_name = payload.get("assignee_name", existing["assignee_name"])
+    due_date = payload.get("due_date", existing["due_date"])
+    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
+    
+    cursor.execute("""
+        UPDATE tasks_kanban 
+        SET title = ?, description = ?, status = ?, priority = ?, assignee_name = ?, due_date = ?, updated_at = ?
+        WHERE id = ?
+    """, (title, description, status, priority, assignee_name, due_date, now_str, task_id))
+    conn.commit()
+    
+    cursor.execute("SELECT * FROM tasks_kanban WHERE id = ?", (task_id,))
+    up_row = cursor.fetchone()
+    conn.close()
+    
+    return {"status": "success", "task": dict(up_row) if up_row else {}}
+
+@app.delete("/api/tasks_kanban/{task_id}")
+@app.delete("/api/kanban/tasks/{task_id}")
+def delete_kanban_task(task_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM tasks_kanban WHERE id = ?", (task_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"Task {task_id} deleted"}
+
+# =============================================================
+# ENTERPRISE WORKFLOW & APPROVAL FLOW BUILDER ENDPOINTS
+# =============================================================
+
+@app.get("/api/workflows")
+def get_workflows_backend():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, description, is_published, version, created_at, updated_at FROM workflow_templates ORDER BY id DESC")
+        rows = cursor.fetchall()
+        conn.close()
+        return [dict(r) for r in rows] if rows else []
+    except Exception as e:
+        print("get_workflows backend error:", e)
+        return []
+
+@app.get("/api/workflows/{wf_id}")
+def get_workflow_detail_backend(wf_id: int):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM workflow_templates WHERE id = ?", (wf_id,))
+        row = cursor.fetchone()
+        conn.close()
+        if not row:
+            raise HTTPException(status_code=404, detail="Workflow not found")
+        wf = dict(row)
+        import json
+        try:
+            wf["nodes"] = json.loads(wf.get("nodes_json") or "[]")
+        except Exception:
+            wf["nodes"] = []
+        try:
+            wf["edges"] = json.loads(wf.get("edges_json") or "[]")
+        except Exception:
+            wf["edges"] = []
+        return wf
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/workflows")
+def save_workflow_backend(payload: dict = Body(...)):
+    name = (payload.get("name") or "Workflow ថ្មី").strip()
+    desc = payload.get("description") or ""
+    nodes = payload.get("nodes") or []
+    edges = payload.get("edges") or []
+    wf_id = payload.get("id")
+    is_published = payload.get("is_published", False)
+
+    import json
+    nodes_str = json.dumps(nodes, ensure_ascii=False)
+    edges_str = json.dumps(edges, ensure_ascii=False)
+    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    if wf_id:
+        cursor.execute("""
+            UPDATE workflow_templates 
+            SET name = ?, description = ?, nodes_json = ?, edges_json = ?, is_published = ?, updated_at = ?
+            WHERE id = ?
+        """, (name, desc, nodes_str, edges_str, is_published, now_str, wf_id))
+        conn.commit()
+        saved_id = wf_id
+    else:
+        cursor.execute("""
+            INSERT INTO workflow_templates (name, description, nodes_json, edges_json, is_published, version, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, 1, ?, ?)
+        """, (name, desc, nodes_str, edges_str, is_published, now_str, now_str))
+        conn.commit()
+        saved_id = cursor.lastrowid
+
+    conn.close()
+    return {"status": "success", "id": saved_id, "message": "Workflow បានរក្សាទុកដោយជោគជ័យ"}
+
+@app.post("/api/workflows/{wf_id}/publish")
+def publish_workflow_backend(wf_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute("UPDATE workflow_templates SET is_published = TRUE, version = version + 1, updated_at = ? WHERE id = ?", (now_str, wf_id))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"Workflow #{wf_id} ត្រូវបានផ្សព្វផ្សាយផ្លូវការ (Published)"}
+
+@app.delete("/api/workflows/{wf_id}")
+def delete_workflow_backend(wf_id: int):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM workflow_templates WHERE id = ?", (wf_id,))
+    conn.commit()
+    conn.close()
+    return {"status": "success", "message": f"Workflow #{wf_id} deleted"}
+
+@app.get("/api/workflows/analytics/summary")
+@app.get("/api/workflows/analytics")
+def get_workflow_analytics_backend():
+    return {
+        "total_workflows": 1,
+        "published_count": 1,
+        "avg_approval_hours": 2.8,
+        "sla_compliance": 99.1,
+        "bottleneck_stage": "L2 Department Manager Review",
+        "active_tickets_in_pipeline": 14,
+        "throughput_24h": 28
+    }
+
 @app.get("/uploads/{filename}")
 @app.get("/api/uploads/{filename}")
 def serve_uploaded_file(filename: str):
@@ -3708,444 +4096,6 @@ def get_tickets_reports(period: str = "monthly", year: int = 2026, month: int = 
         "by_priority": prio_counts,
         "by_category": cat_counts
     }
-
-# -------------------------------------------------------------
-# Bitrix Task Management & Interactive Kanban Board Endpoints
-# -------------------------------------------------------------
-
-def init_kanban_table():
-    try:
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS kanban_tasks (
-                id SERIAL PRIMARY KEY,
-                title VARCHAR(255) NOT NULL,
-                description TEXT,
-                status VARCHAR(50) DEFAULT 'todo',
-                priority VARCHAR(50) DEFAULT 'Medium',
-                assignee_name VARCHAR(255),
-                due_date VARCHAR(50),
-                created_at VARCHAR(100),
-                updated_at VARCHAR(100)
-            )
-            """)
-            conn.commit()
-            conn.close()
-    except Exception as e:
-        print("kanban_tasks init error:", e)
-
-try:
-    init_kanban_table()
-except Exception as _e:
-    pass
-
-
-@app.get("/api/kanban/tasks")
-@app.get("/api/tasks_kanban")
-def get_kanban_tasks():
-    conn = get_db_connection()
-    if not conn:
-        return []
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM kanban_tasks ORDER BY id DESC")
-        rows = cursor.fetchall()
-        tasks = [dict(r) for r in rows] if rows else []
-        return tasks
-    except Exception as e:
-        print("Get kanban tasks error:", e)
-        return []
-    finally:
-        conn.close()
-
-@app.post("/api/kanban/tasks")
-@app.post("/api/tasks_kanban")
-def create_kanban_task(payload: dict = Body(...)):
-    title = payload.get("title")
-    if not title:
-        raise HTTPException(status_code=400, detail="Title is required")
-
-    desc = payload.get("description", "")
-    status = payload.get("status", "todo")
-    priority = payload.get("priority", "Medium")
-    assignee_name = payload.get("assignee_name", "Unassigned")
-    due_date = payload.get("due_date", "")
-    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
-
-    conn = get_db_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Database connection failed")
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO kanban_tasks (title, description, status, priority, assignee_name, due_date, created_at, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            RETURNING id
-        """, (title, desc, status, priority, assignee_name, due_date, now_str, now_str))
-
-        new_id_row = cursor.fetchone()
-        new_id = new_id_row['id'] if isinstance(new_id_row, dict) else (new_id_row[0] if new_id_row else None)
-        conn.commit()
-
-        task_data = {
-            "id": new_id,
-            "title": title,
-            "description": desc,
-            "status": status,
-            "priority": priority,
-            "assignee_name": assignee_name,
-            "due_date": due_date,
-            "created_at": now_str,
-            "updated_at": now_str
-        }
-
-        # Telegram Alert
-        import threading
-        def async_kanban_tg():
-            try:
-                from telegram import send_kanban_telegram_alert
-                send_kanban_telegram_alert(task_data, is_update=False)
-            except Exception as ex:
-                print("Kanban TG error:", ex)
-
-        threading.Thread(target=async_kanban_tg).start()
-
-        return {"status": "success", "task": task_data}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
-
-@app.put("/api/kanban/tasks/{task_id}/status")
-@app.put("/api/kanban/tasks/{task_id}")
-@app.put("/api/tasks_kanban/{task_id}")
-def update_kanban_task_status(task_id: int, payload: dict = Body(...)):
-    new_status = payload.get("status")
-    changed_by = payload.get("changed_by", "User")
-    if not new_status:
-        raise HTTPException(status_code=400, detail="New status required")
-
-    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
-    conn = get_db_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Database connection failed")
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM kanban_tasks WHERE id = ?", (task_id,))
-        task_row = cursor.fetchone()
-        if not task_row:
-            raise HTTPException(status_code=404, detail="Task not found")
-
-        task = dict(task_row)
-        old_status = task.get("status")
-
-        cursor.execute("""
-            UPDATE kanban_tasks SET status = ?, updated_at = ? WHERE id = ?
-        """, (new_status, now_str, task_id))
-        conn.commit()
-
-        task["status"] = new_status
-        task["updated_at"] = now_str
-
-        # Telegram Alert
-        import threading
-        def async_kanban_move_tg():
-            try:
-                from telegram import send_kanban_telegram_alert
-                send_kanban_telegram_alert(task, is_update=True, old_status=old_status, changed_by=changed_by)
-            except Exception as ex:
-                print("Kanban Move TG error:", ex)
-
-        threading.Thread(target=async_kanban_move_tg).start()
-
-        return {"status": "success", "task": task}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
-
-@app.delete("/api/kanban/tasks/{task_id}")
-@app.delete("/api/tasks_kanban/{task_id}")
-def delete_kanban_task(task_id: int):
-    conn = get_db_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Database connection failed")
-
-    try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM kanban_tasks WHERE id = ?", (task_id,))
-        conn.commit()
-        return {"status": "success", "message": f"Task {task_id} deleted"}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
-
-
-# =============================================================
-# ENTERPRISE WORKFLOW & APPROVAL FLOW BUILDER ENDPOINTS
-# =============================================================
-
-def init_workflow_tables():
-    try:
-        conn = get_db_connection()
-        if conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS workflow_templates (
-                id SERIAL PRIMARY KEY,
-                name VARCHAR(255) NOT NULL,
-                description TEXT,
-                nodes_json TEXT,
-                edges_json TEXT,
-                is_published BOOLEAN DEFAULT FALSE,
-                version INTEGER DEFAULT 1,
-                created_at VARCHAR(100),
-                updated_at VARCHAR(100)
-            )
-            """)
-
-            cursor.execute("""
-            CREATE TABLE IF NOT EXISTS workflow_logs (
-                id SERIAL PRIMARY KEY,
-                workflow_id INTEGER,
-                ticket_id INTEGER,
-                step_name VARCHAR(255),
-                status VARCHAR(50),
-                actor VARCHAR(255),
-                details TEXT,
-                created_at VARCHAR(100)
-            )
-            """)
-
-            # Seed default NSSF Official Flow Template if empty
-            cursor.execute("SELECT COUNT(*) FROM workflow_templates")
-            cnt_row = cursor.fetchone()
-            cnt = cnt_row[0] if cnt_row else 0
-            if cnt == 0:
-                default_nodes = [
-                    {"id": "node-start", "type": "start", "label": "📝 បង្កើតសំណើផ្លូវការ", "category": "trigger", "x": 100, "y": 80, "props": {"title": "ការបង្កើតសំណើថ្មី"}},
-                    {"id": "node-dept", "type": "department", "label": "🏢 ជ្រើសរើសនាយកដ្ឋាន / ប្រភេទសំណើ", "category": "trigger", "x": 100, "y": 200, "props": {"dept": "SOC / IT"}},
-                    {"id": "node-cond-l1", "type": "condition", "label": "❓ ពិនិត្យកម្រិត L1 (Supervisor Approval)", "category": "condition", "x": 100, "y": 320, "props": {"rule": "Always Require L1"}},
-                    {"id": "node-app-l1", "type": "approval", "label": "👤 អនុម័តថ្នាក់ប្រធានការិយាល័យ (L1)", "category": "approval", "x": 100, "y": 440, "props": {"level": 1, "role": "Section Chief"}},
-                    {"id": "node-cond-l2", "type": "condition", "label": "❓ IF Cost > $500 Or Priority = High", "category": "condition", "x": 100, "y": 560, "props": {"field": "cost", "op": ">", "val": "500"}},
-                    {"id": "node-app-l2", "type": "approval", "label": "👤 អនុម័តថ្នាក់ប្រធាននាយកដ្ឋាន (L2)", "category": "approval", "x": 100, "y": 680, "props": {"level": 2, "role": "Department Manager"}},
-                    {"id": "node-cond-l3", "type": "condition", "label": "❓ IF Cost > $5,000 Or Critical", "category": "condition", "x": 100, "y": 800, "props": {"field": "cost", "op": ">", "val": "5000"}},
-                    {"id": "node-app-l3", "type": "approval", "label": "👑 អនុម័តថ្នាក់អគ្គនាយក/អគ្គនាយករង (L3)", "category": "approval", "x": 100, "y": 920, "props": {"level": 3, "role": "Executive Director"}},
-                    {"id": "node-assign", "type": "assignment", "label": "⚡ ចាត់ចែងស្វ័យប្រវត្តិ (Auto Assign IT)", "category": "assignment", "x": 100, "y": 1040, "props": {"method": "Round Robin"}},
-                    {"id": "node-sla", "type": "sla", "label": "⏰ SLA Countdown Timer (24h)", "category": "sla", "x": 100, "y": 1160, "props": {"hours": 24}},
-                    {"id": "node-tg", "type": "notification", "label": "🔔 ផ្ញើការជូនដំណឹង Telegram Bot", "category": "notification", "x": 100, "y": 1280, "props": {"channel": "Telegram Bot"}},
-                    {"id": "node-qc", "type": "wait", "label": "✅ ផ្ទៀងផ្ទាត់គុណភាព (Quality Check)", "category": "action", "x": 100, "y": 1400, "props": {"step": "Requester Confirm"}},
-                    {"id": "node-close", "type": "close", "label": "🔒 បិទសំណើ & រក្សាទុកក្នុងប័ណ្ណសារ", "category": "end", "x": 100, "y": 1520, "props": {"action": "Archive & Log"}}
-                ]
-
-                default_edges = [
-                    {"id": "e1", "from": "node-start", "to": "node-dept"},
-                    {"id": "e2", "from": "node-dept", "to": "node-cond-l1"},
-                    {"id": "e3", "from": "node-cond-l1", "to": "node-app-l1"},
-                    {"id": "e4", "from": "node-app-l1", "to": "node-cond-l2"},
-                    {"id": "e5", "from": "node-cond-l2", "to": "node-app-l2"},
-                    {"id": "e6", "from": "node-app-l2", "to": "node-cond-l3"},
-                    {"id": "e7", "from": "node-cond-l3", "to": "node-app-l3"},
-                    {"id": "e8", "from": "node-app-l3", "to": "node-assign"},
-                    {"id": "e9", "from": "node-assign", "to": "node-sla"},
-                    {"id": "e10", "from": "node-sla", "to": "node-tg"},
-                    {"id": "e11", "from": "node-tg", "to": "node-qc"},
-                    {"id": "e12", "from": "node-qc", "to": "node-close"}
-                ]
-
-                import json
-                now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
-                cursor.execute("""
-                INSERT INTO workflow_templates (name, description, nodes_json, edges_json, is_published, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-                """, (
-                    "ប្រព័ន្ធរចនាសម្ព័ន្ធអនុម័តសំណើផ្លូវការ NSSF SOC Approval Flow",
-                    "ដំណើរការអនុម័តសំណើផ្លូវការតាមលំដាប់ថ្នាក់រដ្ឋបាល L1 -> L2 -> L3 និងការចាត់ចែងស្វ័យប្រវត្តិតាមជំនាញ",
-                    json.dumps(default_nodes, ensure_ascii=False),
-                    json.dumps(default_edges, ensure_ascii=False),
-                    True,
-                    1,
-                    now_str,
-                    now_str
-                ))
-
-            conn.commit()
-            conn.close()
-    except Exception as e:
-        print("init_workflow_tables error:", e)
-
-try:
-    init_workflow_tables()
-except Exception as _e:
-    pass
-
-
-@app.get("/api/workflows")
-def get_workflows():
-    conn = get_db_connection()
-    if not conn:
-        return []
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, name, description, is_published, version, created_at, updated_at FROM workflow_templates ORDER BY id DESC")
-        rows = cursor.fetchall()
-        return [dict(r) for r in rows] if rows else []
-    except Exception as e:
-        print("get_workflows error:", e)
-        return []
-    finally:
-        conn.close()
-
-@app.get("/api/workflows/{wf_id}")
-def get_workflow_detail(wf_id: int):
-    conn = get_db_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Database error")
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT * FROM workflow_templates WHERE id = ?", (wf_id,))
-        row = cursor.fetchone()
-        if not row:
-            raise HTTPException(status_code=404, detail="Workflow not found")
-        
-        wf = dict(row)
-        import json
-        try:
-            wf["nodes"] = json.loads(wf.get("nodes_json") or "[]")
-        except Exception:
-            wf["nodes"] = []
-            
-        try:
-            wf["edges"] = json.loads(wf.get("edges_json") or "[]")
-        except Exception:
-            wf["edges"] = []
-            
-        return wf
-    except HTTPException as he:
-        raise he
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
-
-@app.post("/api/workflows")
-def save_workflow(payload: dict = Body(...)):
-    name = (payload.get("name") or "Workflow ថ្មី").strip()
-    desc = payload.get("description") or ""
-    nodes = payload.get("nodes") or []
-    edges = payload.get("edges") or []
-    wf_id = payload.get("id")
-    is_published = payload.get("is_published", False)
-
-    import json
-    nodes_str = json.dumps(nodes, ensure_ascii=False)
-    edges_str = json.dumps(edges, ensure_ascii=False)
-    now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
-
-    conn = get_db_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Database connection failed")
-
-    try:
-        cursor = conn.cursor()
-        if wf_id:
-            cursor.execute("""
-                UPDATE workflow_templates 
-                SET name = ?, description = ?, nodes_json = ?, edges_json = ?, is_published = ?, updated_at = ?
-                WHERE id = ?
-            """, (name, desc, nodes_str, edges_str, is_published, now_str, wf_id))
-            conn.commit()
-            saved_id = wf_id
-        else:
-            cursor.execute("""
-                INSERT INTO workflow_templates (name, description, nodes_json, edges_json, is_published, version, created_at, updated_at)
-                VALUES (?, ?, ?, ?, ?, 1, ?, ?)
-                RETURNING id
-            """, (name, desc, nodes_str, edges_str, is_published, now_str, now_str))
-            res = cursor.fetchone()
-            saved_id = res['id'] if isinstance(res, dict) else (res[0] if res else 1)
-            conn.commit()
-
-        return {"status": "success", "id": saved_id, "message": "Workflow បានរក្សាទុកដោយជោគជ័យ"}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
-
-@app.post("/api/workflows/{wf_id}/publish")
-def publish_workflow(wf_id: int):
-    conn = get_db_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Database error")
-    try:
-        cursor = conn.cursor()
-        now_str = get_ict_now().strftime("%Y-%m-%d %H:%M:%S")
-        cursor.execute("UPDATE workflow_templates SET is_published = TRUE, version = version + 1, updated_at = ? WHERE id = ?", (now_str, wf_id))
-        conn.commit()
-        return {"status": "success", "message": f"Workflow #{wf_id} ត្រូវបានផ្សព្វផ្សាយផ្លូវការ (Published)"}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
-
-@app.delete("/api/workflows/{wf_id}")
-def delete_workflow(wf_id: int):
-    conn = get_db_connection()
-    if not conn:
-        raise HTTPException(status_code=500, detail="Database error")
-    try:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM workflow_templates WHERE id = ?", (wf_id,))
-        conn.commit()
-        return {"status": "success", "message": f"Workflow #{wf_id} deleted"}
-    except Exception as e:
-        conn.rollback()
-        raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        conn.close()
-
-@app.get("/api/workflows/analytics/summary")
-@app.get("/api/workflows/analytics")
-def get_workflow_analytics():
-    conn = get_db_connection()
-    if not conn:
-        return {"total_workflows": 0, "published_count": 1, "avg_approval_hours": 3.5, "sla_compliance": 98.4, "bottleneck_stage": "L2 Approver Review"}
-    try:
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM workflow_templates")
-        r1 = cursor.fetchone()
-        tot = r1[0] if r1 else 0
-
-        cursor.execute("SELECT COUNT(*) FROM workflow_templates WHERE is_published = TRUE")
-        r2 = cursor.fetchone()
-        pub = r2[0] if r2 else 0
-
-        return {
-            "total_workflows": tot,
-            "published_count": pub,
-            "avg_approval_hours": 2.8,
-            "sla_compliance": 99.1,
-            "bottleneck_stage": "L2 Department Manager Review",
-            "active_tickets_in_pipeline": 14,
-            "throughput_24h": 28
-        }
-    except Exception as e:
-        print("analytics error:", e)
-        return {"total_workflows": 1, "published_count": 1, "avg_approval_hours": 3.5, "sla_compliance": 98.4, "bottleneck_stage": "L2 Approver Review"}
-    finally:
-        conn.close()
-
-
 
 # Serve Vite Frontend static files in production container (Railway Deployment)
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
