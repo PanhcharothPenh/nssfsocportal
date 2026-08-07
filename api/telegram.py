@@ -1509,63 +1509,87 @@ def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
     
     req_name = ticket.get("requester_name") or "System Administrator"
     
+    from datetime import datetime, timezone, timedelta
+    now_str = (datetime.now(timezone(timedelta(hours=7)))).strftime("%Y-%m-%d %H:%M:%S")
+
     if event_type == "approved":
+        actor = ticket.get("l2_approver") or ticket.get("l1_approver") or ticket.get("requester_name") or "អ្នករៀបចំ"
+        comment = ticket.get("l2_comment") or ticket.get("l1_comment") or "បានពិនិត្យ និងសម្រេចឯកភាព"
         msg = (
-            f"✅ <b>កិច្ចការត្រូវបានអនុម័តផ្លូវការ</b>\n\n"
-            f"📄 <b>{title}</b>\n"
-            f"🎫 <code>#{code}</code>\n\n"
-            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
-            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
-            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
-            f"🎉 <b>ស្ថានភាព ៖</b> <b>បានអនុម័តផ្លូវការ (Approved)</b>"
+            f"🎉 <b>[NSSF SOC WORKFLOW UPDATE - ការអនុម័តសម្រេច]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{actor}</b>\n"
+            f"📊 <b>ស្ថានភាព ៖</b> <b>✅ បានអនុម័តផ្លូវការ (Approved)</b>\n"
+            f"📝 <b>ចំណារ / មតិយោបល់ ៖</b> <i>\"{comment}\"</i>\n"
+            f"⏰ <code>{now_str}</code>\n\n"
+            f"👉 <b>សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!</b>"
         )
     elif event_type in ("rejected", "reject"):
-        reason = ticket.get("rejection_reason") or ticket.get("l1_comment") or "គ្មានការបញ្ជាក់"
+        actor = ticket.get("l2_approver") or ticket.get("l1_approver") or ticket.get("requester_name") or "អ្នករៀបចំ"
+        reason = ticket.get("rejection_reason") or ticket.get("l1_comment") or ticket.get("l2_comment") or "គ្មានការបញ្ជាក់"
         msg = (
-            f"❌ <b>កិច្ចការត្រូវបានបដិសេធ (Rejected)</b>\n\n"
-            f"📄 <b>{title}</b>\n"
-            f"🎫 <code>#{code}</code>\n\n"
-            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
-            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
-            f"📝 <b>មូលហេតុបដិសេធ ៖</b> <i>\"{reason}\"</i>\n"
-            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
-            f"🚫 <b>ស្ថានភាព ៖</b> <b>ត្រូវបានបដិសេធ (Rejected)</b>"
+            f"❌ <b>[NSSF SOC WORKFLOW UPDATE - ការបដិសេធ]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{actor}</b>\n"
+            f"📊 <b>ស្ថានភាព ៖</b> <b>❌ ត្រូវបានបដិសេធ (Rejected)</b>\n"
+            f"📝 <b>ចំណារ / មតិយោបល់ ៖</b> <i>\"{reason}\"</i>\n"
+            f"⏰ <code>{now_str}</code>\n\n"
+            f"👉 <b>សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!</b>"
         )
     elif event_type in ("completed", "done", "finished"):
+        actor = ticket.get("assignee_name") or ticket.get("requester_name") or "អ្នករៀបចំ"
+        comment = ticket.get("completion_note") or "បានបញ្ចប់សព្វគ្រប់ 100%"
         msg = (
-            f"🏁 <b>កិច្ចការងារត្រូវបានបញ្ចប់សព្វគ្រប់ (Completed)</b>\n\n"
-            f"📄 <b>{title}</b>\n"
-            f"🎫 <code>#{code}</code>\n\n"
-            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
-            f"👥 <b>អ្នកអនុវត្តបញ្ចប់ ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
-            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
-            f"✅ <b>ស្ថានភាព ៖</b> <b>បានបញ្ចប់សព្វគ្រប់ 100%</b>"
+            f"🏁 <b>[NSSF SOC WORKFLOW UPDATE - ការបញ្ចប់សកម្មភាព]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{actor}</b>\n"
+            f"📊 <b>ស្ថានភាព ៖</b> <b>🏁 បានបញ្ចប់សព្វគ្រប់ (Completed)</b>\n"
+            f"📝 <b>ចំណារ / មតិយោបល់ ៖</b> <i>\"{comment}\"</i>\n"
+            f"⏰ <code>{now_str}</code>\n\n"
+            f"👉 <b>សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!</b>"
         )
     elif event_type in ("in_progress", "working", "processing"):
+        actor = ticket.get("assignee_name") or ticket.get("requester_name") or "អ្នករៀបចំ"
         msg = (
-            f"🔄 <b>កិច្ចការងារកំពុងដំណើរការអនុវត្ត (In Progress)</b>\n\n"
-            f"📄 <b>{title}</b>\n"
-            f"🎫 <code>#{code}</code>\n\n"
-            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
-            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
-            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
-            f"⏱️ <b>ស្ថានភាព ៖</b> <b>កំពុងអនុវត្ត</b>"
+            f"🔄 <b>[NSSF SOC WORKFLOW UPDATE - កំពុងដំណើរការ]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{actor}</b>\n"
+            f"📊 <b>ស្ថានភាព ៖</b> <b>🔄 កំពុងដំណើរការអនុវត្ត (In Progress)</b>\n"
+            f"⏰ <code>{now_str}</code>\n\n"
+            f"👉 <b>សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!</b>"
         )
     elif event_type == "auto_approved":
+        actor = ticket.get("requester_name") or "System"
         msg = (
-            f"⚡ <b>កិច្ចការងារថ្មី (អនុម័តស្វ័យប្រវត្តិ)</b>\n\n"
-            f"📄 <b>{title}</b>\n"
-            f"🎫 <code>#{code}</code>\n\n"
-            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
-            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
-            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
-            f"📌 <b>ស្ថានភាព ៖</b> <b>ត្រូវបានចាត់ចែងអនុវត្ត</b>"
+            f"⚡ <b>[NSSF SOC WORKFLOW UPDATE - អនុម័តស្វ័យប្រវត្តិ]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{actor}</b>\n"
+            f"📊 <b>ស្ថានភាព ៖</b> <b>📌 ត្រូវបានចាត់ចែងអនុវត្ត</b>\n"
+            f"⏰ <code>{now_str}</code>\n\n"
+            f"👉 <b>សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!</b>"
         )
     else: # created (pending approval)
+        msg = (
+            f"📩 <b>[NSSF SOC WORKFLOW - លិខិតថ្មី]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📄 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 <b>កម្រិតអាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
+            f"⌛ <b>ស្ថានភាព ៖</b> <b>រង់ចាំថ្នាក់ដឹកនាំអនុម័ត</b>\n\n"
+            f"👉 <b>សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!</b>"
+        )
         msg = (
             f"📩 <b>កិច្ចការថ្មី — រង់ចាំអនុម័ត</b>\n\n"
             f"📄 <b>{title}</b>\n"
