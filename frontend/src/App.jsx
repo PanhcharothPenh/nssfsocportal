@@ -3669,7 +3669,7 @@ export default function App() {
               </div>
 
               {/* Modal Body Container */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.25fr', height: '520px', backgroundColor: '#fff' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.35fr', maxHeight: 'calc(88vh - 120px)', height: '600px', backgroundColor: '#fff' }}>
                 
                 {/* Left Side: Credentials Panel */}
                 <div style={{ padding: '24px 28px', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '20px', overflowY: 'auto' }}>
