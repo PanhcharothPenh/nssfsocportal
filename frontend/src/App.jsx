@@ -250,7 +250,8 @@ export default function App() {
     due_date: '',
     description: '',
     requester_name: '',
-    department: ''
+    department: '',
+    assignee_name: ''
   });
   const [newTicketFile, setNewTicketFile] = useState(null);
   const [newTicketSubmitting, setNewTicketSubmitting] = useState(false);
@@ -879,6 +880,7 @@ export default function App() {
       formData.append('l1_approver', newTicketForm.l1_approver);
       formData.append('l2_approver', newTicketForm.l2_approver);
       formData.append('l3_approver', newTicketForm.l3_approver);
+      formData.append('assignee_name', newTicketForm.assignee_name);
       formData.append('start_date', newTicketForm.start_date);
       formData.append('end_date', newTicketForm.end_date);
       formData.append('due_date', newTicketForm.due_date);
@@ -910,7 +912,8 @@ export default function App() {
           due_date: '',
           description: '',
           requester_name: '',
-          department: ''
+          department: '',
+          assignee_name: ''
         });
         setNewTicketFile(null);
         fetchTickets();
@@ -5476,7 +5479,7 @@ export default function App() {
                       </td>
                       <td>
                         <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569' }}>
-                          {t.approval_level_required === 0 ? '⚡ Auto' : (t.approval_level_required === 5 ? '👤 ត្រឹមបុគ្គលិក' : (t.approval_level_required === 7 ? '🤝 ត្រឹមជំនួយការ' : (t.approval_level_required === 1 ? '🎖️ ត្រឹមអនុប្រធានការិយាល័យ' : (t.approval_level_required === 6 ? '👑 ត្រឹមប្រធានការិយាល័យ' : (t.approval_level_required === 2 ? '🔗 អនុប្រធាន ➔ ប្រធាន' : (t.approval_level_required === 3 ? '👑 ជំនួយការ ➔ អនុប្រធាន ➔ ប្រធាន' : '🏛️ បុគ្គលិក ➔ ជំនួយការ ➔ អនុ ➔ ប្រធាន'))))))}
+                          {t.approval_level_required === 0 ? '⚡ មិនបាច់អនុម័ត (Auto)' : (t.approval_level_required === 1 && !t.l2_approver ? '👤 ត្រូវការការអនុម័ត' : (t.approval_level_required === 5 ? '👤 ត្រឹមបុគ្គលិក' : (t.approval_level_required === 7 ? '🤝 ត្រឹមជំនួយការ' : (t.approval_level_required === 1 ? '🎖️ ត្រឹមអនុប្រធានការិយាល័យ' : (t.approval_level_required === 6 ? '👑 ត្រឹមប្រធានការិយាល័យ' : (t.approval_level_required === 2 ? '🔗 អនុប្រធាន ➔ ប្រធាន' : (t.approval_level_required === 3 ? '👑 ជំនួយការ ➔ អនុប្រធាន ➔ ប្រធាន' : '🏛️ បុគ្គលិក ➔ ជំនួយការ ➔ អនុ ➔ ប្រធាន')))))))}
                         </span>
                       </td>
                       <td>{getStatusBadge(t.status, t.approval_level_required)}</td>
@@ -10446,189 +10449,109 @@ export default function App() {
                   return null;
                 })()}
               </div>
-              <div className="form-group" style={{ margin: 0, backgroundColor: '#f8fafc', padding: '14px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-                <label className="form-label" style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
-                  🎯 កម្រិតពិនិត្យ និងអនុម័ត (Approval Hierarchy Level) *
-                </label>
-                <select
-                  className="form-input"
-                  value={newTicketForm.approval_level_required}
-                  onChange={(e) => setNewTicketForm({ ...newTicketForm, approval_level_required: parseInt(e.target.value) })}
-                  style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#1e3a8a', backgroundColor: '#ffffff' }}
-                >
-                  <option value="0">⚡ មិនបាច់ Approve (Auto-Approve / អនុវត្តផ្ទាល់)</option>
-                  <option value="5">👤 ត្រឹមបុគ្គលិក (ត្រឹមបុគ្គលិក)</option>
-                  <option value="7">🤝 ត្រឹមជំនួយការ (ត្រឹមជំនួយការ)</option>
-                  <option value="1">🎖️ ត្រឹមអនុប្រធានការិយាល័យ (ត្រឹមអនុប្រធានការិយាល័យ)</option>
-                  <option value="2">🔗 អនុប្រធានការិយាល័យ ➔ ប្រធានការិយាល័យ</option>
-                  <option value="3">👑 ជំនួយការ ➔ អនុប្រធានការិយាល័យ ➔ ប្រធានការិយាល័យ</option>
-                  <option value="4">🏛️ បុគ្គលិក ➔ ជំនួយការ ➔ អនុប្រធាន ➔ ប្រធានការិយាល័យ</option>
-                </select>
+              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                
+                {/* 1. Approval Type / Requirement */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
+                    🎯 តម្រូវការអនុម័ត (Approval Requirement) *
+                  </label>
+                  <select
+                    className="form-input"
+                    value={newTicketForm.approval_level_required}
+                    onChange={(e) => {
+                      const req = parseInt(e.target.value);
+                      setNewTicketForm({
+                        ...newTicketForm,
+                        approval_level_required: req,
+                        l1_approver: req === 0 ? '' : newTicketForm.l1_approver
+                      });
+                    }}
+                    style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#1e3a8a', backgroundColor: '#ffffff' }}
+                  >
+                    <option value="1">👤 ត្រូវការការអនុម័ត (Requires Approval)</option>
+                    <option value="0">⚡ មិនបាច់អនុម័ត (Auto-Approve / អនុវត្តផ្ទាល់)</option>
+                  </select>
+                </div>
 
-                {/* Dynamic Approver Dropdowns */}
-                {newTicketForm.approval_level_required >= 1 && (
-                  <div style={{ marginTop: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                    <div>
-                      <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>
-                        {newTicketForm.approval_level_required === 5
-                          ? 'អ្នកពិនិត្យ ថ្នាក់បុគ្គលិក 👤 ៖'
-                          : (newTicketForm.approval_level_required === 7
-                              ? 'អ្នកពិនិត្យ ថ្នាក់ជំនួយការ 🤝 ៖'
-                              : (newTicketForm.approval_level_required === 6
-                                  ? 'អ្នកពិនិត្យ ថ្នាក់ប្រធានការិយាល័យ (មានតែ១នាក់) 👑 ៖'
-                                  : (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
-                                      ? 'អ្នកពិនិត្យ ថ្នាក់ជំនួយការ 🤝 ៖'
-                                      : 'អ្នកពិនិត្យ ថ្នាក់អនុប្រធានការិយាល័យ 🎖️ ៖')))}
-                      </label>
-                      <select
+                {/* 2. Approver Selection (Only if requires approval) */}
+                {newTicketForm.approval_level_required === 1 && (
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label className="form-label" style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
+                      👤 ជ្រើសរើសអ្នកអនុម័ត (Select Approver) *
+                    </label>
+                    <select
+                      className="form-input"
+                      value={newTicketForm.l1_approver}
+                      onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
+                      required={newTicketForm.approval_level_required === 1}
+                      style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', backgroundColor: '#ffffff', color: '#0f172a' }}
+                    >
+                      <option value="">-- ជ្រើសរើសឈ្មោះអ្នកអនុម័ត --</option>
+                      {usersList.map((u) => {
+                        const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
+                        const details = u.position ? u.position : (u.department || u.role || '');
+                        return (
+                          <option key={u.id || u.username} value={name}>
+                            👤 {name} {details ? `(${details})` : ''}
+                          </option>
+                        );
+                      })}
+                      <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
+                    </select>
+                    
+                    {/* Custom text input for Approver */}
+                    {(newTicketForm.l1_approver === 'ផ្សេងៗ' || (newTicketForm.l1_approver && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.l1_approver))) && (
+                      <input
+                        type="text"
                         className="form-input"
-                        value={newTicketForm.l1_approver}
+                        placeholder="បញ្ចូលឈ្មោះអ្នកអនុម័តដោយផ្ទាល់..."
+                        value={newTicketForm.l1_approver === 'ផ្សេងៗ' ? '' : newTicketForm.l1_approver}
                         onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
-                        style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
-                      >
-                        <option value="">
-                          {newTicketForm.approval_level_required === 5
-                            ? '-- ជ្រើសរើសឈ្មោះបុគ្គលិក --'
-                            : (newTicketForm.approval_level_required === 7
-                                ? '-- ជ្រើសរើសឈ្មោះជំនួយការ --'
-                                : (newTicketForm.approval_level_required === 6
-                                    ? '-- ជ្រើសរើសឈ្មោះប្រធានការិយាល័យ --'
-                                    : (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
-                                        ? '-- ជ្រើសរើសឈ្មោះជំនួយការ --'
-                                        : '-- ជ្រើសរើសឈ្មោះអនុប្រធានការិយាល័យ --')))}
-                        </option>
-                        {usersList.filter(u => {
-                          const pos = u.position || '';
-                          if (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 || newTicketForm.approval_level_required === 7) {
-                            return pos.includes('ជំនួយការ') || pos.includes('បុគ្គលិក') || !pos;
-                          }
-                          if (newTicketForm.approval_level_required === 1 || newTicketForm.approval_level_required === 2) {
-                            return pos.includes('អនុប្រធាន');
-                          }
-                          if (newTicketForm.approval_level_required === 6) {
-                            return pos.includes('ប្រធាន') && !pos.includes('អនុ');
-                          }
-                          return true;
-                        }).map((u) => {
-                          const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
-                          const details = u.position ? u.position : (u.department || u.role || '');
-                          return (
-                            <option key={u.id || u.username} value={name}>
-                              👤 {name} {details ? `(${details})` : ''}
-                            </option>
-                          );
-                        })}
-                        <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
-                      </select>
-                      {(newTicketForm.l1_approver === 'ផ្សេងៗ' || (newTicketForm.l1_approver && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.l1_approver))) && (
-                        <input
-                          type="text"
-                          className="form-input"
-                          placeholder={newTicketForm.approval_level_required === 5 ? "បញ្ចូលឈ្មោះបុគ្គលិកដោយផ្ទាល់..." : (newTicketForm.approval_level_required === 7 ? "បញ្ចូលឈ្មោះជំនួយការដោយផ្ទាល់..." : (newTicketForm.approval_level_required === 6 ? "បញ្ចូលឈ្មោះប្រធានការិយាល័យដោយផ្ទាល់..." : (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? "បញ្ចូលឈ្មោះជំនួយការដោយផ្ទាល់..." : "បញ្ចូលឈ្មោះអនុប្រធានការិយាល័យដោយផ្ទាល់...")))}
-                          onChange={(e) => setNewTicketForm({ ...newTicketForm, l1_approver: e.target.value })}
-                          style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
-                        />
-                      )}
-                    </div>
-
-                    {(newTicketForm.approval_level_required === 2 || newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4) && (
-                      <div>
-                        <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>
-                          {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
-                            ? 'អ្នកពិនិត្យ ថ្នាក់អនុប្រធានការិយាល័យ 🎖️ ៖'
-                            : 'អ្នកពិនិត្យ ថ្នាក់ប្រធានការិយាល័យ 👑 ៖'}
-                        </label>
-                        <select
-                          className="form-input"
-                          value={newTicketForm.l2_approver}
-                          onChange={(e) => setNewTicketForm({ ...newTicketForm, l2_approver: e.target.value })}
-                          style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
-                        >
-                          <option value="">
-                            {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
-                              ? '-- ជ្រើសរើសឈ្មោះអនុប្រធានការិយាល័យ --'
-                              : '-- ជ្រើសរើសឈ្មោះប្រធានការិយាល័យ --'}
-                          </option>
-                          {usersList.filter(u => {
-                            const pos = u.position || '';
-                            if (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4) {
-                              return pos.includes('អនុប្រធាន');
-                            }
-                            if (newTicketForm.approval_level_required === 2) {
-                              return pos.includes('ប្រធាន') && !pos.includes('អនុ');
-                            }
-                            return true;
-                          }).map((u) => {
-                            const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
-                            const details = u.position ? u.position : (u.department || u.role || '');
-                            return (
-                              <option key={u.id || u.username} value={name}>
-                                {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? '🎖️' : '👑'} {name} {details ? `(${details})` : ''}
-                              </option>
-                            );
-                          })}
-                          <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
-                        </select>
-                        {(newTicketForm.l2_approver === 'ផ្សេងៗ' || (newTicketForm.l2_approver && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.l2_approver))) && (
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder={newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? "បញ្ចូលឈ្មោះអនុប្រធានការិយាល័យដោយផ្ទាល់..." : "បញ្ចូលឈ្មោះប្រធានការិយាល័យដោយផ្ទាល់..."}
-                            onChange={(e) => setNewTicketForm({ ...newTicketForm, l2_approver: e.target.value })}
-                            style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
-                          />
-                        )}
-                      </div>
-                    )}
-
-                    {(newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4) && (
-                      <div>
-                        <label style={{ fontSize: '11.5px', fontWeight: '800', color: '#1e3a8a' }}>
-                          {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
-                            ? 'អ្នកពិនិត្យ ថ្នាក់ប្រធានការិយាល័យ 👑 ៖'
-                            : 'អ្នកពិនិត្យ ថ្នាក់អនុប្រធាននាយកដ្ឋាន 🏢 ៖'}
-                        </label>
-                        <select
-                          className="form-input"
-                          value={newTicketForm.l3_approver}
-                          onChange={(e) => setNewTicketForm({ ...newTicketForm, l3_approver: e.target.value })}
-                          style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', marginTop: '4px', backgroundColor: '#ffffff', color: '#0f172a', fontWeight: '700' }}
-                        >
-                          <option value="">
-                            {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4
-                              ? '-- ជ្រើសរើសឈ្មោះប្រធានការិយាល័យ --'
-                              : '-- ជ្រើសរើសឈ្មោះអនុប្រធាននាយកដ្ឋាន --'}
-                          </option>
-                          {usersList.filter(u => {
-                            const pos = u.position || '';
-                            if (newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4) {
-                              return pos.includes('ប្រធាន') && !pos.includes('អនុ');
-                            }
-                            return true;
-                          }).map((u) => {
-                            const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
-                            const details = u.position ? u.position : (u.department || u.role || '');
-                            return (
-                              <option key={u.id || u.username} value={name}>
-                                {newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? '👑' : '🏢'} {name} {details ? `(${details})` : ''}
-                              </option>
-                            );
-                          })}
-                          <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
-                        </select>
-                        {(newTicketForm.l3_approver === 'ផ្សេងៗ' || (newTicketForm.l3_approver && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.l3_approver))) && (
-                          <input
-                            type="text"
-                            className="form-input"
-                            placeholder={newTicketForm.approval_level_required === 3 || newTicketForm.approval_level_required === 4 ? "បញ្ចូលឈ្មោះប្រធានការិយាល័យដោយផ្ទាល់..." : "បញ្ចូលឈ្មោះអនុប្រធាននាយកដ្ឋានដោយផ្ទាល់..."}
-                            onChange={(e) => setNewTicketForm({ ...newTicketForm, l3_approver: e.target.value })}
-                            style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
-                          />
-                        )}
-                      </div>
+                        required
+                        style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
+                      />
                     )}
                   </div>
                 )}
+
+                {/* 3. Assignee / Member Selection */}
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label className="form-label" style={{ fontWeight: '800', fontSize: '12.5px', color: '#1e3a8a' }}>
+                    👥 ជ្រើសរើសអ្នកទទួលបន្ទុក / សមាជិក (Select Assignee / Member)
+                  </label>
+                  <select
+                    className="form-input"
+                    value={newTicketForm.assignee_name}
+                    onChange={(e) => setNewTicketForm({ ...newTicketForm, assignee_name: e.target.value })}
+                    style={{ padding: '10px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', backgroundColor: '#ffffff', color: '#0f172a' }}
+                  >
+                    <option value="">-- ជ្រើសរើសឈ្មោះអ្នកទទួលបន្ទុក / សមាជិក --</option>
+                    {usersList.map((u) => {
+                      const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
+                      const details = u.position ? u.position : (u.department || u.role || '');
+                      return (
+                        <option key={u.id || u.username} value={name}>
+                          👤 {name} {details ? `(${details})` : ''}
+                        </option>
+                      );
+                    })}
+                    <option value="ផ្សេងៗ">ផ្សេងៗ (បញ្ចូលឈ្មោះដោយផ្ទាល់)...</option>
+                  </select>
+                  
+                  {/* Custom text input for Assignee */}
+                  {(newTicketForm.assignee_name === 'ផ្សេងៗ' || (newTicketForm.assignee_name && !usersList.some(u => ((u.full_name && u.full_name.trim()) ? u.full_name : u.username) === newTicketForm.assignee_name))) && (
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="បញ្ចូលឈ្មោះអ្នកទទួលបន្ទុកដោយផ្ទាល់..."
+                      value={newTicketForm.assignee_name === 'ផ្សេងៗ' ? '' : newTicketForm.assignee_name}
+                      onChange={(e) => setNewTicketForm({ ...newTicketForm, assignee_name: e.target.value })}
+                      required
+                      style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12px', marginTop: '6px' }}
+                    />
+                  )}
+                </div>
               </div>
 
               <div className="form-group" style={{ margin: 0 }}>
@@ -10705,6 +10628,7 @@ export default function App() {
                 <div><b>អង្គភាព ៖</b> {ticketDetailModal.ticket.department || 'SOC Operations center'}</div>
                 <div><b>ប្រភេទ ៖</b> {ticketDetailModal.ticket.category}</div>
                 <div><b>អាទិភាព ៖</b> {ticketDetailModal.ticket.priority}</div>
+                <div style={{ gridColumn: 'span 2' }}><b>អ្នកទទួលបន្ទុក / សមាជិក (Assignee / Member) ៖</b> {ticketDetailModal.ticket.assignee_name || 'SOC Duty Officer'}</div>
                 {(ticketDetailModal.ticket.start_date || ticketDetailModal.ticket.end_date || ticketDetailModal.ticket.due_date) && (
                   <div style={{ gridColumn: 'span 2', color: '#1e3a8a', fontWeight: '700', display: 'flex', flexDirection: 'column', gap: '4px' }}>
                     {(ticketDetailModal.ticket.start_date || ticketDetailModal.ticket.end_date) && (
