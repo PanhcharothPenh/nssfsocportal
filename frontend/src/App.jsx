@@ -1661,7 +1661,6 @@ export default function App() {
 
   useEffect(() => {
     triggerRefresh();
-    fetchDriveFiles();
   }, []);
 
   // Fetch Tab Specific Data
@@ -6068,6 +6067,44 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {/* Dashboard View Skeleton Loader */}
+        {activeTab === 'dashboard' && !dashboardStats && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} style={{ height: '110px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#f1f5f9' }} className="skeleton-pulse"></div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
+                      <div style={{ height: '18px', width: '50px', backgroundColor: '#f1f5f9', borderRadius: '4px' }} className="skeleton-pulse"></div>
+                      <div style={{ height: '10px', width: '80px', backgroundColor: '#f1f5f9', borderRadius: '3px' }} className="skeleton-pulse"></div>
+                    </div>
+                  </div>
+                  <div style={{ height: '10px', width: '90px', backgroundColor: '#f1f5f9', borderRadius: '3px', marginTop: 'auto' }} className="skeleton-pulse"></div>
+                </div>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', height: '350px' }}>
+              <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ height: '20px', width: '200px', backgroundColor: '#f1f5f9', borderRadius: '4px' }} className="skeleton-pulse"></div>
+                <div style={{ flex: 1, backgroundColor: '#f8fafc', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[1, 2, 3, 4].map((x) => (
+                    <div key={x} style={{ height: '40px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #e2e8f0' }} className="skeleton-pulse"></div>
+                  ))}
+                </div>
+              </div>
+              <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ height: '20px', width: '200px', backgroundColor: '#f1f5f9', borderRadius: '4px' }} className="skeleton-pulse"></div>
+                <div style={{ flex: 1, backgroundColor: '#f8fafc', borderRadius: '8px', padding: '12px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {[1, 2, 3, 4].map((x) => (
+                    <div key={x} style={{ height: '40px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #e2e8f0' }} className="skeleton-pulse"></div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Dashboard View */}
         {activeTab === 'dashboard' && dashboardStats && (

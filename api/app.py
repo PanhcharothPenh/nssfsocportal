@@ -638,10 +638,19 @@ class HospitalVPNUpdate(BaseModel):
     reference_doc: Optional[str] = None
     vpn_type: Optional[str] = None
 
-# API Routes
+_dashboard_cache = {
+    "data": None,
+    "expires_at": 0
+}
 
 @app.get("/api/dashboard")
-def get_dashboard_stats():
+def get_dashboard_stats(force_refresh: bool = False):
+    global _dashboard_cache
+    import time
+    now = time.time()
+    if not force_refresh and _dashboard_cache["data"] and now < _dashboard_cache["expires_at"]:
+        return _dashboard_cache["data"]
+
     conn = get_db_connection()
     cursor = conn.cursor()
     
@@ -718,7 +727,7 @@ def get_dashboard_stats():
         
         conn.close()
         
-        return {
+        res_data = {
             "counts": {
                 "branches": total_branches,
                 "hq_departments": total_hq_depts,
@@ -735,6 +744,11 @@ def get_dashboard_stats():
             "branch_list": branches[:8], # limit dashboard preview
             "hq_list": depts[:8]
         }
+        
+        _dashboard_cache["data"] = res_data
+        _dashboard_cache["expires_at"] = now + 60
+        
+        return res_data
     except Exception as e:
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))
