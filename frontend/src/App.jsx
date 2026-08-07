@@ -135,6 +135,20 @@ export default function App() {
   const [vpnSearch, setVpnSearch] = useState('');
   const [showVpnFilter, setShowVpnFilter] = useState(false);
   
+  // Ticket Export Report Modal States
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFilters, setExportFilters] = useState({
+    dateType: 'all', // 'all', 'day', 'month', 'year', 'custom'
+    selectedDate: '',
+    selectedMonth: '',
+    selectedYear: new Date().getFullYear().toString(),
+    fromDate: '',
+    toDate: '',
+    userFilter: 'all',
+    userRole: 'any',
+    statusFilter: 'all'
+  });
+
   // Signature & PDF print states
   const [showPrintModal, setShowPrintModal] = useState(false);
   const [signerName, setSignerName] = useState('មាន ណារិមន្ត');
@@ -1092,35 +1106,94 @@ export default function App() {
     }
   };
 
-  const handleExportTicketsReport = () => {
-    if (!filteredTickets || filteredTickets.length === 0) {
-      alert("ពុំមានទិន្នន័យសម្រាប់ទាញយករបាយការណ៍ឡើយ");
+  const getFilteredReportTickets = () => {
+    let list = tickets || [];
+
+    // 1. Date Filter
+    if (exportFilters.dateType === 'day' && exportFilters.selectedDate) {
+      list = list.filter(t => {
+        const d = (t.created_at || t.due_date || '').split('T')[0].split(' ')[0];
+        return d === exportFilters.selectedDate;
+      });
+    } else if (exportFilters.dateType === 'month' && exportFilters.selectedMonth) {
+      list = list.filter(t => {
+        const d = (t.created_at || t.due_date || '').split('T')[0].split(' ')[0];
+        return d.startsWith(exportFilters.selectedMonth);
+      });
+    } else if (exportFilters.dateType === 'year' && exportFilters.selectedYear) {
+      list = list.filter(t => {
+        const d = (t.created_at || t.due_date || '').split('T')[0].split(' ')[0];
+        return d.startsWith(exportFilters.selectedYear);
+      });
+    } else if (exportFilters.dateType === 'custom' && (exportFilters.fromDate || exportFilters.toDate)) {
+      list = list.filter(t => {
+        const d = (t.created_at || t.due_date || '').split('T')[0].split(' ')[0];
+        if (exportFilters.fromDate && d < exportFilters.fromDate) return false;
+        if (exportFilters.toDate && d > exportFilters.toDate) return false;
+        return true;
+      });
+    }
+
+    // 2. User Filter
+    if (exportFilters.userFilter !== 'all') {
+      const uTarget = exportFilters.userFilter.toLowerCase().trim();
+      list = list.filter(t => {
+        const req = (t.requester_name || '').toLowerCase();
+        const ass = (t.assignee_name || '').toLowerCase();
+        if (exportFilters.userRole === 'requester') {
+          return req.includes(uTarget);
+        } else if (exportFilters.userRole === 'assignee') {
+          return ass.includes(uTarget);
+        } else {
+          return req.includes(uTarget) || ass.includes(uTarget);
+        }
+      });
+    }
+
+    // 3. Status Filter
+    if (exportFilters.statusFilter !== 'all') {
+      list = list.filter(t => (t.status || '').toLowerCase() === exportFilters.statusFilter.toLowerCase());
+    }
+
+    return list;
+  };
+
+  const handleDownloadFilteredReport = () => {
+    const list = getFilteredReportTickets();
+    if (!list || list.length === 0) {
+      alert("ពុំមានទិន្នន័យស្របតាមការចម្រោះដើម្បីទាញយករបាយការណ៍ឡើយ!");
       return;
     }
 
     let csvContent = "\uFEFF"; // UTF-8 BOM for Khmer text in Excel
-    csvContent += "កូដលិខិត,ប្រធានបទសំណើ,ប្រភេទសំណើ,អ្នកស្នើសុំ,អង្គភាព/ការិយាល័យ,កម្រិតអាទិភាព,ស្ថានភាព,កាលបរិច្ឆេទបង្កើត\n";
+    csvContent += "ល.រ (No),កូដលិខិត (Code),កម្មវត្ថុ/ប្រធានបទ (Title),ប្រភេទសំណើ (Category),អ្នកស្នើសុំ (Requester),អង្គភាព/ការិយាល័យ (Department),អ្នកទទួលបន្ទុក/សមាជិក (Assignees),អ្នកអនុម័ត (Approvers),កម្រិតអាទិភាព (Priority),ស្ថានភាព (Status),ថ្ងៃឱសានវាទ (Due Date),កាលបរិច្ឆេទបង្កើត (Created Date)\n";
 
-    filteredTickets.forEach(t => {
+    list.forEach((t, index) => {
+      const idx = index + 1;
       const code = `"${(t.ticket_code || '').replace(/"/g, '""')}"`;
       const title = `"${(t.title || '').replace(/"/g, '""')}"`;
       const category = `"${(t.category || '').replace(/"/g, '""')}"`;
       const req = `"${(t.requester_name || '').replace(/"/g, '""')}"`;
       const dept = `"${(t.department || '').replace(/"/g, '""')}"`;
+      const ass = `"${(t.assignee_name || '').replace(/"/g, '""')}"`;
+      const apps = `"${[t.l1_approver, t.l2_approver, t.l3_approver].filter(Boolean).join(' -> ').replace(/"/g, '""')}"`;
       const prio = `"${(t.priority || '').replace(/"/g, '""')}"`;
       const status = `"${(t.status || '').replace(/"/g, '""')}"`;
+      const due = `"${(t.due_date || t.end_date || '').replace(/"/g, '""')}"`;
       const created = `"${(t.created_at || '').replace(/"/g, '""')}"`;
-      csvContent += `${code},${title},${category},${req},${dept},${prio},${status},${created}\n`;
+      csvContent += `${idx},${code},${title},${category},${req},${dept},${ass},${apps},${prio},${status},${due},${created}\n`;
     });
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `របាយការណ៍លិខិតស្នើសុំ_NSSF_SOC_${new Date().toISOString().split('T')[0]}.csv`);
+    const timeTag = new Date().toISOString().split('T')[0];
+    link.setAttribute('download', `របាយការណ៍លិខិតស្នើសុំ_NSSF_SOC_${timeTag}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setShowExportModal(false);
   };
 
   const fetchUsersList = async () => {
@@ -5422,7 +5495,7 @@ export default function App() {
             </button>
             <button
               className="btn btn-secondary"
-              onClick={handleExportTicketsReport}
+              onClick={() => setShowExportModal(true)}
               style={{ borderRadius: '10px', padding: '10px 16px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0' }}
             >
               📊 ទាញយករបាយការណ៍ (Export)
@@ -11073,6 +11146,195 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Advanced Export Tickets Report Modal */}
+      {showExportModal && (
+        <div className="modal-overlay" style={{ zIndex: 1215 }}>
+          <div className="modal-content" style={{ maxWidth: '580px', padding: '24px', borderRadius: '16px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid #e2e8f0', pb: '12px' }}>
+              <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📊</span> ទាញយករបាយការណ៍សំបុត្រ (Export Tickets Report)
+              </h3>
+              <button onClick={() => setShowExportModal(false)} style={{ border: 'none', background: 'none', fontSize: '22px', cursor: 'pointer', color: '#64748b' }}>×</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+              {/* 1. Date Filter Section */}
+              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ fontWeight: '800', fontSize: '13px', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>📅</span> <b>១. ចម្រោះតាមកាលបរិច្ឆេទ (Filter by Time Period) ៖</b>
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <select
+                    className="form-input"
+                    value={exportFilters.dateType}
+                    onChange={(e) => setExportFilters({ ...exportFilters, dateType: e.target.value })}
+                    style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', backgroundColor: '#ffffff' }}
+                  >
+                    <option value="all">🌐 ទាញយកទាំងអស់ (All Time)</option>
+                    <option value="day">📅 តាមថ្ងៃ (By Specific Day)</option>
+                    <option value="month">📆 តាមខែ (By Specific Month)</option>
+                    <option value="year">🗓️ តាមឆ្នាំ (By Specific Year)</option>
+                    <option value="custom">⏱️ ចន្លោះថ្ងៃ... ដល់... (Custom Range)</option>
+                  </select>
+
+                  {/* Input depending on selection */}
+                  {exportFilters.dateType === 'day' && (
+                    <input
+                      type="date"
+                      className="form-input"
+                      value={exportFilters.selectedDate}
+                      onChange={(e) => setExportFilters({ ...exportFilters, selectedDate: e.target.value })}
+                      style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12.5px', backgroundColor: '#ffffff' }}
+                    />
+                  )}
+
+                  {exportFilters.dateType === 'month' && (
+                    <input
+                      type="month"
+                      className="form-input"
+                      value={exportFilters.selectedMonth}
+                      onChange={(e) => setExportFilters({ ...exportFilters, selectedMonth: e.target.value })}
+                      style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12.5px', backgroundColor: '#ffffff' }}
+                    />
+                  )}
+
+                  {exportFilters.dateType === 'year' && (
+                    <input
+                      type="number"
+                      min="2020"
+                      max="2035"
+                      placeholder="ឧ. 2026"
+                      className="form-input"
+                      value={exportFilters.selectedYear}
+                      onChange={(e) => setExportFilters({ ...exportFilters, selectedYear: e.target.value })}
+                      style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12.5px', backgroundColor: '#ffffff' }}
+                    />
+                  )}
+                </div>
+
+                {exportFilters.dateType === 'custom' && (
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginTop: '4px' }}>
+                    <div>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>ចាប់ពីថ្ងៃ ៖</span>
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={exportFilters.fromDate}
+                        onChange={(e) => setExportFilters({ ...exportFilters, fromDate: e.target.value })}
+                        style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12.5px', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+                    <div>
+                      <span style={{ fontSize: '11px', fontWeight: '700', color: '#64748b' }}>ដល់ថ្ងៃ ៖</span>
+                      <input
+                        type="date"
+                        className="form-input"
+                        value={exportFilters.toDate}
+                        onChange={(e) => setExportFilters({ ...exportFilters, toDate: e.target.value })}
+                        style={{ padding: '8px 12px', borderRadius: '8px', fontSize: '12.5px', backgroundColor: '#ffffff' }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. User Filter Section */}
+              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ fontWeight: '800', fontSize: '13px', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>👤</span> <b>២. ចម្រោះតាមបុគ្គលិក / អ្នកប្រើប្រាស់ (Filter by User) ៖</b>
+                </label>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <select
+                    className="form-input"
+                    value={exportFilters.userFilter}
+                    onChange={(e) => setExportFilters({ ...exportFilters, userFilter: e.target.value })}
+                    style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', backgroundColor: '#ffffff' }}
+                  >
+                    <option value="all">👥 គ្រប់បុគ្គលិកទាំងអស់ (All Users)</option>
+                    {usersList.map((u) => {
+                      const name = (u.full_name && u.full_name.trim()) ? u.full_name : u.username;
+                      return (
+                        <option key={u.id || u.username} value={name}>
+                          👤 {name}
+                        </option>
+                      );
+                    })}
+                  </select>
+
+                  <select
+                    className="form-input"
+                    value={exportFilters.userRole}
+                    onChange={(e) => setExportFilters({ ...exportFilters, userRole: e.target.value })}
+                    disabled={exportFilters.userFilter === 'all'}
+                    style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', backgroundColor: '#ffffff', opacity: exportFilters.userFilter === 'all' ? 0.6 : 1 }}
+                  >
+                    <option value="any">🔄 ទាំងអ្នកស្នើសុំ ឬ អ្នកទទួលបន្ទុក</option>
+                    <option value="requester">📤 ជាអ្នកស្នើសុំ (Requester Only)</option>
+                    <option value="assignee">📥 ជាអ្នកទទួលបន្ទុក (Assignee Only)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* 3. Status Filter Section */}
+              <div style={{ backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <label style={{ fontWeight: '800', fontSize: '13px', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>⏳</span> <b>៣. ចម្រោះតាមស្ថានភាព (Filter by Status) ៖</b>
+                </label>
+
+                <select
+                  className="form-input"
+                  value={exportFilters.statusFilter}
+                  onChange={(e) => setExportFilters({ ...exportFilters, statusFilter: e.target.value })}
+                  style={{ padding: '9px 12px', borderRadius: '8px', fontSize: '12.5px', fontWeight: '700', backgroundColor: '#ffffff' }}
+                >
+                  <option value="all">📋 គ្រប់ស្ថានភាពទាំងអស់ (All Statuses)</option>
+                  <option value="Pending Approval">⏳ រង់ចាំការអនុម័ត (Pending Approval)</option>
+                  <option value="Approved">✅ បានអនុម័ត (Approved)</option>
+                  <option value="Rejected">❌ បានបដិសេធ (Rejected)</option>
+                  <option value="Closed">🔒 បានបញ្ចប់ (Closed)</option>
+                </select>
+              </div>
+
+              {/* Matching count indicator */}
+              {(() => {
+                const matchCount = getFilteredReportTickets().length;
+                return (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', backgroundColor: matchCount > 0 ? '#f0fdf4' : '#fef2f2', border: `1px solid ${matchCount > 0 ? '#bbf7d0' : '#fecaca'}`, padding: '10px 14px', borderRadius: '10px', fontSize: '12.5px', fontWeight: '800', color: matchCount > 0 ? '#15803d' : '#dc2626' }}>
+                    <span>{matchCount > 0 ? '✅' : '⚠️'} រកឃើញសំបុត្រស្របតាមលក្ខខណ្ឌ ៖</span>
+                    <span style={{ fontSize: '14px', padding: '2px 10px', borderRadius: '12px', backgroundColor: matchCount > 0 ? '#dcfce7' : '#fee2e2' }}>
+                      {matchCount} លិខិត (Tickets)
+                    </span>
+                  </div>
+                );
+              })()}
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '8px' }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowExportModal(false)}
+                  style={{ borderRadius: '8px', padding: '10px 20px', fontWeight: '800' }}
+                >
+                  បោះបង់ (Cancel)
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleDownloadFilteredReport}
+                  disabled={getFilteredReportTickets().length === 0}
+                  style={{ borderRadius: '8px', padding: '10px 24px', fontWeight: '800', backgroundColor: '#16a34a', borderColor: '#16a34a', opacity: getFilteredReportTickets().length === 0 ? 0.6 : 1 }}
+                >
+                  📥 ទាញយកជា Excel/CSV
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}
