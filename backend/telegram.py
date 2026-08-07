@@ -1456,4 +1456,88 @@ def send_task_kanban_telegram_alert(task):
     for cid in target_chats:
         send_telegram_message(msg, chat_id=cid)
 
+def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
+    """
+    Sends a direct Telegram notification to all assignees/members of a ticket
+    when it is created, approved, or close to its due date.
+    """
+    import os
+    if not ticket:
+        return
+        
+    code = ticket.get("ticket_code") or ""
+    title = ticket.get("title") or ""
+    assignee_str = ticket.get("assignee_name") or ""
+    prio = ticket.get("priority") or "Medium"
+    due_date = ticket.get("due_date") or ""
+    
+    prio_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡"
+    
+    from telegram import send_telegram_message
+    
+    if event_type == "approved":
+        msg = (
+            f"✅ <b>[ការអនុម័តលិខិតស្នើសុំ NSSF SOC]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🎉 <b>លិខិតស្នើសុំរបស់លោក/លោកស្រីត្រូវបានយល់ព្រម និងអនុម័តរួចរាល់ហើយ!</b>\n\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
+            f"👉 សូមលោក/លោកស្រីរៀបចំ និងចាត់ចែងអនុវត្តការងារនេះឱ្យបានរួសរាន់! 🙏"
+        )
+    elif event_type == "auto_approved":
+        msg = (
+            f"⚡ <b>[ការចាត់ចែងការងារ NSSF SOC]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📌 <b>លោក/លោកស្រីត្រូវបានចាត់ចែងការងារថ្មី (មិនបាច់មានការអនុម័តទេ) ៖</b>\n\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
+            f"👉 សូមលោក/លោកស្រីចាត់ចែងអនុវត្តការងារនេះ! 🙏"
+        )
+    else: # created (pending approval)
+        msg = (
+            f"📩 <b>[កិច្ចការងារថ្មីរង់ចាំការអនុម័ត NSSF SOC]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"លិខិត ៖ <b>{title}</b> (កូដ ៖ <code>#{code}</code>)\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"⌛ <b>កិច្ចការងារនេះត្រូវបានចាត់ជូនលោក/លោកស្រី ប៉ុន្តែកំពុងស្ថិតក្នុងដំណាក់កាលរង់ចាំការអនុម័តពីថ្នាក់ដឹកនាំជាមុនសិន។</b>\n\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
+            f"ប្រព័ន្ធនឹងផ្ញើសារជូនដំណឹងម្តងទៀត នៅពេលមានការអនុម័តសម្រេចជាផ្លូវការ! 🙏"
+        )
+
+    # Find chat IDs of all assignees
+    assignees = [a.strip() for a in assignee_str.split(",") if a.strip()]
+    target_chats = set()
+    
+    try:
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT telegram_chat_id, full_name, username, telegram_username FROM users WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != ''")
+        all_users = cursor.fetchall()
+        conn.close()
+        
+        for name in assignees:
+            clean_name = name.split("(")[0].replace("@", "").strip().lower()
+            for u in all_users:
+                u_fn = (u["full_name"] or "").strip().lower()
+                u_un = (u["username"] or "").strip().lower()
+                u_tg = (u["telegram_username"] or "").strip().lower()
+                if clean_name == u_fn or clean_name == u_un or clean_name == u_tg or (clean_name in u_fn and len(clean_name) >= 3):
+                    target_chats.add(str(u["telegram_chat_id"]).strip())
+    except Exception as e_c:
+        print("Error looking up ticket assignee chat ID:", e_c)
+        
+    for cid in target_chats:
+        send_telegram_message(msg, chat_id=cid)
+
+
 

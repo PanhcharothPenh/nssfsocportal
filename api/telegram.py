@@ -1399,88 +1399,145 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
 
     broadcast()
 
-
-def send_kanban_telegram_alert(task, is_update=False, old_status=None, changed_by=None):
-    try:
-        title = task.get('title', 'N/A')
-        desc = task.get('description', '')
-        assignee = task.get('assignee_name', 'Unassigned')
-        priority = task.get('priority', 'Medium')
-        due_date = task.get('due_date', '')
-        status = task.get('status', 'todo')
-
-        status_names = {
-            'todo': '📝 ត្រូវធ្វើ (To Do)',
-            'in_progress': '⚡ កំពុងធ្វើ (In Progress)',
-            'review': '👀 កំពុងពិនិត្យ (In Review)',
-            'completed': '✅ បានបញ្ចប់ (Completed)'
-        }
-
-        st_label = status_names.get(status, status)
-
-        if not is_update:
-            msg = (
-                f"<b>📋 កិច្ចការងារ Kanban ថ្មី (Bitrix Task Assigned)</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📌 <b>ចំណងជើង ៖</b> <b>{title}</b>\n"
-                f"👤 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee}</b>\n"
-                f"🚨 <b>កម្រិតអាទិភាព ៖</b> <b>{priority}</b>\n"
-                f"📌 <b>ដំណាក់កាល ៖</b> <b>{st_label}</b>\n"
-            )
-            if due_date:
-                msg += f"⏰ <b>ថ្ងៃឱសានវាទ ៖</b> <b>{due_date}</b>\n"
-            if desc:
-                msg += f"📝 <b>ពិពណ៌នា ៖</b> <b>{desc}</b>\n"
-            msg += f"🔗 <b>មើលក្នុងប្រព័ន្ធ ៖</b> <a href=\"https://nssfsocportal.vercel.app/\">https://nssfsocportal.vercel.app/</a>"
-        else:
-            old_label = status_names.get(old_status, old_status) if old_status else 'N/A'
-            msg = (
-                f"<b>⚡ បច្ចុប្បន្នភាពកិច្ចការងារ Kanban (Bitrix Task Moved)</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                f"📌 <b>ចំណងជើង ៖</b> <b>{title}</b>\n"
-                f"👤 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee}</b>\n"
-                f"🔄 <b>ការប្តូរដំណាក់កាល ៖</b> <b>{old_label}</b> ➔ <b>{st_label}</b>\n"
-            )
-            if changed_by:
-                msg += f"👤 <b>ធ្វើបច្ចុប្បន្នភាពដោយ ៖</b> <b>{changed_by}</b>\n"
-            msg += f"🔗 <b>មើលក្នុងប្រព័ន្ធ ៖</b> <a href=\"https://nssfsocportal.vercel.app/\">https://nssfsocportal.vercel.app/</a>"
-
-        target_chat = None
-        if assignee:
+def send_task_kanban_telegram_alert(task):
+    if not task:
+        return
+        
+    title = task.get("title") or "Task ថ្មី"
+    assignee = task.get("assignee_name") or "មិនបានបញ្ជាក់"
+    creator = task.get("creator_name") or "User"
+    prio = task.get("priority") or "Medium"
+    due = task.get("due_date") or "មិនបានកំណត់"
+    desc = task.get("description") or "គ្មានពិពណ៌នា"
+    
+    p_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡" if prio == "Medium" else "🟢"
+    
+    msg = (
+        f"📋 <b>[BITRIX TASK ASSIGNMENT - កិច្ចការងារថ្មី]</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📌 <b>កិច្ចការងារ ៖</b> <b>{title}</b>\n"
+        f"👤 <b>អ្នកទទួលបន្ទុក (Assignee) ៖</b> <b>{assignee}</b>\n"
+        f"👨‍💻 <b>អ្នកបង្កើត (Creator) ៖</b> <b>{creator}</b>\n"
+        f"🎯 <b>កម្រិតអាទិភាព ៖</b> {p_emoji} <b>{prio}</b>\n"
+        f"⏰ <b>ថ្ងៃឱសានវាទ (Due Date) ៖</b> <code>{due}</code>\n"
+        f"📝 <b>ពិពណ៌នា ៖</b> <i>\"{desc}\"</i>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👉 សូមចូលទៅកាន់ប្រព័ន្ធដើម្បីពិនិត្យ និងធ្វើបច្ចុប្បន្នភាព Kanban Card!"
+    )
+    
+    # Try finding assignee chat ID
+    target_chats = set()
+    if assignee:
+        try:
             from database import get_db_connection
             conn = get_db_connection()
-            if conn:
-                try:
-                    cursor = conn.cursor()
-                    clean_app = str(assignee).split("(")[0].replace("@", "").strip()
-                    cursor.execute("""
-                        SELECT telegram_chat_id FROM users 
-                        WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != '' AND (
-                            LOWER(full_name) = LOWER(?)
-                            OR LOWER(username) = LOWER(?)
-                            OR LOWER(telegram_username) = LOWER(?)
-                        )
-                    """, (clean_app, clean_app, clean_app))
-                    r = cursor.fetchone()
-                    if r:
-                        target_chat = str(r['telegram_chat_id'] if isinstance(r, dict) else r[0]).strip()
-                except Exception as e:
-                    print(f"Error getting assignee chat_id: {e}")
-                finally:
-                    conn.close()
+            cursor = conn.cursor()
+            clean_ass = assignee.strip().lower()
+            cursor.execute("""
+                SELECT telegram_chat_id FROM users 
+                WHERE (telegram_chat_id IS NOT NULL AND telegram_chat_id != '')
+                  AND (
+                      LOWER(full_name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(telegram_username) LIKE ?
+                  )
+            """, (f"%{clean_ass}%", f"%{clean_ass}%", f"%{clean_ass}%"))
+            rows = cursor.fetchall()
+            conn.close()
+            for r in rows:
+                if r['telegram_chat_id']:
+                    target_chats.add(str(r['telegram_chat_id']).strip())
+        except Exception as e_c:
+            print("Error looking up task assignee chat ID:", e_c)
+            
+    if not target_chats:
+        def_chat = os.getenv("TELEGRAM_CHAT_ID")
+        if def_chat:
+            target_chats.add(str(def_chat).strip())
+            
+    for cid in target_chats:
+        send_telegram_message(msg, chat_id=cid)
 
-        chats_to_send = set()
-        if target_chat:
-            chats_to_send.add(target_chat)
-        default_chat = os.getenv("TELEGRAM_CHAT_ID")
-        if default_chat:
-            chats_to_send.add(str(default_chat).strip())
+def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
+    """
+    Sends a direct Telegram notification to all assignees/members of a ticket
+    when it is created, approved, or close to its due date.
+    """
+    import os
+    if not ticket:
+        return
+        
+    code = ticket.get("ticket_code") or ""
+    title = ticket.get("title") or ""
+    assignee_str = ticket.get("assignee_name") or ""
+    prio = ticket.get("priority") or "Medium"
+    due_date = ticket.get("due_date") or ""
+    
+    prio_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡"
+    
+    from telegram import send_telegram_message
+    
+    if event_type == "approved":
+        msg = (
+            f"✅ <b>[ការអនុម័តលិខិតស្នើសុំ NSSF SOC]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"🎉 <b>លិខិតស្នើសុំរបស់លោក/លោកស្រីត្រូវបានយល់ព្រម និងអនុម័តរួចរាល់ហើយ!</b>\n\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
+            f"👉 សូមលោក/លោកស្រីរៀបចំ និងចាត់ចែងអនុវត្តការងារនេះឱ្យបានរួសរាន់! 🙏"
+        )
+    elif event_type == "auto_approved":
+        msg = (
+            f"⚡ <b>[ការចាត់ចែងការងារ NSSF SOC]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"📩 <b>លិខិត #{code} — {title}</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📌 <b>លោក/លោកស្រីត្រូវបានចាត់ចែងការងារថ្មី (មិនបាច់មានការអនុម័តទេ) ៖</b>\n\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
+            f"👉 សូមលោក/លោកស្រីចាត់ចែងអនុវត្តការងារនេះ! 🙏"
+        )
+    else: # created (pending approval)
+        msg = (
+            f"📩 <b>[កិច្ចការងារថ្មីរង់ចាំការអនុម័ត NSSF SOC]</b>\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n"
+            f"លិខិត ៖ <b>{title}</b> (កូដ ៖ <code>#{code}</code>)\n"
+            f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"⌛ <b>កិច្ចការងារនេះត្រូវបានចាត់ជូនលោក/លោកស្រី ប៉ុន្តែកំពុងស្ថិតក្នុងដំណាក់កាលរង់ចាំការអនុម័តពីថ្នាក់ដឹកនាំជាមុនសិន។</b>\n\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 <b>អាទិភាព ៖</b> {prio_emoji} <b>{prio}</b>\n\n"
+            f"ប្រព័ន្ធនឹងផ្ញើសារជូនដំណឹងម្តងទៀត នៅពេលមានការអនុម័តសម្រេចជាផ្លូវការ! 🙏"
+        )
 
-        for cid in chats_to_send:
-            send_telegram_message(msg, chat_id=cid)
-
-    except Exception as e:
-        print(f"Error in send_kanban_telegram_alert: {e}")
+    # Find chat IDs of all assignees
+    assignees = [a.strip() for a in assignee_str.split(",") if a.strip()]
+    target_chats = set()
+    
+    try:
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        cursor.execute("SELECT telegram_chat_id, full_name, username, telegram_username FROM users WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != ''")
+        all_users = cursor.fetchall()
+        conn.close()
+        
+        for name in assignees:
+            clean_name = name.split("(")[0].replace("@", "").strip().lower()
+            for u in all_users:
+                u_fn = (u["full_name"] or "").strip().lower()
+                u_un = (u["username"] or "").strip().lower()
+                u_tg = (u["telegram_username"] or "").strip().lower()
+                if clean_name == u_fn or clean_name == u_un or clean_name == u_tg or (clean_name in u_fn and len(clean_name) >= 3):
+                    target_chats.add(str(u["telegram_chat_id"]).strip())
+    except Exception as e_c:
+        print("Error looking up ticket assignee chat ID:", e_c)
+        
+    for cid in target_chats:
+        send_telegram_message(msg, chat_id=cid)
 
 
 

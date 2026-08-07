@@ -3176,6 +3176,7 @@ async def create_ticket(request: Request):
             "description": description,
             "requester_name": requester_name,
             "department": department,
+            "assignee_name": assignee_name,
             "status": status,
             "approval_level_required": approval_level_required,
             "l1_approver": l1_approver,
@@ -3190,8 +3191,12 @@ async def create_ticket(request: Request):
         
         def async_tg_ticket():
             try:
-                from telegram import send_ticket_telegram_alert
-                send_ticket_telegram_alert(new_ticket_obj, level=1)
+                from telegram import send_ticket_telegram_alert, send_ticket_assignee_alert
+                if approval_level_required == 0:
+                    send_ticket_assignee_alert(new_ticket_obj, event_type="auto_approved")
+                else:
+                    send_ticket_telegram_alert(new_ticket_obj, level=1)
+                    send_ticket_assignee_alert(new_ticket_obj, event_type="created")
             except Exception as ex:
                 print("Telegram Ticket Notify Exception:", ex)
 
@@ -3313,6 +3318,9 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
                 elif new_status == "pending_l3":
                     send_ticket_telegram_alert(up_tkt, level=3)
                 else:
+                    if action != "reject":
+                        from telegram import send_ticket_assignee_alert
+                        send_ticket_assignee_alert(up_tkt, event_type="approved")
                     st_desc = "បដិសេធ" if action == "reject" else "បានអនុម័តផ្លូវការ"
                     c_txt = comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if action != "reject" else "បដិសេធដោយថ្នាក់ដឹកនាំ")
                     msg = (
