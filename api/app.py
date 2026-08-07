@@ -1,3 +1,4 @@
+import sys
 import os
 import sqlite3
 import time
@@ -7,7 +8,12 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
 
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.path.dirname(CURRENT_DIR)
+for p in [CURRENT_DIR, WORKSPACE, os.path.join(WORKSPACE, "backend"), os.path.join(WORKSPACE, "api")]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
 load_dotenv(os.path.join(WORKSPACE, ".env"))
 DB_PATH = os.path.join(WORKSPACE, "soc_network.db")
 
