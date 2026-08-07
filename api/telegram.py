@@ -1535,7 +1535,7 @@ def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
             f"📅 <code>{due_date or 'មិនបានកំណត់'}</code>\n"
             f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
             f"⌛ <b>ស្ថានភាព ៖</b> <b>រង់ចាំថ្នាក់ដឹកនាំអនុម័ត</b>\n\n"
-            f"🔔 <i>នឹងជូនដំណឹងម្តងទៀត ក្រោយពេលអនុម័ត។</i>"
+            f"🔔 <b>នឹងជូនដំណឹងម្តងទៀត ក្រោយពេលអនុម័ត។</b>"
         )
 
     # Find chat IDs of all assignees
