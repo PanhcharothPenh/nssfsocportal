@@ -3222,18 +3222,15 @@ async def create_ticket(request: Request):
             "attachment_url": f"/api/uploads/{saved_filename}" if saved_filename else attachment_url
         }
         
-        def async_tg_ticket():
-            try:
-                from telegram import send_ticket_telegram_alert, send_ticket_assignee_alert
-                if approval_level_required == 0:
-                    send_ticket_assignee_alert(new_ticket_obj, event_type="auto_approved")
-                else:
-                    send_ticket_telegram_alert(new_ticket_obj, level=1)
-                    send_ticket_assignee_alert(new_ticket_obj, event_type="created")
-            except Exception as ex:
-                print("Telegram Ticket Notify Exception:", ex)
-
-        threading.Thread(target=async_tg_ticket, daemon=True).start()
+        try:
+            from telegram import send_ticket_telegram_alert, send_ticket_assignee_alert
+            if approval_level_required == 0:
+                send_ticket_assignee_alert(new_ticket_obj, event_type="auto_approved")
+            else:
+                send_ticket_telegram_alert(new_ticket_obj, level=1)
+                send_ticket_assignee_alert(new_ticket_obj, event_type="created")
+        except Exception as ex:
+            print("Telegram Ticket Notify Exception:", ex)
             
         return {"status": "success", "id": new_id, "ticket_code": ticket_code}
     except Exception as e:
@@ -3335,43 +3332,40 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
     
     # Broadcast to Telegram asynchronously for INSTANT speed
     import threading
-    def async_tg_approve():
-        try:
-            from telegram import send_ticket_telegram_alert, send_telegram_message
-            c2 = get_db_connection()
-            cur2 = c2.cursor()
-            cur2.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
-            up_row = cur2.fetchone()
-            c2.close()
+    try:
+        from telegram import send_ticket_telegram_alert, send_telegram_message
+        c2 = get_db_connection()
+        cur2 = c2.cursor()
+        cur2.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
+        up_row = cur2.fetchone()
+        c2.close()
 
-            if up_row:
-                up_tkt = dict(up_row)
-                if new_status == "pending_l2":
-                    send_ticket_telegram_alert(up_tkt, level=2)
-                elif new_status == "pending_l3":
-                    send_ticket_telegram_alert(up_tkt, level=3)
-                else:
-                    if action != "reject":
-                        from telegram import send_ticket_assignee_alert
-                        send_ticket_assignee_alert(up_tkt, event_type="approved")
-                    st_desc = "❌ បដិសេធ" if action == "reject" else "✅ បានអនុម័តផ្លូវការ (Approved)"
-                    c_txt = comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if action != "reject" else "បដិសេធដោយថ្នាក់ដឹកនាំ")
-                    msg = (
-                        f"🎉 <b>[NSSF SOC WORKFLOW UPDATE - ការអនុម័តសម្រេច]</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━\n"
-                        f"📩 <b>លិខិត #{up_tkt['ticket_code']} — {up_tkt['title']}</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{approver}</b>\n"
-                        f"📊 <b>ស្ថានភាព ៖</b> <b>{st_desc}</b>\n"
-                        f"📝 <b>ចំណារ / មតិយោបល់ ៖</b> <i>\"{c_txt}\"</i>\n"
-                        f"⏰ <code>{now_str}</code>\n\n"
-                        f"👉 សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!"
-                    )
-                    send_telegram_message(msg)
-        except Exception as ex:
-            print("Telegram Ticket Approval Notify Exception:", ex)
-
-    threading.Thread(target=async_tg_approve, daemon=True).start()
+        if up_row:
+            up_tkt = dict(up_row)
+            if new_status == "pending_l2":
+                send_ticket_telegram_alert(up_tkt, level=2)
+            elif new_status == "pending_l3":
+                send_ticket_telegram_alert(up_tkt, level=3)
+            else:
+                if action != "reject":
+                    from telegram import send_ticket_assignee_alert
+                    send_ticket_assignee_alert(up_tkt, event_type="approved")
+                st_desc = "❌ បដិសេធ" if action == "reject" else "✅ បានអនុម័តផ្លូវការ (Approved)"
+                c_txt = comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if action != "reject" else "បដិសេធដោយថ្នាក់ដឹកនាំ")
+                msg = (
+                    f"🎉 <b>[NSSF SOC WORKFLOW UPDATE - ការអនុម័តសម្រេច]</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━\n"
+                    f"📩 <b>លិខិត #{up_tkt['ticket_code']} — {up_tkt['title']}</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"👤 <b>អ្នករៀបចំធ្វើសកម្មភាព ៖</b> <b>{approver}</b>\n"
+                    f"📊 <b>ស្ថានភាព ៖</b> <b>{st_desc}</b>\n"
+                    f"📝 <b>ចំណារ / មតិយោបល់ ៖</b> <i>\"{c_txt}\"</i>\n"
+                    f"⏰ <code>{now_str}</code>\n\n"
+                    f"👉 សូមចូលទៅកាន់ Web Portal ដើម្បីពិនិត្យលម្អិត!"
+                )
+                send_telegram_message(msg)
+    except Exception as ex:
+        print("Telegram Ticket Approval Notify Exception:", ex)
         
     return {"status": "success", "ticket_id": ticket_id, "new_status": new_status}
 

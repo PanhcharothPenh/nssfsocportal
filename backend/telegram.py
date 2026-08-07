@@ -1427,67 +1427,64 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
         except Exception as ex:
             print("Error sending ticket approval alert:", ex)
 
-    threading.Thread(target=broadcast, daemon=True).start()
+    broadcast()
 
 def send_task_kanban_telegram_alert(task):
     if not task:
         return
         
-    def _async_send():
-        title = task.get("title") or "Task ថ្មី"
-        assignee = task.get("assignee_name") or "មិនបានបញ្ជាក់"
-        creator = task.get("creator_name") or "User"
-        prio = task.get("priority") or "Medium"
-        due = task.get("due_date") or "មិនបានកំណត់"
-        desc = task.get("description") or "គ្មានពិពណ៌នា"
-        
-        p_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡" if prio == "Medium" else "🟢"
-        
-        msg = (
-            f"📋 <b>[BITRIX TASK ASSIGNMENT - កិច្ចការងារថ្មី]</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"📌 <b>កិច្ចការងារ ៖</b> <b>{title}</b>\n"
-            f"👤 <b>អ្នកទទួលបន្ទុក (Assignee) ៖</b> <b>{assignee}</b>\n"
-            f"👨‍💻 <b>អ្នកបង្កើត (Creator) ៖</b> <b>{creator}</b>\n"
-            f"🎯 <b>កម្រិតអាទិភាព ៖</b> {p_emoji} <b>{prio}</b>\n"
-            f"⏰ <b>ថ្ងៃឱសានវាទ (Due Date) ៖</b> <code>{due}</code>\n"
-            f"📝 <b>ពិពណ៌នា ៖</b> <i>\"{desc}\"</i>\n"
-            f"━━━━━━━━━━━━━━━━━━━━━━\n"
-            f"👉 សូមចូលទៅកាន់ប្រព័ន្ធដើម្បីពិនិត្យ និងធ្វើបច្ចុប្បន្នភាព Kanban Card!"
-        )
-        
-        # Try finding assignee chat ID
-        target_chats = set()
-        if assignee:
-            try:
-                from database import get_db_connection
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                clean_ass = assignee.strip().lower()
-                cursor.execute("""
-                    SELECT telegram_chat_id FROM users 
-                    WHERE (telegram_chat_id IS NOT NULL AND telegram_chat_id != '')
-                      AND (
-                          LOWER(full_name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(telegram_username) LIKE ?
-                      )
-                """, (f"%{clean_ass}%", f"%{clean_ass}%", f"%{clean_ass}%"))
-                rows = cursor.fetchall()
-                conn.close()
-                for r in rows:
-                    if r['telegram_chat_id']:
-                        target_chats.add(str(r['telegram_chat_id']).strip())
-            except Exception as e_c:
-                print("Error looking up task assignee chat ID:", e_c)
-                
-        if not target_chats:
-            bot_token, def_chat = get_telegram_config()
-            if def_chat:
-                target_chats.add(str(def_chat).strip())
-                
-        for cid in target_chats:
-            send_telegram_message(msg, chat_id=cid)
-
-    threading.Thread(target=_async_send, daemon=True).start()
+    title = task.get("title") or "Task ថ្មី"
+    assignee = task.get("assignee_name") or "មិនបានបញ្ជាក់"
+    creator = task.get("creator_name") or "User"
+    prio = task.get("priority") or "Medium"
+    due = task.get("due_date") or "មិនបានកំណត់"
+    desc = task.get("description") or "គ្មានពិពណ៌នា"
+    
+    p_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡" if prio == "Medium" else "🟢"
+    
+    msg = (
+        f"📋 <b>[BITRIX TASK ASSIGNMENT - កិច្ចការងារថ្មី]</b>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"📌 <b>កិច្ចការងារ ៖</b> <b>{title}</b>\n"
+        f"👤 <b>អ្នកទទួលបន្ទុក (Assignee) ៖</b> <b>{assignee}</b>\n"
+        f"👨‍💻 <b>អ្នកបង្កើត (Creator) ៖</b> <b>{creator}</b>\n"
+        f"🎯 <b>កម្រិតអាទិភាព ៖</b> {p_emoji} <b>{prio}</b>\n"
+        f"⏰ <b>ថ្ងៃឱសានវាទ (Due Date) ៖</b> <code>{due}</code>\n"
+        f"📝 <b>ពិពណ៌នា ៖</b> <i>\"{desc}\"</i>\n"
+        f"━━━━━━━━━━━━━━━━━━━━━━\n"
+        f"👉 សូមចូលទៅកាន់ប្រព័ន្ធដើម្បីពិនិត្យ និងធ្វើបច្ចុប្បន្នភាព Kanban Card!"
+    )
+    
+    # Try finding assignee chat ID
+    target_chats = set()
+    if assignee:
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            clean_ass = assignee.strip().lower()
+            cursor.execute("""
+                SELECT telegram_chat_id FROM users 
+                WHERE (telegram_chat_id IS NOT NULL AND telegram_chat_id != '')
+                  AND (
+                      LOWER(full_name) LIKE ? OR LOWER(username) LIKE ? OR LOWER(telegram_username) LIKE ?
+                  )
+            """, (f"%{clean_ass}%", f"%{clean_ass}%", f"%{clean_ass}%"))
+            rows = cursor.fetchall()
+            conn.close()
+            for r in rows:
+                if r['telegram_chat_id']:
+                    target_chats.add(str(r['telegram_chat_id']).strip())
+        except Exception as e_c:
+            print("Error looking up task assignee chat ID:", e_c)
+            
+    if not target_chats:
+        bot_token, def_chat = get_telegram_config()
+        if def_chat:
+            target_chats.add(str(def_chat).strip())
+            
+    for cid in target_chats:
+        send_telegram_message(msg, chat_id=cid)
 
 def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
     """
@@ -1497,89 +1494,86 @@ def send_ticket_assignee_alert(ticket: dict, event_type: str = "created"):
     if not ticket:
         return
         
-    def _async_send():
-        code = ticket.get("ticket_code") or ""
-        title = ticket.get("title") or ""
-        assignee_str = ticket.get("assignee_name") or ""
-        prio = ticket.get("priority") or "Medium"
-        due_date = ticket.get("due_date") or ""
-        
-        prio_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡"
-        
-        req_name = ticket.get("requester_name") or "System Administrator"
-        
-        if event_type == "approved":
-            msg = (
-                f"✅ <b>កិច្ចការត្រូវបានអនុម័តផ្លូវការ</b>\n\n"
-                f"📄 <b>{title}</b>\n"
-                f"🎫 <code>#{code}</code>\n\n"
-                f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
-                f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
-                f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-                f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
-                f"🎉 <b>ស្ថានភាព ៖</b> <b>បានអនុម័តផ្លូវការ (Approved)</b>"
-            )
-        elif event_type == "auto_approved":
-            msg = (
-                f"⚡ <b>កិច្ចការងារថ្មី (អនុម័តស្វ័យប្រវត្តិ)</b>\n\n"
-                f"📄 <b>{title}</b>\n"
-                f"🎫 <code>#{code}</code>\n\n"
-                f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
-                f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
-                f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-                f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
-                f"📌 <b>ស្ថានភាព ៖</b> <b>ត្រូវបានចាត់ចែងអនុវត្ត</b>"
-            )
-        else: # created (pending approval)
-            msg = (
-                f"📩 <b>កិច្ចការថ្មី — រង់ចាំអនុម័ត</b>\n\n"
-                f"📄 <b>{title}</b>\n"
-                f"🎫 <code>#{code}</code>\n\n"
-                f"👤 <b>{req_name}</b>\n"
-                f"📅 <code>{due_date or 'មិនបានកំណត់'}</code>\n"
-                f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
-                f"⌛ <b>ស្ថានភាព ៖</b> <b>រង់ចាំថ្នាក់ដឹកនាំអនុម័ត</b>\n\n"
-                f"🔔 <i>នឹងជូនដំណឹងម្តងទៀត ក្រោយពេលអនុម័ត។</i>"
-            )
+    code = ticket.get("ticket_code") or ""
+    title = ticket.get("title") or ""
+    assignee_str = ticket.get("assignee_name") or ""
+    prio = ticket.get("priority") or "Medium"
+    due_date = ticket.get("due_date") or ""
+    
+    prio_emoji = "🔴" if prio == "Urgent" else "🟠" if prio == "High" else "🟡"
+    
+    req_name = ticket.get("requester_name") or "System Administrator"
+    
+    if event_type == "approved":
+        msg = (
+            f"✅ <b>កិច្ចការត្រូវបានអនុម័តផ្លូវការ</b>\n\n"
+            f"📄 <b>{title}</b>\n"
+            f"🎫 <code>#{code}</code>\n\n"
+            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+            f"🎉 <b>ស្ថានភាព ៖</b> <b>បានអនុម័តផ្លូវការ (Approved)</b>"
+        )
+    elif event_type == "auto_approved":
+        msg = (
+            f"⚡ <b>កិច្ចការងារថ្មី (អនុម័តស្វ័យប្រវត្តិ)</b>\n\n"
+            f"📄 <b>{title}</b>\n"
+            f"🎫 <code>#{code}</code>\n\n"
+            f"👤 <b>អ្នកស្នើសុំ ៖</b> <b>{req_name}</b>\n"
+            f"👥 <b>អ្នកទទួលបន្ទុក ៖</b> <b>{assignee_str or 'មិនបានបញ្ជាក់'}</b>\n"
+            f"📅 <b>ថ្ងៃឱសានវាទ ៖</b> <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+            f"📌 <b>ស្ថានភាព ៖</b> <b>ត្រូវបានចាត់ចែងអនុវត្ត</b>"
+        )
+    else: # created (pending approval)
+        msg = (
+            f"📩 <b>កិច្ចការថ្មី — រង់ចាំអនុម័ត</b>\n\n"
+            f"📄 <b>{title}</b>\n"
+            f"🎫 <code>#{code}</code>\n\n"
+            f"👤 <b>{req_name}</b>\n"
+            f"📅 <code>{due_date or 'មិនបានកំណត់'}</code>\n"
+            f"🔥 {prio_emoji} <b>{prio}</b>\n\n"
+            f"⌛ <b>ស្ថានភាព ៖</b> <b>រង់ចាំថ្នាក់ដឹកនាំអនុម័ត</b>\n\n"
+            f"🔔 <i>នឹងជូនដំណឹងម្តងទៀត ក្រោយពេលអនុម័ត។</i>"
+        )
 
-        # Find chat IDs of all assignees
-        assignees = [a.strip() for a in assignee_str.split(",") if a.strip()]
-        target_chats = set()
+    # Find chat IDs of all assignees
+    assignees = [a.strip() for a in assignee_str.split(",") if a.strip()]
+    target_chats = set()
+    
+    try:
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
-        try:
-            from database import get_db_connection
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            cursor.execute("SELECT telegram_chat_id, full_name, username, telegram_username FROM users WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != ''")
-            all_users = cursor.fetchall()
-            conn.close()
-            
-            for name in assignees:
-                clean_name = name.split("(")[0].replace("@", "").strip().lower()
-                for u in all_users:
-                    u_fn = (u["full_name"] or "").strip().lower()
-                    u_un = (u["username"] or "").strip().lower()
-                    u_tg = (u["telegram_username"] or "").strip().lower()
-                    if clean_name == u_fn or clean_name == u_un or clean_name == u_tg or (clean_name in u_fn and len(clean_name) >= 3):
-                        target_chats.add(str(u["telegram_chat_id"]).strip())
-        except Exception as e_c:
-            print("Error looking up ticket assignee chat ID:", e_c)
-            
-        for cid in target_chats:
-            send_telegram_message(msg, chat_id=cid)
+        cursor.execute("SELECT telegram_chat_id, full_name, username, telegram_username FROM users WHERE telegram_chat_id IS NOT NULL AND telegram_chat_id != ''")
+        all_users = cursor.fetchall()
+        conn.close()
+        
+        for name in assignees:
+            clean_name = name.split("(")[0].replace("@", "").strip().lower()
+            for u in all_users:
+                u_fn = (u["full_name"] or "").strip().lower()
+                u_un = (u["username"] or "").strip().lower()
+                u_tg = (u["telegram_username"] or "").strip().lower()
+                if clean_name == u_fn or clean_name == u_un or clean_name == u_tg or (clean_name in u_fn and len(clean_name) >= 3):
+                    target_chats.add(str(u["telegram_chat_id"]).strip())
+    except Exception as e_c:
+        print("Error looking up ticket assignee chat ID:", e_c)
+        
+    for cid in target_chats:
+        send_telegram_message(msg, chat_id=cid)
 
-        # Also send to Group Chat so the team sees assignment/approval updates
-        try:
-            bot_token, group_chat_id = get_telegram_config()
-            if group_chat_id:
-                group_chat_id = str(group_chat_id).strip()
-                if group_chat_id.startswith("-") and group_chat_id not in target_chats:
-                    send_telegram_message(msg, chat_id=group_chat_id)
-        except Exception as ex_gc:
-            print("Error sending assignee alert to Group Chat:", ex_gc)
-
-    threading.Thread(target=_async_send, daemon=True).start()
+    # Also send to Group Chat so the team sees assignment/approval updates
+    try:
+        bot_token, group_chat_id = get_telegram_config()
+        if group_chat_id:
+            group_chat_id = str(group_chat_id).strip()
+            if group_chat_id.startswith("-") and group_chat_id not in target_chats:
+                send_telegram_message(msg, chat_id=group_chat_id)
+    except Exception as ex_gc:
+        print("Error sending assignee alert to Group Chat:", ex_gc)
 
 
 
