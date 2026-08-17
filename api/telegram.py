@@ -545,7 +545,7 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
 
     # 2. Second priority: Gemini AI with Full Website Live Context!
     if gemini_key:
-        models_to_try = ["gemini-flash-latest", "gemini-1.5-flash", "gemini-2.0-flash-lite", "gemini-2.0-flash"]
+        models_to_try = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]
         live_web_data = get_full_web_portal_context()
         prompt_text = (
             f"You are the NSSF SOC Portal Gemini AI Assistant, an expert AI created for the National Social Security Fund (NSSF) Security Operations Center.\n"
