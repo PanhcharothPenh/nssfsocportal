@@ -1,12 +1,17 @@
+import sys
 import os
 import requests
-from dotenv import load_dotenv
-
-WORKSPACE = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-load_dotenv(os.path.join(WORKSPACE, ".env"))
-
 import time
 import threading
+from dotenv import load_dotenv
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+WORKSPACE = os.path.dirname(CURRENT_DIR)
+for p in [CURRENT_DIR, WORKSPACE, os.path.join(WORKSPACE, "backend"), os.path.join(WORKSPACE, "api")]:
+    if p not in sys.path:
+        sys.path.insert(0, p)
+
+load_dotenv(os.path.join(WORKSPACE, ".env"))
 
 _tg_config_cache = {
     "bot_token": None,
@@ -49,12 +54,26 @@ def get_telegram_config():
 
 def send_telegram_message(message: str, chat_id: str = None, reply_markup: dict = None):
     """
-    Sends a formatted message to a Telegram group or channel using Telegram Bot API.
+    Sends a formatted message to a Telegram group or personal chat using Telegram Bot API.
     """
     bot_token, default_chat_id = get_telegram_config()
     if not chat_id:
         chat_id = default_chat_id
-    
+
+    # If target chat_id is the group chat and group notifications are disabled, skip sending to group
+    if chat_id and (str(chat_id).strip() == "-1002124589536" or str(chat_id).strip() == str(default_chat_id).strip()):
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_notify_group'")
+            setting = cursor.fetchone()
+            conn.close()
+            if setting and str(setting['value']).strip().lower() in ['0', 'false', 'off', 'no', 'disabled']:
+                return False, "Group chat notifications disabled by user"
+        except Exception:
+            pass
+
     if not bot_token or not chat_id:
         return False, "Telegram Bot Token or Chat ID not configured in settings or .env"
         
