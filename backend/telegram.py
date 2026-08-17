@@ -722,116 +722,137 @@ def get_leave_salutation_and_closing(telegram_username=None, chat_id=None, from_
     return salutation, closing
 
 
+_tg_report_cache = {}
+
+def get_cached_report(key, fetch_fn):
+    global _tg_report_cache
+    now = time.time()
+    if key in _tg_report_cache and (now - _tg_report_cache[key]["ts"] < 30):
+        return _tg_report_cache[key]["val"]
+    res = fetch_fn()
+    _tg_report_cache[key] = {"ts": now, "val": res}
+    return res
+
 def get_hospitals_direct_telegram():
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns")
-        total = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE reopen_requested = 1 OR LOWER(status) LIKE '%reopen%'")
-        reopen = cursor.fetchone()[0]
-        cursor.execute("SELECT name, public_ip, status FROM hospital_vpns ORDER BY id LIMIT 6")
-        rows = cursor.fetchall()
-        conn.close()
-        
-        list_str = "\n".join([f"• 🏥 <b>{r['name']}</b> (IP: <code>{r['public_ip'] or 'N/A'}</code>)" for r in rows])
-        return (
-            f"🏥 <b>របាយការណ៍ Hospital VPNs ៖</b>\n\n"
-            f"• មន្ទីរពេទ្យ/ធនាគារសរុប ៖ <b>{total}</b>\n"
-            f"• ស្នើសុំបើកឡើងវិញ (Reopen) ៖ <b>{reopen}</b>\n\n"
-            f"<b>បញ្ជីមន្ទីរពេទ្យគំរូ ៖</b>\n{list_str}\n\n"
-            f"🔗 <b>មើលបន្ថែម ៖</b> https://nssfsocportal.vercel.app"
-        )
-    except Exception as e:
-        return f"🏥 <b>Hospital VPNs ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    def _fetch():
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM hospital_vpns")
+            total = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE reopen_requested = 1 OR LOWER(status) LIKE '%reopen%'")
+            reopen = cursor.fetchone()[0]
+            cursor.execute("SELECT name, public_ip, status FROM hospital_vpns ORDER BY id LIMIT 6")
+            rows = cursor.fetchall()
+            conn.close()
+            
+            list_str = "\n".join([f"• 🏥 <b>{r['name']}</b> (IP: <code>{r['public_ip'] or 'N/A'}</code>)" for r in rows])
+            return (
+                f"🏥 <b>របាយការណ៍ Hospital VPNs ៖</b>\n\n"
+                f"• មន្ទីរពេទ្យ/ធនាគារសរុប ៖ <b>{total}</b>\n"
+                f"• ស្នើសុំបើកឡើងវិញ (Reopen) ៖ <b>{reopen}</b>\n\n"
+                f"<b>បញ្ជីមន្ទីរពេទ្យគំរូ ៖</b>\n{list_str}\n\n"
+                f"🔗 <b>មើលបន្ថែម ៖</b> https://nssfsocportal.vercel.app"
+            )
+        except Exception as e:
+            return f"🏥 <b>Hospital VPNs ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    return get_cached_report("hospitals", _fetch)
 
 def get_reopen_direct_telegram():
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT name, public_ip, reference_doc, status FROM hospital_vpns WHERE reopen_requested = 1 OR LOWER(status) LIKE '%reopen%'")
-        rows = cursor.fetchall()
-        conn.close()
-        
-        if not rows:
-            return "🔄 <b>Reopen Requests ៖</b>\n\nពុំមានមន្ទីរពេទ្យស្នើសុំបើកដំណើការ VPN ឡើងវិញនៅឡើយទេ។"
+    def _fetch():
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT name, public_ip, reference_doc, status FROM hospital_vpns WHERE reopen_requested = 1 OR LOWER(status) LIKE '%reopen%'")
+            rows = cursor.fetchall()
+            conn.close()
             
-        list_str = "\n".join([f"• 🏥 <b>{r['name']}</b>\n  └ លិខិត ៖ <code>{r['reference_doc'] or 'N/A'}</code> | IP ៖ <code>{r['public_ip'] or 'N/A'}</code>" for r in rows])
-        return (
-            f"🔄 <b>មន្ទីរពេទ្យស្នើសុំបើកដំណើការ VPN ឡើងវិញ ({len(rows)}) ៖</b>\n\n"
-            f"{list_str}\n\n"
-            f"🔗 <b>ពិនិត្យលើ Portal ៖</b> https://nssfsocportal.vercel.app"
-        )
-    except Exception as e:
-        return f"🔄 <b>Reopen Requests ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+            if not rows:
+                return "🔄 <b>Reopen Requests ៖</b>\n\nពុំមានមន្ទីរពេទ្យស្នើសុំបើកដំណើការ VPN ឡើងវិញនៅឡើយទេ។"
+                
+            list_str = "\n".join([f"• 🏥 <b>{r['name']}</b>\n  └ លិខិត ៖ <code>{r['reference_doc'] or 'N/A'}</code> | IP ៖ <code>{r['public_ip'] or 'N/A'}</code>" for r in rows])
+            return (
+                f"🔄 <b>មន្ទីរពេទ្យស្នើសុំបើកដំណើការ VPN ឡើងវិញ ({len(rows)}) ៖</b>\n\n"
+                f"{list_str}\n\n"
+                f"🔗 <b>ពិនិត្យលើ Portal ៖</b> https://nssfsocportal.vercel.app"
+            )
+        except Exception as e:
+            return f"🔄 <b>Reopen Requests ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    return get_cached_report("reopen", _fetch)
 
 def get_branches_direct_telegram():
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT name_kh, name_en, subnet FROM branches ORDER BY id LIMIT 6")
-        rows = cursor.fetchall()
-        cursor.execute("SELECT COUNT(*) FROM branches")
-        total = cursor.fetchone()[0]
-        conn.close()
-        
-        list_str = "\n".join([f"• 🏢 <b>{r['name_kh']} ({r['name_en']})</b>\n  └ Subnet ៖ <code>{r['subnet']}</code>" for r in rows])
-        return (
-            f"🏢 <b>ទិន្នន័យសាខា NSSF ទាំងអស់ (សរុប {total}) ៖</b>\n\n"
-            f"{list_str}\n\n"
-            f"🔗 <b>មើលសាខាទាំងអស់ ៖</b> https://nssfsocportal.vercel.app"
-        )
-    except Exception as e:
-        return f"🏢 <b>NSSF Branches ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    def _fetch():
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT name_kh, name_en, subnet FROM branches ORDER BY id LIMIT 6")
+            rows = cursor.fetchall()
+            cursor.execute("SELECT COUNT(*) FROM branches")
+            total = cursor.fetchone()[0]
+            conn.close()
+            
+            list_str = "\n".join([f"• 🏢 <b>{r['name_kh']} ({r['name_en']})</b>\n  └ Subnet ៖ <code>{r['subnet']}</code>" for r in rows])
+            return (
+                f"🏢 <b>ទិន្នន័យសាខា NSSF ទាំងអស់ (សរុប {total}) ៖</b>\n\n"
+                f"{list_str}\n\n"
+                f"🔗 <b>មើលសាខាទាំងអស់ ៖</b> https://nssfsocportal.vercel.app"
+            )
+        except Exception as e:
+            return f"🏢 <b>NSSF Branches ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    return get_cached_report("branches", _fetch)
 
 def get_hq_direct_telegram():
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT name_en, sheet_name, vlan_id, subnet FROM hq_departments ORDER BY id LIMIT 6")
-        rows = cursor.fetchall()
-        cursor.execute("SELECT COUNT(*) FROM hq_departments")
-        total = cursor.fetchone()[0]
-        conn.close()
-        
-        list_str = "\n".join([f"• 🏛️ <b>{r['name_en']}</b>\n  └ Subnet ៖ <code>{r['subnet'] or 'N/A'}</code> | VLAN ID ៖ <code>{r['vlan_id'] or 'N/A'}</code>" for r in rows])
-        return (
-            f"🏛️ <b>ទិន្នន័យនាយកដ្ឋាន HQ ទាំងអស់ (សរុប {total}) ៖</b>\n\n"
-            f"{list_str}\n\n"
-            f"🔗 <b>មើល HQ ទាំងអស់ ៖</b> https://nssfsocportal.vercel.app"
-        )
-    except Exception as e:
-        return f"🏛️ <b>HQ Subnets ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    def _fetch():
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT name_en, sheet_name, vlan_id, subnet FROM hq_departments ORDER BY id LIMIT 6")
+            rows = cursor.fetchall()
+            cursor.execute("SELECT COUNT(*) FROM hq_departments")
+            total = cursor.fetchone()[0]
+            conn.close()
+            
+            list_str = "\n".join([f"• 🏛️ <b>{r['name_en']}</b>\n  └ Subnet ៖ <code>{r['subnet'] or 'N/A'}</code> | VLAN ID ៖ <code>{r['vlan_id'] or 'N/A'}</code>" for r in rows])
+            return (
+                f"🏛️ <b>ទិន្នន័យនាយកដ្ឋាន HQ ទាំងអស់ (សរុប {total}) ៖</b>\n\n"
+                f"{list_str}\n\n"
+                f"🔗 <b>មើល HQ ទាំងអស់ ៖</b> https://nssfsocportal.vercel.app"
+            )
+        except Exception as e:
+            return f"🏛️ <b>HQ Subnets ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    return get_cached_report("hq", _fetch)
 
 def get_system_status_direct_telegram():
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT COUNT(*) FROM branches")
-        b_cnt = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM hq_departments")
-        h_cnt = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns")
-        hp_cnt = cursor.fetchone()[0]
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE reopen_requested = 1 OR LOWER(status) LIKE '%reopen%'")
-        r_cnt = cursor.fetchone()[0]
-        conn.close()
-        return (
-            f"📊 <b>ទិន្នន័យស្ថិតិប្រព័ន្ធ NSSF SOC Portal ៖</b>\n\n"
-            f"• សាខាសរុប (Branches) ៖ <b>{b_cnt}</b>\n"
-            f"• នាយកដ្ឋាន (HQ) ៖ <b>{h_cnt}</b>\n"
-            f"• មន្ទីរពេទ្យ/ធនាគារ VPN ៖ <b>{hp_cnt}</b>\n"
-            f"• ស្នើសុំ Reopen ៖ <b>{r_cnt}</b>\n\n"
-            f"✅ <b>ស្ថានភាពប្រព័ន្ធ ៖</b> ដំណើរការល្អជាប្រក្រតី (Online 100%)\n"
-            f"🔗 <b>ចូលទៅកាន់ Portal ៖</b> https://nssfsocportal.vercel.app"
-        )
-    except Exception as e:
-        return f"📊 <b>System Status ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    def _fetch():
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM branches")
+            b_cnt = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM hq_departments")
+            h_cnt = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM hospital_vpns")
+            hp_cnt = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE reopen_requested = 1 OR LOWER(status) LIKE '%reopen%'")
+            r_cnt = cursor.fetchone()[0]
+            conn.close()
+            return (
+                f"📊 <b>ទិន្នន័យស្ថិតិប្រព័ន្ធ NSSF SOC Portal ៖</b>\n\n"
+                f"• សាខាសរុប (Branches) ៖ <b>{b_cnt}</b>\n"
+                f"• នាយកដ្ឋាន (HQ) ៖ <b>{h_cnt}</b>\n"
+                f"• មន្ទីរពេទ្យ/ធនាគារ VPN ៖ <b>{hp_cnt}</b>\n"
+                f"• ស្នើសុំ Reopen ៖ <b>{r_cnt}</b>\n\n"
+                f"✅ <b>ស្ថានភាពប្រព័ន្ធ ៖</b> ដំណើរការល្អជាប្រក្រតី (Online 100%)\n"
+                f"🔗 <b>ចូលទៅកាន់ Portal ៖</b> https://nssfsocportal.vercel.app"
+            )
+        except Exception as e:
+            return f"📊 <b>System Status ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    return get_cached_report("status", _fetch)
 
 
 def process_telegram_incoming_update(update: dict):

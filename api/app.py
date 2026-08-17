@@ -3,7 +3,7 @@ import os
 import sqlite3
 import time
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Request, Body
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Request, Body, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
@@ -400,146 +400,16 @@ def telegram_polling_loop():
             time.sleep(5)
 
 @app.post("/api/telegram/webhook")
-async def telegram_webhook(request: Request):
+async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
     try:
         payload = await request.json()
         if not payload:
             return {"status": "skipped"}
             
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-        if not bot_token:
-            return {"status": "skipped"}
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAFahP_Ikijfy7v6vlR7iVczKuc-IJ15wxc"
             
-        message = payload.get("message", {}) or payload.get("edited_message", {})
-        text = (message.get("text") or "").strip()
-        chat = message.get("chat", {})
-        chat_id = chat.get("id")
-        from_user = message.get("from", {})
-        username = from_user.get("username", "") or chat.get("username", "")
-        
-        # 1. Check if this is a login start command with token
-        if text and text.startswith("/start "):
-            token = text.split(" ")[1].strip()
-            if token:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                try:
-                    # Find matched user by telegram_username (case-insensitive) or username
-                    cursor.execute("SELECT * FROM users WHERE LOWER(telegram_username) = LOWER(?) OR LOWER(username) = LOWER(?)", (username, username))
-                    user = cursor.fetchone()
-                    
-                    if user:
-                        # Update user's telegram_chat_id in users table to link it automatically if not linked!
-                        cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (str(chat_id), user['id']))
-                        
-                        # Update login session status to authorized
-                        cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status, username) VALUES (?, ?, ?)", (token, 'authorized', user['username']))
-                        conn.commit()
-                        
-                        # Send confirmation message to user on Telegram
-                        msg = (
-                            f"✅ <b>Authentication Successful!</b>\n\n"
-                            f"Hello <b>{user['full_name'] or user['username']}</b>,\n"
-                            f"You have successfully authenticated via Telegram. Your browser tab has been unlocked!"
-                        )
-                        web_portal_url = "https://nssfsocportal.vercel.app"
-                        if os.getenv("VERCEL_URL"):
-                            web_portal_url = f"https://{os.getenv('VERCEL_URL')}"
-                        
-                        import requests
-                        requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
-                            'chat_id': chat_id,
-                            'text': msg,
-                            'parse_mode': 'HTML',
-                            'reply_markup': {
-                                'inline_keyboard': [
-                                    [
-                                        {
-                                            'text': '🌐 បើកវេបសាយ (Open Web Portal)',
-                                            'url': web_portal_url
-                                        }
-                                    ],
-                                    [
-                                        {
-                                            'text': '📱 បើកក្នុង Telegram (Open Mini App)',
-                                            'web_app': {
-                                                'url': web_portal_url
-                                            }
-                                        }
-                                    ]
-                                ]
-                            }
-                        }, timeout=5)
-                    else:
-                        # Reject
-                        cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status) VALUES (?, ?)", (token, 'rejected'))
-                        conn.commit()
-                        
-                        # Send error message
-                        msg = (
-                            f"❌ <b>Authentication Failed</b>\n\n"
-                            f"Your Telegram username (<code>@{username}</code>) is not linked to any user in the NSSF SOC Portal.\n"
-                            f"Please contact your Administrator or link your Telegram username inside your Profile Settings first."
-                        )
-                        import requests
-                        requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
-                            'chat_id': chat_id,
-                            'text': msg,
-                            'parse_mode': 'HTML'
-                        }, timeout=5)
-                except Exception as e:
-                    try:
-                        conn.rollback()
-                    except Exception:
-                        pass
-                    print("Error in Telegram webhook login:", e)
-                finally:
-                    conn.close()
-            return {"status": "ok"}
-            
-        # 2. Check if this is a message from a user we can auto-link (non-blocking)
-        if username and chat_id and not text.startswith("/"):
-            try:
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute("SELECT * FROM users WHERE LOWER(telegram_username) = LOWER(?) OR LOWER(username) = LOWER(?)", (username, username))
-                user = cursor.fetchone()
-                if user and not user['telegram_chat_id']:
-                    cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (str(chat_id), user['id']))
-                    conn.commit()
-                    
-                    web_portal_url = "https://nssfsocportal.vercel.app"
-                    if os.getenv("VERCEL_URL"):
-                        web_portal_url = f"https://{os.getenv('VERCEL_URL')}"
-                        
-                    msg = (
-                        f"✅ <b>Telegram Account Linked Automatically!</b>\n\n"
-                        f"Hello <b>{user['full_name'] or user['username']}</b>,\n"
-                        f"Your Telegram Chat ID (<code>{chat_id}</code>) has been automatically saved and linked to your portal account!"
-                    )
-                    import requests
-                    requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={
-                        'chat_id': chat_id,
-                        'text': msg,
-                        'parse_mode': 'HTML',
-                        'reply_markup': {
-                            'inline_keyboard': [
-                                [
-                                    {
-                                        'text': '🌐 បើកវេបសាយ (Open Web Portal)',
-                                        'url': web_portal_url
-                                    }
-                                ]
-                            ]
-                        }
-                    }, timeout=5)
-                conn.close()
-            except Exception as ex:
-                print("Error in Telegram auto-link:", ex)
-
-        # 3. ALWAYS delegate to process_telegram_incoming_update in telegram.py
         from api.telegram import process_telegram_incoming_update
-        process_telegram_incoming_update(payload)
+        background_tasks.add_task(process_telegram_incoming_update, payload)
         return {"status": "ok"}
     except Exception as e:
         return {"status": "error", "detail": str(e)}
