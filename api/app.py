@@ -78,7 +78,7 @@ def init_db_migrations():
     except Exception as e:
         print("Migration warning:", e)
 
-init_db_migrations()
+# init_db_migrations is executed asynchronously during startup event below
 
 def get_ict_now():
     from datetime import datetime, timedelta, timezone

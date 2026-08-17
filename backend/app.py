@@ -78,7 +78,7 @@ def init_db_migrations():
     except Exception as e:
         print("Migration warning:", e)
 
-init_db_migrations()
+# init_db_migrations is executed asynchronously during startup event below
 
 def get_ict_now():
     from datetime import datetime, timedelta, timezone
@@ -571,19 +571,25 @@ def ensure_background_threads():
 
 @app.on_event("startup")
 def startup_event():
-    try:
-        from parser import create_tables
-        conn = get_db_connection()
-        create_tables(conn)
-        conn.close()
-        print("Database tables initialized successfully on startup.")
-    except Exception as e:
-        print(f"Error initializing tables on startup: {e}")
-        
-    ensure_background_threads()
+    import threading
+    def async_startup():
+        try:
+            init_db_migrations()
+        except Exception as e_m:
+            print("Migration warning:", e_m)
 
-# Initialize background worker immediately if not running on Vercel
-ensure_background_threads()
+        try:
+            from parser import create_tables
+            conn = get_db_connection()
+            create_tables(conn)
+            conn.close()
+            print("Database tables initialized successfully on startup.")
+        except Exception as e:
+            print(f"Error initializing tables on startup: {e}")
+            
+        ensure_background_threads()
+
+    threading.Thread(target=async_startup, daemon=True).start()
 
 # (get_db_connection already imported at top)
 
