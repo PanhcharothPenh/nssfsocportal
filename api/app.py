@@ -292,7 +292,7 @@ def telegram_polling_loop():
         
     # Automatically clear webhook if active to allow 24/7 long polling on Railway
     try:
-        requests.post(f"https://api.telegram.org/bot{bot_token}/deleteWebhook?drop_pending_updates=true", timeout=10)
+        requests.post(f"https://api.telegram.org/bot{bot_token}/deleteWebhook", timeout=10)
         print("Telegram webhook successfully cleared for Railway 24/7 long-polling daemon.")
     except Exception as e_wh:
         print("Notice clearing webhook:", e_wh)
@@ -387,11 +387,11 @@ def telegram_polling_loop():
                                 
                             conn.close()
                     elif text or update:
-                        from telegram import process_telegram_incoming_update
+                        from api.telegram import process_telegram_incoming_update
                         process_telegram_incoming_update(update)
             elif res.status_code == 409:
                 print("Webhook conflict detected (409). Force deleting Telegram webhook...")
-                requests.post(f"https://api.telegram.org/bot{bot_token}/deleteWebhook?drop_pending_updates=true", timeout=10)
+                requests.post(f"https://api.telegram.org/bot{bot_token}/deleteWebhook", timeout=10)
                 time.sleep(2)
             else:
                 time.sleep(2)
@@ -538,7 +538,7 @@ async def telegram_webhook(request: Request):
                 print("Error in Telegram auto-link:", ex)
 
         # 3. ALWAYS delegate to process_telegram_incoming_update in telegram.py
-        from telegram import process_telegram_incoming_update
+        from api.telegram import process_telegram_incoming_update
         process_telegram_incoming_update(payload)
         return {"status": "ok"}
     except Exception as e:
@@ -1192,7 +1192,7 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from telegram import notify_data_change
+        from api.telegram import notify_data_change
         editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         branch_name = f"{branch_row['name_kh']} ({branch_row['name_en']})"
@@ -1407,7 +1407,7 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from telegram import notify_data_change
+        from api.telegram import notify_data_change
         editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         dept_name = f"{dept_row['name_en']} (VLAN {dept_row['vlan_id']})"
@@ -1520,7 +1520,7 @@ def create_vpn_user(v_data: VPNUserUpdate, request: Request = None):
         # Trigger Telegram Audit Notification
         try:
             try:
-                from telegram import notify_data_change
+                from api.telegram import notify_data_change
             except ImportError:
                 try:
                     from api.telegram import notify_data_change
@@ -1593,7 +1593,7 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
         
         # Trigger Telegram Audit Notification
         try:
-            from telegram import notify_data_change
+            from api.telegram import notify_data_change
             editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
             client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             notify_data_change(
@@ -1646,7 +1646,7 @@ def delete_vpn_user(id: int, request: Request):
         conn.close()
         
         try:
-            from telegram import notify_data_change
+            from api.telegram import notify_data_change
             editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
             client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             user_name = user_rec['name'] if hasattr(user_rec, 'keys') and 'name' in user_rec else (user_rec[1] if isinstance(user_rec, (tuple, list)) and len(user_rec) > 1 else '')
@@ -1725,7 +1725,7 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request):
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from telegram import notify_data_change
+        from api.telegram import notify_data_change
         editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         notify_data_change(
@@ -2217,7 +2217,7 @@ class TelegramSendMessagePayload(BaseModel):
 
 @app.post("/api/telegram/send")
 def send_telegram(payload: TelegramSendMessagePayload):
-    from telegram import send_telegram_message
+    from api.telegram import send_telegram_message
     
     chat_id = None
     if payload.username:
@@ -3240,7 +3240,7 @@ async def create_ticket(request: Request):
         }
         
         try:
-            from telegram import send_ticket_telegram_alert, send_ticket_assignee_alert
+            from api.telegram import send_ticket_telegram_alert, send_ticket_assignee_alert
             if approval_level_required == 0:
                 send_ticket_assignee_alert(new_ticket_obj, event_type="auto_approved")
             else:
@@ -3350,7 +3350,7 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
     # Broadcast to Telegram asynchronously for INSTANT speed
     import threading
     try:
-        from telegram import send_ticket_telegram_alert, send_telegram_message
+        from api.telegram import send_ticket_telegram_alert, send_telegram_message
         c2 = get_db_connection()
         cur2 = c2.cursor()
         cur2.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
@@ -3365,7 +3365,7 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
                 send_ticket_telegram_alert(up_tkt, level=3)
             else:
                 if action != "reject":
-                    from telegram import send_ticket_assignee_alert
+                    from api.telegram import send_ticket_assignee_alert
                     send_ticket_assignee_alert(up_tkt, event_type="approved")
                 st_desc = "❌ បដិសេធ" if action == "reject" else "✅ បានអនុម័តផ្លូវការ (Approved)"
                 c_txt = comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if action != "reject" else "បដិសេធដោយថ្នាក់ដឹកនាំ")
@@ -3421,7 +3421,7 @@ def update_ticket_status(ticket_id: int, payload: dict = Body(...)):
         cursor.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
         up_row = cursor.fetchone()
         if up_row:
-            from telegram import send_ticket_assignee_alert
+            from api.telegram import send_ticket_assignee_alert
             send_ticket_assignee_alert(dict(up_row), event_type=new_status)
     except Exception as ex_st:
         print("Error sending ticket status change alert to Telegram:", ex_st)
@@ -3497,7 +3497,7 @@ def create_kanban_task(payload: dict = Body(...)):
     
     # Dispatch Telegram Alert to assignee
     try:
-        from telegram import send_task_kanban_telegram_alert
+        from api.telegram import send_task_kanban_telegram_alert
         send_task_kanban_telegram_alert(task_obj)
     except Exception as ex_t:
         print("Kanban task telegram alert exception:", ex_t)
