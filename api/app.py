@@ -285,7 +285,7 @@ def auto_sync_loop():
 def telegram_polling_loop():
     import requests
     
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAFahP_Ikijfy7v6vlR7iVczKuc-IJ15wxc"
     if not bot_token:
         print("Telegram Bot Token not set, background bot polling disabled.")
         return

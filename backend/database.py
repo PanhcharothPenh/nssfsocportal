@@ -132,10 +132,11 @@ class PostgresConnectionWrapper:
     def close(self):
         self.pg_conn.close()
 
+DEFAULT_SUPABASE_URL = "postgresql://postgres.utedcugeclfjhviuthmk:Roth%40017986356@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+
 def get_db_connection():
-    # If SUPABASE_DB_URL or DATABASE_URL is set in environment, connect to PostgreSQL
-    # Otherwise fallback to local SQLite database
-    url = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL")
+    # Connect to Supabase PostgreSQL Database
+    url = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL") or DEFAULT_SUPABASE_URL
     if url:
         if not psgres_available:
             raise RuntimeError("PostgreSQL URL is configured in the environment, but 'psycopg2' module is not installed!")
