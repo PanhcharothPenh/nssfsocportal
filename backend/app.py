@@ -554,9 +554,23 @@ def setup_telegram_webhook():
     res = requests.post(f"https://api.telegram.org/bot{bot_token}/setWebhook", json={"url": webhook_url})
     return res.json()
 
+_bg_threads_started = False
+def ensure_background_threads():
+    global _bg_threads_started
+    if _bg_threads_started:
+        return
+    if not os.getenv("VERCEL"):
+        _bg_threads_started = True
+        import threading
+        thread1 = threading.Thread(target=auto_sync_loop, daemon=True)
+        thread1.start()
+        
+        thread2 = threading.Thread(target=telegram_polling_loop, daemon=True)
+        thread2.start()
+        print("Background Telegram polling and auto-sync threads initialized successfully!")
+
 @app.on_event("startup")
 def startup_event():
-    import threading
     try:
         from parser import create_tables
         conn = get_db_connection()
@@ -566,14 +580,10 @@ def startup_event():
     except Exception as e:
         print(f"Error initializing tables on startup: {e}")
         
-    if not os.getenv("VERCEL"):
-        thread1 = threading.Thread(target=auto_sync_loop, daemon=True)
-        thread1.start()
-        
-        thread2 = threading.Thread(target=telegram_polling_loop, daemon=True)
-        thread2.start()
-    else:
-        print("Running on Vercel: background threads disabled.")
+    ensure_background_threads()
+
+# Initialize background worker immediately if not running on Vercel
+ensure_background_threads()
 
 # (get_db_connection already imported at top)
 
