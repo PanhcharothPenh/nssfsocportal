@@ -290,6 +290,13 @@ def telegram_polling_loop():
         print("Telegram Bot Token not set, background bot polling disabled.")
         return
         
+    # Automatically clear webhook if active to allow 24/7 long polling on Railway
+    try:
+        requests.post(f"https://api.telegram.org/bot{bot_token}/deleteWebhook?drop_pending_updates=true", timeout=10)
+        print("Telegram webhook successfully cleared for Railway 24/7 long-polling daemon.")
+    except Exception as e_wh:
+        print("Notice clearing webhook:", e_wh)
+        
     offset = 0
     print("Telegram bot polling thread started...")
     
@@ -379,9 +386,13 @@ def telegram_polling_loop():
                                 })
                                 
                             conn.close()
-                    elif text:
+                    elif text or update:
                         from telegram import process_telegram_incoming_update
                         process_telegram_incoming_update(update)
+            elif res.status_code == 409:
+                print("Webhook conflict detected (409). Force deleting Telegram webhook...")
+                requests.post(f"https://api.telegram.org/bot{bot_token}/deleteWebhook?drop_pending_updates=true", timeout=10)
+                time.sleep(2)
             else:
                 time.sleep(2)
         except Exception as e:
