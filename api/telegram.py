@@ -550,7 +550,7 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
 
     # 2. Second priority: Gemini AI with Full Website Live Context!
     if gemini_key:
-        models_to_try = ["gemini-2.0-flash-lite", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-flash-latest"]
+        models_to_try = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.7-flash"]
         live_web_data = get_full_web_portal_context()
         prompt_text = (
             f"You are the NSSF SOC Portal Gemini AI Assistant, an expert AI created for the National Social Security Fund (NSSF) Security Operations Center.\n"
@@ -1126,7 +1126,9 @@ def process_telegram_incoming_update(update: dict):
     main_menu_kb = get_main_menu_keyboard()
     leave_options_kb = get_leave_type_inline_keyboard()
 
-    if text in ["/start", "/help", "/menu"]:
+    t_lower = (text or "").strip().lower()
+
+    if t_lower in ["/start", "/help", "/menu", "start", "help", "menu"]:
         reply_msg = (
             f"👋 <b>ជម្រាបសួរ {username}!</b>\n\n"
             f"ខ្ញុំគឺជា 🤖 <b>NSSF SOC Portal Bot & Gemini AI Assistant</b>។\n\n"
@@ -1141,22 +1143,22 @@ def process_telegram_incoming_update(update: dict):
             f"• 📝 <b>សុំច្បាប់ / ចេញក្រៅ</b> (បង្កើតលិខិតសុំច្បាប់ / ចេញក្រៅ)\n\n"
             f"លោកអ្នកក៏អាចសួរសំណួរដោយផ្ទាល់ជាភាសាខ្មែរ ឬអង់គ្លេសបានគ្រប់ពេល!"
         )
-    elif text == "🏥 Hospital VPNs":
+    elif "hospital" in t_lower or "មន្ទីរពេទ្យ" in t_lower:
         reply_msg = get_hospitals_direct_telegram()
-    elif text == "🔄 Reopen Requests":
+    elif "reopen" in t_lower or "បើកឡើងវិញ" in t_lower:
         reply_msg = get_reopen_direct_telegram()
-    elif text == "🏢 NSSF Branches":
+    elif "branch" in t_lower or "សាខា" in t_lower:
         reply_msg = get_branches_direct_telegram()
-    elif text == "🏛️ HQ Subnets":
+    elif "hq" in t_lower or "នាយកដ្ឋាន" in t_lower:
         reply_msg = get_hq_direct_telegram()
-    elif text == "🌐 IPAM Search":
+    elif "ipam" in t_lower:
         reply_msg = (
             f"🌐 <b>IPAM Search Helper ៖</b>\n\n"
             f"សូមវាយបញ្ចូលអាសយដ្ឋាន IP ឬឈ្មោះបុគ្គលិកដែលចង់ស្វែងរក ៖\n"
             f"• ឧទាហរណ៍ ៖ <code>172.19.21.13</code>\n"
             f"• ឧទាហរណ៍ ៖ <code>កន ប៊ុនថន</code>"
         )
-    elif text == "📊 System Status" or text == "/status":
+    elif "status" in t_lower or "ស្ថានភាព" in t_lower:
         reply_msg = get_system_status_direct_telegram()
     elif text in ["📅 វេនប្រចាំការយប់នេះ", "/shift", "shift", "វេនប្រចាំការ"]:
         from datetime import datetime
@@ -1217,7 +1219,6 @@ def process_telegram_incoming_update(update: dict):
             f"✨ <b>Google Gemini AI Assistant ៖</b>\n\n"
             f"លោកអ្នកអាចសួរសំណួរទូទៅ ឬសួរទិន្នន័យបណ្តាញ NSSF SOC Portal បានគ្រប់ពេលវេលា!"
         )
-        send_telegram_message(reply_msg, chat_id=chat_id, reply_markup=main_menu_kb)
     else:
         # 1. Send 'typing' chat action to Telegram header
         send_telegram_chat_action(chat_id, "typing")
@@ -1238,6 +1239,9 @@ def process_telegram_incoming_update(update: dict):
         else:
             send_telegram_message(reply_msg, chat_id=chat_id, reply_markup=main_menu_kb)
         return
+
+    # Send menu reply message to Telegram for all matched menu button branches!
+    send_telegram_message(reply_msg, chat_id=chat_id, reply_markup=main_menu_kb)
 
 
 def send_ticket_telegram_alert(ticket: dict, level: int = 1):
