@@ -276,14 +276,19 @@ def notify_data_change(action_title: str, details: dict, editor_username: str = 
     )
     
     def broadcast_to_linked_users(message_text):
-        # 1. Send to default group/channel
-        send_telegram_message(message_text)
-        
-        # 2. Fetch all users who linked their Telegram chat ID and have notifications enabled
         try:
             from database import get_db_connection
             conn = get_db_connection()
             cursor = conn.cursor()
+            
+            # Check global setting: telegram_notify_group (Group chat notifications toggle)
+            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_notify_group'")
+            setting_g = cursor.fetchone()
+            if not (setting_g and str(setting_g['value']).strip().lower() in ['0', 'false', 'off', 'no', 'disabled']):
+                # Send to default group/channel if enabled
+                send_telegram_message(message_text)
+            else:
+                print("Telegram group chat notifications disabled (telegram_notify_group=0). Skipping group broadcast.")
             
             # Check global setting: telegram_notify_direct_users
             cursor.execute("SELECT value FROM settings WHERE key = 'telegram_notify_direct_users'")
