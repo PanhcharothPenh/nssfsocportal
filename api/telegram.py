@@ -469,33 +469,58 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
             else:
                 matched_results.append("📋 <b>មិនមានមន្ទីរពេទ្យកំពុងស្នើសុំបើក VPN ឡើងវិញនៅឡើយទេ។</b>")
 
-        # 3. Strict Multi-Term AND Search (Matches ALL name tokens specified by user)
+        # 3. Strict Multi-Term AND Search (Matches ALL name/IP tokens specified by user)
         strict_matches = []
         if len(terms) >= 2:
             conds_hq = []
             params_hq = []
             for t in terms:
-                conds_hq.append("(LOWER(user_name_kh) LIKE LOWER(?) OR LOWER(user_name_en) LIKE LOWER(?))")
-                params_hq.extend([f"%{t}%", f"%{t}%"])
+                conds_hq.append("(LOWER(hq.user_name_kh) LIKE LOWER(?) OR LOWER(hq.user_name_en) LIKE LOWER(?) OR LOWER(hq.ip) LIKE LOWER(?) OR LOWER(d.name_en) LIKE LOWER(?))")
+                params_hq.extend([f"%{t}%", f"%{t}%", f"%{t}%", f"%{t}%"])
             
-            sql_strict_hq = "SELECT ip, user_name_kh, user_name_en, position, status FROM hq_ips WHERE " + " AND ".join(conds_hq) + " LIMIT 5"
+            sql_strict_hq = """
+                SELECT hq.ip, hq.user_name_kh, hq.user_name_en, hq.position, hq.status, hq.internet_permission,
+                       d.name_en AS dept_name, d.subnet, d.gateway
+                FROM hq_ips hq
+                LEFT JOIN hq_departments d ON hq.dept_id = d.id
+                WHERE """ + " AND ".join(conds_hq) + """ LIMIT 5
+            """
             cursor.execute(sql_strict_hq, params_hq)
             for ip_r in cursor.fetchall():
                 d = dict(ip_r)
                 u_name = d['user_name_kh'] if (d['user_name_kh'] and d['user_name_kh'].strip()) else d['user_name_en']
-                strict_matches.append(f"🏢 <b>HQ IP ៖ <code>{d['ip']}</code></b>\n• អ្នកប្រើប្រាស់ ៖ <b>{u_name or 'N/A'}</b> ({d['position'] or 'N/A'})\n• ស្ថានភាព ៖ <code>{d['status']}</code>")
+                dept_str = f"\n• <b>នាយកដ្ឋាន/អង្គភាព ៖</b> <b>{d['dept_name']}</b>" if d.get('dept_name') else ""
+                net_str = f"\n• <b>Subnet ៖</b> <code>{d['subnet']}</code>" if d.get('subnet') else ""
+                strict_matches.append(
+                    f"🏢 <b>HQ IP ៖ <code>{d['ip']}</code></b>{dept_str}\n"
+                    f"• <b>អ្នកប្រើប្រាស់ ៖</b> <b>{u_name or 'N/A'}</b> ({d['position'] or 'N/A'})\n"
+                    f"• <b>ស្ថានភាព ៖</b> <code>{d['status'] or 'N/A'}</code>{net_str}"
+                )
 
             conds_br = []
             params_br = []
             for t in terms:
-                conds_br.append("LOWER(user_name) LIKE LOWER(?)")
-                params_br.append(f"%{t}%")
+                conds_br.append("(LOWER(b_ip.user_name) LIKE LOWER(?) OR LOWER(b_ip.ip) LIKE LOWER(?) OR LOWER(b.name_kh) LIKE LOWER(?) OR LOWER(b.name_en) LIKE LOWER(?))")
+                params_br.extend([f"%{t}%", f"%{t}%", f"%{t}%", f"%{t}%"])
 
-            sql_strict_br = "SELECT ip, user_name, position, status FROM branch_ips WHERE " + " AND ".join(conds_br) + " LIMIT 5"
+            sql_strict_br = """
+                SELECT b_ip.ip, b_ip.user_name, b_ip.position, b_ip.status, b_ip.device_type, b_ip.internet_permission,
+                       b.name_kh AS branch_name_kh, b.name_en AS branch_name_en, b.subnet, b.gateway
+                FROM branch_ips b_ip
+                LEFT JOIN branches b ON b_ip.branch_id = b.id
+                WHERE """ + " AND ".join(conds_br) + """ LIMIT 5
+            """
             cursor.execute(sql_strict_br, params_br)
             for ip_r in cursor.fetchall():
                 d = dict(ip_r)
-                strict_matches.append(f"🌐 <b>Branch IP ៖ <code>{d['ip']}</code></b>\n• អ្នកប្រើប្រាស់ ៖ <b>{d['user_name'] or 'N/A'}</b> ({d['position'] or 'N/A'})\n• ស្ថានភាព ៖ <code>{d['status']}</code>")
+                b_name = d['branch_name_kh'] or d['branch_name_en'] or 'N/A'
+                net_str = f"\n• <b>Subnet ៖</b> <code>{d['subnet']}</code>" if d.get('subnet') else ""
+                strict_matches.append(
+                    f"🌐 <b>Branch IP ៖ <code>{d['ip']}</code></b>\n"
+                    f"• <b>សាខា/ខេត្ត/ខណ្ឌ ៖</b> <b>{b_name}</b>\n"
+                    f"• <b>អ្នកប្រើប្រាស់ ៖</b> <b>{d['user_name'] or 'N/A'}</b> ({d['position'] or 'N/A'})\n"
+                    f"• <b>ស្ថានភាព ៖</b> <code>{d['status'] or 'N/A'}</code>{net_str}"
+                )
 
         if strict_matches:
             matched_results.extend(strict_matches)
@@ -505,23 +530,52 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
             for term in terms:
                 term_like = f"%{term}%"
                 
-                cursor.execute("SELECT ip, user_name_kh, user_name_en, position, status FROM hq_ips WHERE LOWER(user_name_kh) LIKE LOWER(?) OR LOWER(user_name_en) LIKE LOWER(?) OR LOWER(ip) LIKE LOWER(?) LIMIT 5", (term_like, term_like, term_like))
+                sql_hq = """
+                    SELECT hq.ip, hq.user_name_kh, hq.user_name_en, hq.position, hq.status, hq.internet_permission,
+                           d.name_en AS dept_name, d.subnet, d.gateway
+                    FROM hq_ips hq
+                    LEFT JOIN hq_departments d ON hq.dept_id = d.id
+                    WHERE LOWER(hq.user_name_kh) LIKE LOWER(?) OR LOWER(hq.user_name_en) LIKE LOWER(?) OR LOWER(hq.ip) LIKE LOWER(?) OR LOWER(d.name_en) LIKE LOWER(?)
+                    LIMIT 5
+                """
+                cursor.execute(sql_hq, (term_like, term_like, term_like, term_like))
                 for ip_r in cursor.fetchall():
                     d = dict(ip_r)
                     key = f"hq_{d['ip']}"
                     u_name = d['user_name_kh'] if (d['user_name_kh'] and d['user_name_kh'].strip()) else d['user_name_en']
-                    txt = f"🏢 <b>HQ IP ៖ <code>{d['ip']}</code></b>\n• អ្នកប្រើប្រាស់ ៖ <b>{u_name or 'N/A'}</b> ({d['position'] or 'N/A'})\n• ស្ថានភាព ៖ <code>{d['status']}</code>"
+                    dept_str = f"\n• <b>នាយកដ្ឋាន/អង្គភាព ៖</b> <b>{d['dept_name']}</b>" if d.get('dept_name') else ""
+                    net_str = f"\n• <b>Subnet ៖</b> <code>{d['subnet']}</code>" if d.get('subnet') else ""
+                    txt = (
+                        f"🏢 <b>HQ IP ៖ <code>{d['ip']}</code></b>{dept_str}\n"
+                        f"• <b>អ្នកប្រើប្រាស់ ៖</b> <b>{u_name or 'N/A'}</b> ({d['position'] or 'N/A'})\n"
+                        f"• <b>ស្ថានភាព ៖</b> <code>{d['status'] or 'N/A'}</code>{net_str}"
+                    )
                     if key not in scored_results:
                         scored_results[key] = {"score": 1, "text": txt}
                     else:
                         scored_results[key]["score"] += 1
 
-                cursor.execute("SELECT ip, user_name, position, status FROM branch_ips WHERE LOWER(user_name) LIKE LOWER(?) OR LOWER(ip) LIKE LOWER(?) LIMIT 5", (term_like, term_like))
+                sql_br = """
+                    SELECT b_ip.ip, b_ip.user_name, b_ip.position, b_ip.status, b_ip.device_type, b_ip.internet_permission,
+                           b.name_kh AS branch_name_kh, b.name_en AS branch_name_en, b.subnet, b.gateway
+                    FROM branch_ips b_ip
+                    LEFT JOIN branches b ON b_ip.branch_id = b.id
+                    WHERE LOWER(b_ip.user_name) LIKE LOWER(?) OR LOWER(b_ip.ip) LIKE LOWER(?) OR LOWER(b.name_kh) LIKE LOWER(?) OR LOWER(b.name_en) LIKE LOWER(?)
+                    LIMIT 5
+                """
+                cursor.execute(sql_br, (term_like, term_like, term_like, term_like))
                 for ip_r in cursor.fetchall():
                     d = dict(ip_r)
                     key = f"branch_{d['ip']}"
                     u_name = d['user_name'] or 'N/A'
-                    txt = f"🌐 <b>Branch IP ៖ <code>{d['ip']}</code></b>\n• អ្នកប្រើប្រាស់ ៖ <b>{u_name}</b> ({d['position'] or 'N/A'})\n• ស្ថានភាព ៖ <code>{d['status']}</code>"
+                    b_name = d['branch_name_kh'] or d['branch_name_en'] or 'N/A'
+                    net_str = f"\n• <b>Subnet ៖</b> <code>{d['subnet']}</code>" if d.get('subnet') else ""
+                    txt = (
+                        f"🌐 <b>Branch IP ៖ <code>{d['ip']}</code></b>\n"
+                        f"• <b>សាខា/ខេត្ត/ខណ្ឌ ៖</b> <b>{b_name}</b>\n"
+                        f"• <b>អ្នកប្រើប្រាស់ ៖</b> <b>{u_name}</b> ({d['position'] or 'N/A'})\n"
+                        f"• <b>ស្ថានភាព ៖</b> <code>{d['status'] or 'N/A'}</code>{net_str}"
+                    )
                     if key not in scored_results:
                         scored_results[key] = {"score": 1, "text": txt}
                     else:
