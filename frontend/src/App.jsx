@@ -8546,8 +8546,8 @@ export default function App() {
             <div className="panel">
               <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="panel-title">🌐 NSSF Public IP Host Mappings (Subnet 165.99.6.0/23)</span>
-                {hasPermission('public_ip', 'write') && (
-                  <button className="btn btn-primary" onClick={handleOpenAddPublicIp} style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px' }}>
+                {!isViewer && (
+                  <button className="btn btn-primary" onClick={handleOpenAddPublicIp} style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer' }}>
                     + ចាត់ចែង IP ថ្មី (Assign Public IP)
                   </button>
                 )}
@@ -8566,7 +8566,7 @@ export default function App() {
                       <th>Firewall Allowed</th>
                       <th>Public DNS Changed</th>
                       <th>Note</th>
-                      {hasPermission('public_ip', 'write') && <th style={{ textAlign: 'center' }}>សកម្មភាព (Actions)</th>}
+                      {!isViewer && <th style={{ textAlign: 'center' }}>សកម្មភាព (Actions)</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -8586,7 +8586,7 @@ export default function App() {
                         <td>{m.firewall_allowed || '-'}</td>
                         <td>{m.public_dns_changed || '-'}</td>
                         <td>{m.note} {m.note_other}</td>
-                        {hasPermission('public_ip', 'write') && (
+                        {!isViewer && (
                           <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
                             <button className="btn btn-secondary" style={{ padding: '3px 8px', fontSize: '12px', marginRight: '6px' }} onClick={() => handleEditPublicIp(m)}>
                               ✏️ កែប្រែ
