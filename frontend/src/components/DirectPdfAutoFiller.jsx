@@ -444,11 +444,11 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '6px' }}>
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', height: '42px', width: '20%' }}>ព្រធាននាយកដ្ឋាន</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>អនុ.នាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>ព្រធានការិយាល័យ<br/>ស.ប.ត</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>អនុ.ព្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>ព្រធានការិយាល័យ<br/>សាម៉ី</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', height: '42px', width: '20%' }}>ប្រធាននាយកដ្ឋាន</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>ប្រធានការិយាល័យ<br/>ស.ប.ត</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '11.5px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>ប្រធានការិយាល័យ<br/>សាម៉ី</th>
                 </tr>
               </thead>
               <tbody>

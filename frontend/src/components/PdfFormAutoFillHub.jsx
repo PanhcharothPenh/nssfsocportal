@@ -280,11 +280,11 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           <table class="table-approvals">
             <thead>
               <tr>
-                <th style="width: 20%;">ព្រធាននាយកដ្ឋាន</th>
-                <th style="width: 20%;">អនុ.នាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
-                <th style="width: 20%;">ព្រធានការិយាល័យ<br/>ស.ប.ត</th>
-                <th style="width: 20%;">អនុ.ព្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
-                <th style="width: 20%;">ព្រធានការិយាល័យ<br/>សាម៉ី</th>
+                <th style="width: 20%;">ប្រធាននាយកដ្ឋាន</th>
+                <th style="width: 20%;">អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
+                <th style="width: 20%;">ប្រធានការិយាល័យ<br/>ស.ប.ត</th>
+                <th style="width: 20%;">អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
+                <th style="width: 20%;">ប្រធានការិយាល័យ<br/>សាម៉ី</th>
               </tr>
             </thead>
             <tbody>
