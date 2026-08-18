@@ -43,6 +43,14 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
   const [impactOtherText, setImpactOtherText] = useState('');
   const [reason, setReason] = useState('');
 
+  // Custom Document Title & Approval Headers
+  const [docTitle, setDocTitle] = useState('ទម្រង់ស្នើសុំ');
+  const [approvalHeader1, setApprovalHeader1] = useState('ប្រធាននាយកដ្ឋាន');
+  const [approvalHeader2, setApprovalHeader2] = useState('អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក');
+  const [approvalHeader3, setApprovalHeader3] = useState('ប្រធានការិយាល័យ<br/>ស.ប.ត');
+  const [approvalHeader4, setApprovalHeader4] = useState('អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក');
+  const [approvalHeader5, setApprovalHeader5] = useState('ប្រធានការិយាល័យ<br/>សាម៉ី');
+
   // Leave Form Specific Fields (សុំច្បាប់)
   const [leaveType, setLeaveType] = useState('ច្បាប់ឈប់សម្រាក'); 
   const [leaveDays, setLeaveDays] = useState('1');
@@ -225,7 +233,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             </tr>
           </table>
 
-          <div class="form-title">ទម្រង់ស្នើសុំ</div>
+          <div class="form-title">${docTitle || 'ទម្រង់ស្នើសុំ'}</div>
 
           <!-- Section 1 -->
           <div class="section-header">១. ព័ត៌មានអ្នកស្នើសុំ ៖</div>
@@ -325,11 +333,11 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           <table class="table-approvals">
             <thead>
               <tr>
-                <th style="width: 20%;">ប្រធាននាយកដ្ឋាន</th>
-                <th style="width: 20%;">អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
-                <th style="width: 20%;">ប្រធានការិយាល័យ<br/>ស.ប.ត</th>
-                <th style="width: 20%;">អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
-                <th style="width: 20%;">ប្រធានការិយាល័យ<br/>សាម៉ី</th>
+                <th style="width: 20%;">${approvalHeader1}</th>
+                <th style="width: 20%;">${approvalHeader2}</th>
+                <th style="width: 20%;">${approvalHeader3}</th>
+                <th style="width: 20%;">${approvalHeader4}</th>
+                <th style="width: 20%;">${approvalHeader5}</th>
               </tr>
             </thead>
             <tbody>

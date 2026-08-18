@@ -60,6 +60,14 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
   const [year, setYear] = useState(toKhmerNum(now.getFullYear()));
   const [buddhistYear, setBuddhistYear] = useState(toKhmerNum(now.getFullYear() + 543));
 
+  // Custom Document Title & Approval Headers
+  const [docTitle, setDocTitle] = useState('ទម្រង់ស្នើសុំ');
+  const [approvalHeader1, setApprovalHeader1] = useState('ប្រធាននាយកដ្ឋាន');
+  const [approvalHeader2, setApprovalHeader2] = useState('អនុប្រធាននាយកដ្ឋាន\nទទួលបន្ទុក');
+  const [approvalHeader3, setApprovalHeader3] = useState('ប្រធានការិយាល័យ\nស.ប.ត');
+  const [approvalHeader4, setApprovalHeader4] = useState('អនុប្រធាននាយកដ្ឋាន\nទទួលបន្ទុក');
+  const [approvalHeader5, setApprovalHeader5] = useState('ប្រធានការិយាល័យ\nសាម៉ី');
+
   // Signature
   const canvasRef = useRef(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -312,6 +320,41 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
           </div>
 
+          {/* Custom Titles & Approvals Customization Box */}
+          <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+            <h4 style={{ margin: '0 0 12px 0', color: '#1e3a8a', fontSize: '14px' }}>⚙️ កែប្រែចំណងជើងលិខិត & តារាងអនុម័ត</h4>
+            
+            <div style={{ marginBottom: '10px' }}>
+              <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px' }}>ចំណងជើងលិខិត (Document Title)</label>
+              <input type="text" className="form-input" value={docTitle} onChange={(e) => setDocTitle(e.target.value)} style={{ padding: '8px', fontSize: '12px', fontWeight: 'bold', color: '#1e3a8a' }} />
+            </div>
+
+            <div style={{ fontSize: '11.5px', fontWeight: '700', color: '#334155', margin: '10px 0 6px 0' }}>ក្បាលតារាងអនុម័ត ៥ ចំរុះ (Approval Table Headers) :</div>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div>
+                <label style={{ fontSize: '11px', color: '#64748b' }}>ក្បាលតារាង ១ :</label>
+                <input type="text" className="form-input" value={approvalHeader1} onChange={(e) => setApprovalHeader1(e.target.value)} style={{ padding: '6px', fontSize: '11.5px' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: '#64748b' }}>ក្បាលតារាង ២ :</label>
+                <input type="text" className="form-input" value={approvalHeader2} onChange={(e) => setApprovalHeader2(e.target.value)} style={{ padding: '6px', fontSize: '11.5px' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: '#64748b' }}>ក្បាលតារាង ៣ :</label>
+                <input type="text" className="form-input" value={approvalHeader3} onChange={(e) => setApprovalHeader3(e.target.value)} style={{ padding: '6px', fontSize: '11.5px' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: '#64748b' }}>ក្បាលតារាង ៤ :</label>
+                <input type="text" className="form-input" value={approvalHeader4} onChange={(e) => setApprovalHeader4(e.target.value)} style={{ padding: '6px', fontSize: '11.5px' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '11px', color: '#64748b' }}>ក្បាលតារាង ៥ :</label>
+                <input type="text" className="form-input" value={approvalHeader5} onChange={(e) => setApprovalHeader5(e.target.value)} style={{ padding: '6px', fontSize: '11.5px' }} />
+              </div>
+            </div>
+          </div>
+
           {/* Signature */}
           <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
             <h4 style={{ margin: '0 0 10px 0', color: '#1e3a8a', fontSize: '14px' }}>✍️ ហត្ថលេខាសាម៉ីខ្លួន</h4>
@@ -366,7 +409,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
             {/* Document Title */}
             <div style={{ textAlign: 'center', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '17px', margin: '14px 0 12px 0', color: '#000' }}>
-              ទម្រង់ស្នើសុំ
+              {docTitle || 'ទម្រង់ស្នើសុំ'}
             </div>
 
             {/* Section 1 */}
@@ -486,11 +529,11 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '6px' }}>
               <thead>
                 <tr>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', height: '42px', width: '20%' }}>ប្រធាននាយកដ្ឋាន</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>ប្រធានការិយាល័យ<br/>ស.ប.ត</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>អនុប្រធាននាយកដ្ឋាន<br/>ទទួលបន្ទុក</th>
-                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%' }}>ប្រធានការិយាល័យ<br/>សាម៉ី</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', height: '42px', width: '20%', whiteSpace: 'pre-line' }}>{approvalHeader1}</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%', whiteSpace: 'pre-line' }}>{approvalHeader2}</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%', whiteSpace: 'pre-line' }}>{approvalHeader3}</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%', whiteSpace: 'pre-line' }}>{approvalHeader4}</th>
+                  <th style={{ border: '1px solid #000', padding: '6px 3px', textAlign: 'center', fontSize: '12px', fontWeight: 'bold', backgroundColor: '#f8fafc', width: '20%', whiteSpace: 'pre-line' }}>{approvalHeader5}</th>
                 </tr>
               </thead>
               <tbody>
