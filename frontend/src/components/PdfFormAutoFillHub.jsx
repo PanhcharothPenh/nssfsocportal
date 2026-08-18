@@ -325,8 +325,11 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             <div style="font-size: 11px; margin-bottom: 2px; text-align: center;">ថ្ងៃអង្គារ ៥កើត ខែមាឃ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០</div>
             <div style="text-align: center;">រាជធានីភ្នំពេញ ថ្ងៃទី <span style="font-weight: bold;">${toKhmerNum(day)}</span> ខែ <span style="font-weight: bold;">${getKhmerMonthName(month)}</span> ឆ្នាំ <span style="font-weight: bold;">${toKhmerNum(year)}</span></div>
             <div style="margin-top: 4px; font-weight: bold; font-size: 12px; text-align: center;">ហត្ថលេខាសាម៉ីខ្លួន</div>
-            <div style="height: 60px; display: flex; align-items: center; justify-content: center; margin-top: 4px;">
-              ${signatureImage ? `<img src="${signatureImage}" style="max-height: 55px; max-width: 170px;" />` : `<div style="font-weight: bold; color: #1e3a8a; font-size: 12px;">${applicantName}</div>`}
+            <div style="min-height: 55px; display: flex; align-items: center; justify-content: center; margin: 4px 0;">
+              ${signatureImage ? `<img src="${signatureImage}" style="max-height: 55px; max-width: 170px; object-fit: contain;" />` : ''}
+            </div>
+            <div style="font-weight: normal; color: #000; font-size: 13px; text-align: center; font-family: 'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif; margin-top: 2px;">
+              ${applicantName || 'ពេញ បញ្ញារតន៍'}
             </div>
           </div>
 

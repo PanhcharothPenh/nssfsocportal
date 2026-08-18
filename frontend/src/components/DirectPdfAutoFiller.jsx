@@ -364,13 +364,36 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
           {/* Signature */}
           <div style={{ backgroundColor: '#fff', padding: '16px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
-            <h4 style={{ margin: '0 0 10px 0', color: '#1e3a8a', fontSize: '14px' }}>✍️ ហត្ថលេខាសាម៉ីខ្លួន</h4>
-            <div style={{ border: '2px dashed #94a3b8', borderRadius: '8px', backgroundColor: '#fafafa', position: 'relative', display: 'inline-block' }}>
-              <canvas ref={canvasRef} width={300} height={90} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} style={{ cursor: 'crosshair', display: 'block' }} />
+            <h4 style={{ margin: '0 0 10px 0', color: '#1e3a8a', fontSize: '14px' }}>✍️ ហត្ថលេខាសាម៉ីខ្លួន (Signature Options)</h4>
+            
+            <div style={{ marginBottom: '12px' }}>
+              <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px', display: 'block', marginBottom: '4px' }}>📷 ផ្ទុកឡើងរូបភាពហត្ថលេខា (Upload Signature Photo)</label>
+              <input 
+                type="file" 
+                accept="image/*" 
+                onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (ev) => setSignatureImage(ev.target.result);
+                    reader.readAsDataURL(file);
+                  }
+                }} 
+                style={{ fontSize: '11.5px', width: '100%' }} 
+              />
             </div>
-            <button type="button" className="btn btn-secondary" onClick={clearSignature} style={{ marginTop: '6px', fontSize: '11px' }}>
-              🧹 សម្អាតហត្ថលេខា
-            </button>
+
+            <div>
+              <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px', display: 'block', marginBottom: '4px' }}>🖌️ ឬគូរហត្ថលេខាលើកញ្ចក់ (Or Draw Signature)</label>
+              <div style={{ border: '2px dashed #94a3b8', borderRadius: '8px', backgroundColor: '#fafafa', position: 'relative', display: 'inline-block' }}>
+                <canvas ref={canvasRef} width={300} height={90} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} style={{ cursor: 'crosshair', display: 'block' }} />
+              </div>
+              <div style={{ marginTop: '6px' }}>
+                <button type="button" className="btn btn-secondary" onClick={clearSignature} style={{ fontSize: '11px', padding: '4px 10px' }}>
+                  🧹 សម្អាតហត្ថលេខា
+                </button>
+              </div>
+            </div>
           </div>
 
         </div>
@@ -522,12 +545,13 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               <div style={{ fontSize: '11px', marginBottom: '2px', textAlign: 'center' }}>{lunarDateText || 'ថ្ងៃអង្គារ ៥កើត ខែមាឃ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០'}</div>
               <div style={{ textAlign: 'center' }}>{locationPrefix ? `${locationPrefix} ` : ''}ថ្ងៃទី <span style={{ fontWeight: 'bold' }}>{toKhmerNum(day)}</span> ខែ <span style={{ fontWeight: 'bold' }}>{getKhmerMonthName(month)}</span> ឆ្នាំ <span style={{ fontWeight: 'bold' }}>{toKhmerNum(year)}</span></div>
               <div style={{ marginTop: '4px', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}>ហត្ថលេខាសាម៉ីខ្លួន</div>
-              <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}>
-                {signatureImage ? (
-                  <img src={signatureImage} alt="Signature" style={{ maxHeight: '55px', maxWidth: '170px' }} />
-                ) : (
-                  <div style={{ fontWeight: 'bold', color: '#1e3a8a', fontSize: '12px' }}>{applicantName}</div>
+              <div style={{ minHeight: '55px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '4px 0' }}>
+                {signatureImage && (
+                  <img src={signatureImage} alt="Signature" style={{ maxHeight: '55px', maxWidth: '170px', objectFit: 'contain' }} />
                 )}
+              </div>
+              <div style={{ fontWeight: 'normal', color: '#000', fontSize: '13px', textAlign: 'center', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", marginTop: '2px' }}>
+                {applicantName || 'ពេញ បញ្ញារតន៍'}
               </div>
             </div>
 
