@@ -54,7 +54,8 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
   // Dates
   const now = new Date();
-  const [lunarDateText, setLunarDateText] = useState('ថ្ងៃអង្គារ ៥កើត ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ពុទ្ធសករាជ ២៥៧០ ត្រូវនឹង');
+  const [lunarDateText, setLunarDateText] = useState('ថ្ងៃអង្គារ ៥កើត ខែមាឃ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០');
+  const [locationPrefix, setLocationPrefix] = useState('រាជធានីភ្នំពេញ');
   const [day, setDay] = useState(toKhmerNum(String(now.getDate()).padStart(2, '0')));
   const [month, setMonth] = useState(KHMER_MONTHS[now.getMonth()]);
   const [year, setYear] = useState(toKhmerNum(now.getFullYear()));
@@ -314,9 +315,15 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               <textarea className="form-input" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} style={{ padding: '8px', fontSize: '12px', width: '100%' }} />
             </div>
 
-            <div style={{ marginTop: '10px' }}>
-              <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px' }}>កាលបរិច្ឆេទចន្ទគតិ (Khmer Lunar Date Header)</label>
-              <input type="text" className="form-input" value={lunarDateText} onChange={(e) => setLunarDateText(e.target.value)} style={{ padding: '8px', fontSize: '11.5px', width: '100%' }} />
+            <div style={{ marginTop: '10px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px' }}>កាលបរិច្ឆេទចន្ទគតិ (Khmer Lunar Date Header)</label>
+                <input type="text" className="form-input" value={lunarDateText} onChange={(e) => setLunarDateText(e.target.value)} style={{ padding: '8px', fontSize: '11.5px', width: '100%' }} />
+              </div>
+              <div>
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px' }}>ទីតាំងរាជធានី/ខេត្ត (Location Prefix)</label>
+                <input type="text" className="form-input" value={locationPrefix} onChange={(e) => setLocationPrefix(e.target.value)} style={{ padding: '8px', fontSize: '11.5px', width: '100%' }} placeholder="ឧទាហរណ៍៖ រាជធានីភ្នំពេញ" />
+              </div>
             </div>
           </div>
 
@@ -510,8 +517,8 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
             {/* Date and Signature Block */}
             <div style={{ float: 'right', textAlign: 'center', marginTop: '4px', width: '380px', fontSize: '11.5px', whiteSpace: 'nowrap' }}>
-              <div style={{ fontSize: '11px', marginBottom: '2px' }}>{lunarDateText || 'ថ្ងៃអង្គារ ៥កើត ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ពុទ្ធសករាជ ២៥៧០ ត្រូវនឹង'}</div>
-              <div>ថ្ងៃទី <span style={{ fontWeight: 'bold' }}>{toKhmerNum(day)}</span> ខែ <span style={{ fontWeight: 'bold' }}>{getKhmerMonthName(month)}</span> ឆ្នាំ <span style={{ fontWeight: 'bold' }}>{toKhmerNum(year)}</span></div>
+              <div style={{ fontSize: '11px', marginBottom: '2px' }}>{lunarDateText || 'ថ្ងៃអង្គារ ៥កើត ខែមាឃ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០'}</div>
+              <div>{locationPrefix ? `${locationPrefix} ` : ''}ថ្ងៃទី <span style={{ fontWeight: 'bold' }}>{toKhmerNum(day)}</span> ខែ <span style={{ fontWeight: 'bold' }}>{getKhmerMonthName(month)}</span> ឆ្នាំ <span style={{ fontWeight: 'bold' }}>{toKhmerNum(year)}</span></div>
               <div style={{ marginTop: '4px', fontWeight: 'bold', fontSize: '12px' }}>ហត្ថលេខាសាម៉ីខ្លួន</div>
               <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}>
                 {signatureImage ? (
