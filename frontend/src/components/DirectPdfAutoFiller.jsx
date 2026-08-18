@@ -54,6 +54,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
   // Dates
   const now = new Date();
+  const [lunarDateText, setLunarDateText] = useState('ថ្ងៃអង្គារ ៥កើត ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ពុទ្ធសករាជ ២៥៧០ ត្រូវនឹង');
   const [day, setDay] = useState(toKhmerNum(String(now.getDate()).padStart(2, '0')));
   const [month, setMonth] = useState(KHMER_MONTHS[now.getMonth()]);
   const [year, setYear] = useState(toKhmerNum(now.getFullYear()));
@@ -300,28 +301,14 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               <textarea className="form-input" rows={3} value={details} onChange={(e) => setDetails(e.target.value)} style={{ padding: '8px', fontSize: '12px', width: '100%' }} />
             </div>
 
-            <div style={{ marginBottom: '10px' }}>
-              <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px', display: 'block', marginBottom: '4px' }}>ប្រភេទការកែប្រែ ៖</label>
-              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', fontSize: '12px' }}>
-                <label><input type="checkbox" checked={changeTypeData} onChange={(e) => setChangeTypeData(e.target.checked)} /> កែទិន្នន័យ</label>
-                <label><input type="checkbox" checked={changeTypeConfig} onChange={(e) => setChangeTypeConfig(e.target.checked)} /> កែប្រព័ន្ធ</label>
-                <label><input type="checkbox" checked={changeTypeFeature} onChange={(e) => setChangeTypeFeature(e.target.checked)} /> បន្ថែមមុខងារ</label>
-                <label><input type="checkbox" checked={changeTypeOther} onChange={(e) => setChangeTypeOther(e.target.checked)} /> ផ្សេងៗ</label>
-              </div>
-            </div>
-
-            <div style={{ marginBottom: '10px' }}>
-              <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px', display: 'block', marginBottom: '4px' }}>កម្រិតនៃផលប៉ះពាល់ ៖</label>
-              <div style={{ display: 'flex', gap: '14px', fontSize: '12px' }}>
-                <label><input type="radio" name="imp_orig" checked={impactLow} onChange={() => { setImpactLow(true); setImpactMedium(false); setImpactHigh(false); setImpactOther(false); }} /> ទាប</label>
-                <label><input type="radio" name="imp_orig" checked={impactMedium} onChange={() => { setImpactLow(false); setImpactMedium(true); setImpactHigh(false); setImpactOther(false); }} /> មធ្យម</label>
-                <label><input type="radio" name="imp_orig" checked={impactHigh} onChange={() => { setImpactLow(false); setImpactMedium(false); setImpactHigh(true); setImpactOther(false); }} /> ខ្ពស់</label>
-              </div>
-            </div>
-
             <div>
               <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px' }}>មូលហេតុនៃការស្នើសុំ</label>
               <textarea className="form-input" rows={2} value={reason} onChange={(e) => setReason(e.target.value)} style={{ padding: '8px', fontSize: '12px', width: '100%' }} />
+            </div>
+
+            <div style={{ marginTop: '10px' }}>
+              <label className="form-label" style={{ fontWeight: '700', fontSize: '11.5px' }}>កាលបរិច្ឆេទចន្ទគតិ (Khmer Lunar Date Header)</label>
+              <input type="text" className="form-input" value={lunarDateText} onChange={(e) => setLunarDateText(e.target.value)} style={{ padding: '8px', fontSize: '11.5px', width: '100%' }} />
             </div>
           </div>
 
@@ -332,7 +319,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               <canvas ref={canvasRef} width={300} height={90} onMouseDown={startDrawing} onMouseMove={draw} onMouseUp={stopDrawing} onTouchStart={startDrawing} onTouchMove={draw} onTouchEnd={stopDrawing} style={{ cursor: 'crosshair', display: 'block' }} />
             </div>
             <button type="button" className="btn btn-secondary" onClick={clearSignature} style={{ marginTop: '6px', fontSize: '11px' }}>
-              🧹 សម្អាត
+              🧹 សម្អាតហត្ថលេខា
             </button>
           </div>
 
@@ -479,7 +466,8 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
 
             {/* Date and Signature Block */}
-            <div style={{ float: 'right', textAlign: 'center', marginTop: '4px', width: '310px', fontSize: '12px' }}>
+            <div style={{ float: 'right', textAlign: 'center', marginTop: '4px', width: '380px', fontSize: '11.5px', whiteSpace: 'nowrap' }}>
+              <div style={{ fontSize: '11px', marginBottom: '2px' }}>{lunarDateText || 'ថ្ងៃអង្គារ ៥កើត ខែស្រាពណ៍ ឆ្នាំមមី អដ្ឋស័ក ពុទ្ធសករាជ ២៥៧០ ត្រូវនឹង'}</div>
               <div>ថ្ងៃទី <span style={{ fontWeight: 'bold' }}>{toKhmerNum(day)}</span> ខែ <span style={{ fontWeight: 'bold' }}>{getKhmerMonthName(month)}</span> ឆ្នាំ <span style={{ fontWeight: 'bold' }}>{toKhmerNum(year)}</span></div>
               <div style={{ marginTop: '4px', fontWeight: 'bold', fontSize: '12px' }}>ហត្ថលេខាសាម៉ីខ្លួន</div>
               <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}>
