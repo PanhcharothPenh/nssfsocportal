@@ -220,7 +220,7 @@ export default function NssfFormGenerator({ currentUser, usersList = [], onSubmi
           }
           body {
             font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif;
-            font-size: 13.5px;
+            font-size: 12px;
             line-height: 1.6;
             color: #000;
             background: #fff;
