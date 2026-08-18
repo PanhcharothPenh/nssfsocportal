@@ -405,10 +405,12 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
                       <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif", fontSize: '11px', color: '#334155' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
                     </div>
                   </td>
-                  <td style={{ width: '52%', textAlignment: 'center', verticalAlign: 'top', textAlign: 'center' }}>
-                    <div style={{ fontSize: '14px', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", marginBottom: '2px', color: '#000' }}>ព្រះរាជាណាចក្រកម្ពុជា</div>
-                    <div style={{ fontSize: '13px', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", color: '#000' }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-                    <div style={{ letterSpacing: '3px', fontSize: '9px', marginTop: '2px' }}>─── ❖ ───</div>
+                  <td style={{ width: '52%', verticalAlign: 'top', textAlign: 'right' }}>
+                    <div style={{ display: 'inline-block', textAlign: 'center' }}>
+                      <div style={{ fontSize: '14px', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", marginBottom: '2px', color: '#000' }}>ព្រះរាជាណាចក្រកម្ពុជា</div>
+                      <div style={{ fontSize: '13px', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", color: '#000' }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                      <div style={{ letterSpacing: '3px', fontSize: '9px', marginTop: '2px' }}>─── ❖ ───</div>
+                    </div>
                   </td>
                 </tr>
               </tbody>
@@ -516,10 +518,10 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
 
             {/* Date and Signature Block */}
-            <div style={{ float: 'right', textAlign: 'center', marginTop: '4px', width: '380px', fontSize: '11.5px', whiteSpace: 'nowrap' }}>
-              <div style={{ fontSize: '11px', marginBottom: '2px' }}>{lunarDateText || 'ថ្ងៃអង្គារ ៥កើត ខែមាឃ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០'}</div>
-              <div>{locationPrefix ? `${locationPrefix} ` : ''}ថ្ងៃទី <span style={{ fontWeight: 'bold' }}>{toKhmerNum(day)}</span> ខែ <span style={{ fontWeight: 'bold' }}>{getKhmerMonthName(month)}</span> ឆ្នាំ <span style={{ fontWeight: 'bold' }}>{toKhmerNum(year)}</span></div>
-              <div style={{ marginTop: '4px', fontWeight: 'bold', fontSize: '12px' }}>ហត្ថលេខាសាម៉ីខ្លួន</div>
+            <div style={{ float: 'right', marginTop: '4px', fontSize: '11.5px', whiteSpace: 'nowrap', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              <div style={{ fontSize: '11px', marginBottom: '2px', textAlign: 'center' }}>{lunarDateText || 'ថ្ងៃអង្គារ ៥កើត ខែមាឃ ឆ្នាំមមី អដ្ឋស័ក ព.ស.២៥៧០'}</div>
+              <div style={{ textAlign: 'center' }}>{locationPrefix ? `${locationPrefix} ` : ''}ថ្ងៃទី <span style={{ fontWeight: 'bold' }}>{toKhmerNum(day)}</span> ខែ <span style={{ fontWeight: 'bold' }}>{getKhmerMonthName(month)}</span> ឆ្នាំ <span style={{ fontWeight: 'bold' }}>{toKhmerNum(year)}</span></div>
+              <div style={{ marginTop: '4px', fontWeight: 'bold', fontSize: '12px', textAlign: 'center' }}>ហត្ថលេខាសាម៉ីខ្លួន</div>
               <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}>
                 {signatureImage ? (
                   <img src={signatureImage} alt="Signature" style={{ maxHeight: '55px', maxWidth: '170px' }} />
