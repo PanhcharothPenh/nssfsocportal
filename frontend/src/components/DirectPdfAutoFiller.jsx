@@ -377,18 +377,25 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '14px', marginTop: '10px', marginBottom: '6px', color: '#000', fontWeight: 'normal' }}>
               ១. ព័ត៌មានអ្នកស្នើសុំ ៖
             </div>
-            <div style={{ marginBottom: '6px', fontSize: '12px' }}>
-              <b>គោត្តនាម និងនាម ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '210px', fontWeight: 'bold', color: '#1e3a8a', padding: '0 4px', fontSize: '12px' }}>{applicantName}</span>
-              &nbsp;&nbsp;<b>ភេទ ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '55px', textAlign: 'center', padding: '0 4px', fontSize: '12px' }}>{gender}</span>
-              &nbsp;&nbsp;<b>មុខតំណែង ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '200px', padding: '0 4px', fontSize: '12px' }}>{position}</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: '6px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%' }}>
+              <span style={{ flexShrink: 0 }}><b>គោត្តនាម និងនាម ៖</b></span>
+              <span style={{ borderBottom: '1px dotted #222', flex: '1 1 auto', minWidth: '100px', fontWeight: 'bold', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{applicantName}</span>
+              <span style={{ flexShrink: 0, marginLeft: '10px' }}><b>ភេទ ៖</b></span>
+              <span style={{ borderBottom: '1px dotted #222', width: '45px', flexShrink: 0, textAlign: 'center', padding: '0 4px', fontSize: '12px' }}>{gender}</span>
+              <span style={{ flexShrink: 0, marginLeft: '10px' }}><b>មុខតំណែង ៖</b></span>
+              <span style={{ borderBottom: '1px dotted #222', flex: '1 1 auto', minWidth: '100px', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{position}</span>
             </div>
-            <div style={{ marginBottom: '6px', fontSize: '12px' }}>
-              <b>ការិយាល័យ ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '230px', padding: '0 4px', fontSize: '12px' }}>{office}</span>
-              &nbsp;&nbsp;<b>នាយកដ្ឋាន/អង្គភាព/សាខា ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '240px', padding: '0 4px', fontSize: '12px' }}>{department}</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: '6px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%' }}>
+              <span style={{ flexShrink: 0 }}><b>ការិយាល័យ ៖</b></span>
+              <span style={{ borderBottom: '1px dotted #222', flex: '1 1 auto', minWidth: '120px', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{office}</span>
+              <span style={{ flexShrink: 0, marginLeft: '10px' }}><b>នាយកដ្ឋាន/អង្គភាព/សាខា ៖</b></span>
+              <span style={{ borderBottom: '1px dotted #222', flex: '1.2 1 auto', minWidth: '130px', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{department}</span>
             </div>
-            <div style={{ marginBottom: '6px', fontSize: '12px' }}>
-              <b>លេខទូរស័ព្ទទំនាក់ទំនង ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '200px', padding: '0 4px', fontSize: '12px' }}>{phone}</span>
-              &nbsp;&nbsp;<b>អ៊ីមែល ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '270px', padding: '0 4px', fontSize: '12px' }}>{email}</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: '6px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%' }}>
+              <span style={{ flexShrink: 0 }}><b>លេខទូរស័ព្ទទំនាក់ទំនង ៖</b></span>
+              <span style={{ borderBottom: '1px dotted #222', flex: '1 1 auto', minWidth: '100px', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{phone}</span>
+              <span style={{ flexShrink: 0, marginLeft: '10px' }}><b>អ៊ីមែល ៖</b></span>
+              <span style={{ borderBottom: '1px dotted #222', flex: '1.5 1 auto', minWidth: '130px', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{email}</span>
             </div>
 
             {/* Section 2 */}
@@ -420,8 +427,9 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               &nbsp;&nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{impactOther ? '✓' : ''}</span> ផ្សេងៗ{impactOtherText ? ` (${impactOtherText})` : ''}
             </div>
 
-            <div style={{ marginTop: '6px', fontSize: '12px' }}>
-              <b>មូលហេតុនៃការស្នើសុំ ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', width: '78%', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px' }}>{reason}</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%' }}>
+              <span style={{ flexShrink: 0 }}><b>មូលហេតុនៃការស្នើសុំ ៖</b></span>
+              <span style={{ borderBottom: '1px dotted #222', flex: '1 1 auto', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{reason}</span>
             </div>
 
             {/* Official Legal Disclaimer Text */}

@@ -220,18 +220,25 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
 
           <!-- Section 1 -->
           <div class="section-header">១. ព័ត៌មានអ្នកស្នើសុំ ៖</div>
-          <div style="margin-bottom: 5px;">
-            គោត្តនាម និងនាម ៖ <span class="dotted" style="width: 210px; font-weight: bold;">${applicantName || ''}</span>
-            &nbsp;&nbsp;ភេទ ៖ <span class="dotted" style="width: 55px; text-align: center;">${gender || ''}</span>
-            &nbsp;&nbsp;មុខតំណែង ៖ <span class="dotted" style="width: 210px;">${position || ''}</span>
+          <div style="display: flex; align-items: baseline; margin-bottom: 5px; white-space: nowrap; width: 100%;">
+            <span style="flex-shrink: 0;"><b>គោត្តនាម និងនាម ៖</b></span>
+            <span class="dotted" style="flex: 1 1 auto; font-weight: bold; min-width: 100px;">${applicantName || ''}</span>
+            <span style="flex-shrink: 0; margin-left: 10px;"><b>ភេទ ៖</b></span>
+            <span class="dotted" style="width: 45px; flex-shrink: 0; text-align: center;">${gender || ''}</span>
+            <span style="flex-shrink: 0; margin-left: 10px;"><b>មុខតំណែង ៖</b></span>
+            <span class="dotted" style="flex: 1 1 auto; min-width: 100px;">${position || ''}</span>
           </div>
-          <div style="margin-bottom: 5px;">
-            ការិយាល័យ ៖ <span class="dotted" style="width: 230px;">${office || ''}</span>
-            &nbsp;&nbsp;នាយកដ្ឋាន/អង្គភាព/សាខា ៖ <span class="dotted" style="width: 250px;">${department || ''}</span>
+          <div style="display: flex; align-items: baseline; margin-bottom: 5px; white-space: nowrap; width: 100%;">
+            <span style="flex-shrink: 0;"><b>ការិយាល័យ ៖</b></span>
+            <span class="dotted" style="flex: 1 1 auto; min-width: 120px;">${office || ''}</span>
+            <span style="flex-shrink: 0; margin-left: 10px;"><b>នាយកដ្ឋាន/អង្គភាព/សាខា ៖</b></span>
+            <span class="dotted" style="flex: 1.2 1 auto; min-width: 130px;">${department || ''}</span>
           </div>
-          <div style="margin-bottom: 5px;">
-            លេខទូរស័ព្ទទំនាក់ទំនង ៖ <span class="dotted" style="width: 200px;">${phone || ''}</span>
-            &nbsp;&nbsp;អ៊ីមែល ៖ <span class="dotted" style="width: 280px;">${email || ''}</span>
+          <div style="display: flex; align-items: baseline; margin-bottom: 5px; white-space: nowrap; width: 100%;">
+            <span style="flex-shrink: 0;"><b>លេខទូរស័ព្ទទំនាក់ទំនង ៖</b></span>
+            <span class="dotted" style="flex: 1 1 auto; min-width: 100px;">${phone || ''}</span>
+            <span style="flex-shrink: 0; margin-left: 10px;"><b>អ៊ីមែល ៖</b></span>
+            <span class="dotted" style="flex: 1.5 1 auto; min-width: 130px;">${email || ''}</span>
           </div>
 
           <!-- Section 2 -->
