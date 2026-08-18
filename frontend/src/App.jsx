@@ -2187,6 +2187,93 @@ export default function App() {
     }
   };
 
+  const [publicIpModal, setPublicIpModal] = useState(false);
+  const [editingPublicIp, setEditingPublicIp] = useState(null);
+  const [publicIpForm, setPublicIpForm] = useState({
+    no: '',
+    name: '',
+    old_ip: '',
+    new_ip_6: '',
+    new_ip_7: '',
+    dns_name: '',
+    status: 'using',
+    firewall_allowed: 'already & working',
+    public_dns_changed: 'already & working',
+    note: '',
+    note_other: ''
+  });
+
+  const handleOpenAddPublicIp = () => {
+    setEditingPublicIp(null);
+    setPublicIpForm({
+      no: (publicIPs.mappings ? publicIPs.mappings.length + 1 : 1),
+      name: '',
+      old_ip: '',
+      new_ip_6: '165.99.6.',
+      new_ip_7: '165.99.7.',
+      dns_name: '',
+      status: 'using',
+      firewall_allowed: 'already & working',
+      public_dns_changed: 'already & working',
+      note: '',
+      note_other: ''
+    });
+    setPublicIpModal(true);
+  };
+
+  const handleEditPublicIp = (m) => {
+    setEditingPublicIp(m);
+    setPublicIpForm({
+      no: m.no || '',
+      name: m.name || '',
+      old_ip: m.old_ip || '',
+      new_ip_6: m.new_ip_6 || '',
+      new_ip_7: m.new_ip_7 || '',
+      dns_name: m.dns_name || '',
+      status: m.status || 'using',
+      firewall_allowed: m.firewall_allowed || 'already & working',
+      public_dns_changed: m.public_dns_changed || 'already & working',
+      note: m.note || '',
+      note_other: m.note_other || ''
+    });
+    setPublicIpModal(true);
+  };
+
+  const handleSavePublicIp = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingPublicIp) {
+        await fetch(`${API_BASE}/public_ips/mappings/${editingPublicIp.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(publicIpForm)
+        });
+      } else {
+        await fetch(`${API_BASE}/public_ips/mappings`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(publicIpForm)
+        });
+      }
+      setPublicIpModal(false);
+      fetchPublicIPs();
+    } catch (err) {
+      console.error("Error saving public IP mapping:", err);
+    }
+  };
+
+  const handleDeletePublicIp = async (id) => {
+    if (!window.confirm("តើអ្នកប្រាកដជាចង់លុបការចាត់ចែង IP នេះមែនទេ?")) return;
+    try {
+      await fetch(`${API_BASE}/public_ips/mappings/${id}`, {
+        method: 'DELETE'
+      });
+      fetchPublicIPs();
+    } catch (err) {
+      console.error("Error deleting public IP mapping:", err);
+    }
+  };
+
   const fetchPublicIPs = async () => {
     try {
       const res = await fetch(`${API_BASE}/public_ips`);
@@ -8457,8 +8544,13 @@ export default function App() {
             </div>
 
             <div className="panel">
-              <div className="panel-header">
+              <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span className="panel-title">🌐 NSSF Public IP Host Mappings (Subnet 165.99.6.0/23)</span>
+                {hasPermission('public_ip', 'write') && (
+                  <button className="btn btn-primary" onClick={handleOpenAddPublicIp} style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px' }}>
+                    + ចាត់ចែង IP ថ្មី (Assign Public IP)
+                  </button>
+                )}
               </div>
               <div className="data-table-container">
                 <table className="data-table">
@@ -8474,6 +8566,7 @@ export default function App() {
                       <th>Firewall Allowed</th>
                       <th>Public DNS Changed</th>
                       <th>Note</th>
+                      {hasPermission('public_ip', 'write') && <th style={{ textAlign: 'center' }}>សកម្មភាព (Actions)</th>}
                     </tr>
                   </thead>
                   <tbody>
@@ -8481,24 +8574,157 @@ export default function App() {
                       <tr key={m.id}>
                         <td>{m.no}</td>
                         <td style={{ fontWeight: '600' }}>{m.name}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>{m.old_ip}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>{m.new_ip_6}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>{m.new_ip_7}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)' }}>{m.dns_name}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)' }}>{m.old_ip || '-'}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: '600', color: '#16a34a' }}>{m.new_ip_6 || '-'}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: '600', color: '#2563eb' }}>{m.new_ip_7 || '-'}</td>
+                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)' }}>{m.dns_name || '-'}</td>
                         <td>
                           <span className={`status-badge ${m.status === 'using' || m.status === 'Completed' ? 'badge-active' : 'badge-using'}`}>
-                            {m.status}
+                            {m.status || 'using'}
                           </span>
                         </td>
-                        <td>{m.firewall_allowed}</td>
-                        <td>{m.public_dns_changed}</td>
+                        <td>{m.firewall_allowed || '-'}</td>
+                        <td>{m.public_dns_changed || '-'}</td>
                         <td>{m.note} {m.note_other}</td>
+                        {hasPermission('public_ip', 'write') && (
+                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                            <button className="btn btn-secondary" style={{ padding: '3px 8px', fontSize: '12px', marginRight: '6px' }} onClick={() => handleEditPublicIp(m)}>
+                              ✏️ កែប្រែ
+                            </button>
+                            <button className="btn btn-danger" style={{ padding: '3px 8px', fontSize: '12px' }} onClick={() => handleDeletePublicIp(m.id)}>
+                              🗑️ លុប
+                            </button>
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
             </div>
+
+            {/* Modal Dialog for Add / Edit Public IP */}
+            {publicIpModal && (
+              <div className="modal-overlay">
+                <form className="modal-content" onSubmit={handleSavePublicIp} style={{ maxWidth: '640px' }}>
+                  <div className="modal-header">
+                    <div className="modal-title">
+                      {editingPublicIp ? '✏️ កែប្រែព័ត៌មាន Public IP Mapping' : '🌐 ចាត់ចែង Public IP ថ្មី (Assign New Public IP)'}
+                    </div>
+                    <button type="button" className="modal-close" onClick={() => setPublicIpModal(false)}>×</button>
+                  </div>
+                  <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    <div className="form-group">
+                      <label className="form-label">ឈ្មោះប្រព័ន្ធ / System Host Name <span style={{ color: 'red' }}>*</span></label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        required
+                        placeholder="ឧ. mobile-api.nssf.gov.kh"
+                        value={publicIpForm.name}
+                        onChange={(e) => setPublicIpForm({ ...publicIpForm, name: e.target.value })}
+                      />
+                    </div>
+                    <div className="form-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                      <div>
+                        <label className="form-label">IP Primary (NEW IP 6.0) <span style={{ color: 'red' }}>*</span></label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          required
+                          placeholder="ឧ. 165.99.6.50"
+                          value={publicIpForm.new_ip_6}
+                          onChange={(e) => setPublicIpForm({ ...publicIpForm, new_ip_6: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">IP Secondary (NEW IP 7.0)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="ឧ. 165.99.7.50"
+                          value={publicIpForm.new_ip_7}
+                          onChange={(e) => setPublicIpForm({ ...publicIpForm, new_ip_7: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                      <div>
+                        <label className="form-label">OLD Public IP (If Migration)</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="ឧ. 203.189.149.230"
+                          value={publicIpForm.old_ip}
+                          onChange={(e) => setPublicIpForm({ ...publicIpForm, old_ip: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">DNS Name / Domain</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="ឧ. api.nssf.gov.kh"
+                          value={publicIpForm.dns_name}
+                          onChange={(e) => setPublicIpForm({ ...publicIpForm, dns_name: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+                      <div>
+                        <label className="form-label">ស្ថានភាព (Status)</label>
+                        <select
+                          className="form-input"
+                          value={publicIpForm.status}
+                          onChange={(e) => setPublicIpForm({ ...publicIpForm, status: e.target.value })}
+                        >
+                          <option value="using">using (កំពុងប្រើ)</option>
+                          <option value="testing">testing (កំពុងតេស្ត)</option>
+                          <option value="reserved">reserved (កក់ទុក)</option>
+                          <option value="available">available (ទំនេរ)</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="form-label">Firewall Allowed</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="already & working"
+                          value={publicIpForm.firewall_allowed}
+                          onChange={(e) => setPublicIpForm({ ...publicIpForm, firewall_allowed: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label">Public DNS Changed</label>
+                        <input
+                          type="text"
+                          className="form-input"
+                          placeholder="already & working"
+                          value={publicIpForm.public_dns_changed}
+                          onChange={(e) => setPublicIpForm({ ...publicIpForm, public_dns_changed: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">ចំណាំ / Note Details</label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="ឧ. Mobile App Backend Server (Port 443)"
+                        value={publicIpForm.note}
+                        onChange={(e) => setPublicIpForm({ ...publicIpForm, note: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                  <div className="modal-footer">
+                    <button type="button" className="btn btn-secondary" onClick={() => setPublicIpModal(false)}>បោះបង់ (Cancel)</button>
+                    <button type="submit" className="btn btn-primary">
+                      {editingPublicIp ? 'កែប្រែទិន្នន័យ (Save Changes)' : 'ចាត់ចែង IP ថ្មី (Assign IP)'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
 
             <div className="panel">
               <div className="panel-header">

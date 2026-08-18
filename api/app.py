@@ -1668,16 +1668,28 @@ def add_public_ip_mapping(payload: PublicIpMappingPayload):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("""
-            INSERT INTO public_ip_mappings (no, name, old_ip, new_ip_6, new_ip_7, dns_name, status, firewall_allowed, public_dns_changed, note, note_other)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-            RETURNING id
-        """, (
-            payload.no, payload.name, payload.old_ip, payload.new_ip_6, payload.new_ip_7,
-            payload.dns_name, payload.status, payload.firewall_allowed, payload.public_dns_changed,
-            payload.note, payload.note_other
-        ))
-        new_id = cursor.fetchone()["id"]
+        if getattr(conn, 'is_postgres', False):
+            cursor.execute("""
+                INSERT INTO public_ip_mappings (no, name, old_ip, new_ip_6, new_ip_7, dns_name, status, firewall_allowed, public_dns_changed, note, note_other)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                RETURNING id
+            """, (
+                payload.no, payload.name, payload.old_ip, payload.new_ip_6, payload.new_ip_7,
+                payload.dns_name, payload.status or 'using', payload.firewall_allowed, payload.public_dns_changed,
+                payload.note, payload.note_other
+            ))
+            res = cursor.fetchone()
+            new_id = res["id"] if isinstance(res, dict) else res[0]
+        else:
+            cursor.execute("""
+                INSERT INTO public_ip_mappings (no, name, old_ip, new_ip_6, new_ip_7, dns_name, status, firewall_allowed, public_dns_changed, note, note_other)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                payload.no, payload.name, payload.old_ip, payload.new_ip_6, payload.new_ip_7,
+                payload.dns_name, payload.status or 'using', payload.firewall_allowed, payload.public_dns_changed,
+                payload.note, payload.note_other
+            ))
+            new_id = cursor.lastrowid
         conn.commit()
         conn.close()
         return {"status": "success", "id": new_id}
@@ -1690,11 +1702,12 @@ def update_public_ip_mapping(mapping_id: int, payload: PublicIpMappingPayload):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("""
+        ph = "%s" if getattr(conn, 'is_postgres', False) else "?"
+        cursor.execute(f"""
             UPDATE public_ip_mappings
-            SET no=%s, name=%s, old_ip=%s, new_ip_6=%s, new_ip_7=%s, dns_name=%s,
-                status=%s, firewall_allowed=%s, public_dns_changed=%s, note=%s, note_other=%s
-            WHERE id=%s
+            SET no={ph}, name={ph}, old_ip={ph}, new_ip_6={ph}, new_ip_7={ph}, dns_name={ph},
+                status={ph}, firewall_allowed={ph}, public_dns_changed={ph}, note={ph}, note_other={ph}
+            WHERE id={ph}
         """, (
             payload.no, payload.name, payload.old_ip, payload.new_ip_6, payload.new_ip_7,
             payload.dns_name, payload.status, payload.firewall_allowed, payload.public_dns_changed,
@@ -1712,7 +1725,8 @@ def delete_public_ip_mapping(mapping_id: int):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("DELETE FROM public_ip_mappings WHERE id=%s", (mapping_id,))
+        ph = "%s" if getattr(conn, 'is_postgres', False) else "?"
+        cursor.execute(f"DELETE FROM public_ip_mappings WHERE id={ph}", (mapping_id,))
         conn.commit()
         conn.close()
         return {"status": "success"}
