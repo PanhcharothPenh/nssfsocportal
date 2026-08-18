@@ -48,6 +48,8 @@
 
   --font-sans: 'MiSans Khmer', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
+  --font-khmer-moul: 'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif;
+  --font-khmer-siemreap: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif;
 
   --transition-fast: 0.15s ease;
   --transition-normal: 0.25s ease;

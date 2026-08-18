@@ -175,7 +175,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             margin: 0;
             box-shadow: none !important;
             border: none !important;
-            font-family: 'Kantumruy Pro', 'Battambang', sans-serif !important;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif !important;
           }
         }
       `}</style>
@@ -330,7 +330,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
         </div>
 
         {/* Right Side: Live Pixel-Perfect Official A4 Document Paper */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center' }}>
           <div className="printable-a4-document" style={{
             backgroundColor: '#ffffff',
             width: '100%',
@@ -341,7 +341,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             border: '1px solid #cbd5e1',
             boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
             boxSizing: 'border-box',
-            fontFamily: "'Battambang', 'Kantumruy Pro', sans-serif",
+            fontFamily: "'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif",
             fontSize: '13px',
             lineHeight: '1.55',
             color: '#000'
@@ -354,14 +354,14 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
                   <td style={{ width: '48%', verticalAlign: 'top', textAlign: 'left' }}>
                     <img src="/nssf_logo.png" alt="NSSF Logo" style={{ width: '72px', height: 'auto' }} onerror={(e) => { e.target.src='/Nssf_Resize_Logo.png'; }} /><br/>
                     <div style={{ marginTop: '2px' }}>
-                      <div style={{ fontFamily: "'Moul', serif", fontSize: '13px', color: '#1e3a8a', lineHeight: '1.6', fontWeight: 'normal' }}>បេឡាជាតិសន្តិសុខសង្គម</div>
-                      <div style={{ fontFamily: "'Kantumruy Pro', 'Battambang', sans-serif", fontSize: '12px', fontWeight: 'bold', color: '#1e3a8a', lineHeight: '1.4' }}>នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
-                      <div style={{ fontFamily: "'Kantumruy Pro', 'Battambang', sans-serif", fontSize: '11px', color: '#334155' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
+                      <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '13px', color: '#1e3a8a', lineHeight: '1.6', fontWeight: 'normal' }}>បេឡាជាតិសន្តិសុខសង្គម</div>
+                      <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif", fontSize: '12px', fontWeight: 'bold', color: '#1e3a8a', lineHeight: '1.4' }}>នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
+                      <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif", fontSize: '11px', color: '#334155' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
                     </div>
                   </td>
                   <td style={{ width: '52%', textAlignment: 'center', verticalAlign: 'top', textAlign: 'center' }}>
-                    <div style={{ fontSize: '14.5px', fontFamily: "'Moul', serif", marginBottom: '2px', color: '#000' }}>ព្រះរាជាណាចក្រកម្ពុជា</div>
-                    <div style={{ fontSize: '12.5px', fontFamily: "'Moul', serif", color: '#000' }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                    <div style={{ fontSize: '14.5px', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", marginBottom: '2px', color: '#000' }}>ព្រះរាជាណាចក្រកម្ពុជា</div>
+                    <div style={{ fontSize: '12.5px', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", color: '#000' }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
                     <div style={{ letterSpacing: '3px', fontSize: '9px', marginTop: '2px' }}>─── ❖ ───</div>
                   </td>
                 </tr>
@@ -369,12 +369,12 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </table>
 
             {/* Document Title */}
-            <div style={{ textAlign: 'center', fontFamily: "'Moul', serif", fontSize: '18px', margin: '14px 0 12px 0', color: '#000' }}>
+            <div style={{ textAlign: 'center', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '18px', margin: '14px 0 12px 0', color: '#000' }}>
               ទម្រង់ស្នើសុំ
             </div>
 
             {/* Section 1 */}
-            <div style={{ fontFamily: "'Moul', serif", fontSize: '12.5px', marginTop: '10px', marginBottom: '5px', color: '#000', fontWeight: 'normal' }}>
+            <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '12.5px', marginTop: '10px', marginBottom: '5px', color: '#000', fontWeight: 'normal' }}>
               ១. ព័ត៌មានអ្នកស្នើសុំ ៖
             </div>
             <div style={{ marginBottom: '6px' }}>
@@ -392,7 +392,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
 
             {/* Section 2 */}
-            <div style={{ fontFamily: "'Moul', serif", fontSize: '12.5px', marginTop: '12px', marginBottom: '5px', color: '#000', fontWeight: 'normal' }}>
+            <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '12.5px', marginTop: '12px', marginBottom: '5px', color: '#000', fontWeight: 'normal' }}>
               ២. ព័ត៌មានលម្អិត និងគោលបំណង ៖
             </div>
             <div style={{ minHeight: '48px', lineHeight: '1.8', marginBottom: '6px' }}>
@@ -444,7 +444,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
 
             {/* Section 3 Approval Table */}
-            <div style={{ fontFamily: "'Moul', serif", fontSize: '12.5px', marginTop: '10px', marginBottom: '5px', clear: 'both', color: '#000', fontWeight: 'normal' }}>
+            <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '12.5px', marginTop: '10px', marginBottom: '5px', clear: 'both', color: '#000', fontWeight: 'normal' }}>
               ៣. យោបល់របស់ថ្នាក់ដឹកនាំមានសមត្ថកិច្ច ៖
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '6px' }}>

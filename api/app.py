@@ -3670,7 +3670,7 @@ def view_ticket_attachment(ticket_id: int):
             color-adjust: exact !important;
         }}
         body {{
-            font-family: 'Kantumruy Pro', 'Battambang', sans-serif;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif;
             background: #f8fafc;
             color: #0f172a;
             margin: 0;
@@ -3700,7 +3700,7 @@ def view_ticket_attachment(ticket_id: int):
             width: 240px;
         }}
         .header-left .title-nssf {{
-            font-family: 'Moul', serif;
+            font-family: 'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif;
             font-size: 13.5px;
             color: #1e3a8a !important;
             font-weight: bold;
@@ -3708,7 +3708,7 @@ def view_ticket_attachment(ticket_id: int):
             margin-top: 6px;
         }}
         .header-left .sub-nssf {{
-            font-family: 'Siemreap', sans-serif;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', sans-serif;
             font-size: 11px;
             color: #334155 !important;
             margin-top: 3px;
@@ -3718,14 +3718,14 @@ def view_ticket_attachment(ticket_id: int):
             width: 250px;
         }}
         .header-right .title-national {{
-            font-family: 'Moul', serif;
+            font-family: 'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif;
             font-size: 14px;
             color: #0f172a !important;
             font-weight: bold;
             line-height: 1.6;
         }}
         .header-right .sub-national {{
-            font-family: 'Moul', serif;
+            font-family: 'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif;
             font-size: 13px;
             color: #0f172a !important;
             font-weight: bold;
