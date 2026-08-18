@@ -402,13 +402,17 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '14px', marginTop: '12px', marginBottom: '6px', color: '#000', fontWeight: 'normal' }}>
               ២. ព័ត៌មានលម្អិត និងគោលបំណង ៖
             </div>
-            <div style={{ minHeight: '48px', lineHeight: '1.8', marginBottom: '6px', fontSize: '12px' }}>
-              {(details || '').split('\n').map((line, i) => (
-                <div key={i} style={{ fontWeight: '600', color: '#1e3a8a', fontSize: '12px' }}>{line}</div>
-              ))}
-              {!details && (
-                <div>...........................................................................................................................................................</div>
-              )}
+            <div style={{ marginTop: '4px', marginBottom: '8px', fontSize: '12px' }}>
+              {(() => {
+                const rawLines = (details || '').split('\n').filter(l => l.trim() !== '');
+                const displayLines = rawLines.length > 0 ? rawLines : ['', ''];
+                while (displayLines.length < 2) displayLines.push('');
+                return displayLines.map((line, i) => (
+                  <div key={i} style={{ borderBottom: '1px dotted #222', minHeight: '22px', lineHeight: '22px', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', width: '100%' }}>
+                    {line || '\u00A0'}
+                  </div>
+                ));
+              })()}
             </div>
 
             <div style={{ margin: '6px 0', fontSize: '12px' }}>
@@ -427,9 +431,36 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               &nbsp;&nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{impactOther ? '✓' : ''}</span> ផ្សេងៗ{impactOtherText ? ` (${impactOtherText})` : ''}
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '6px', fontSize: '12px', whiteSpace: 'nowrap', width: '100%' }}>
-              <span style={{ flexShrink: 0 }}><b>មូលហេតុនៃការស្នើសុំ ៖</b></span>
-              <span style={{ borderBottom: '1px dotted #222', flex: '1 1 auto', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{reason}</span>
+            <div style={{ marginTop: '6px', fontSize: '12px' }}>
+              {(() => {
+                let line1 = reason || '';
+                let line2 = '';
+                if (reason && reason.length > 55) {
+                  const spaceIdx = reason.lastIndexOf(' ', 55);
+                  if (spaceIdx > 20) {
+                    line1 = reason.substring(0, spaceIdx);
+                    line2 = reason.substring(spaceIdx + 1);
+                  } else {
+                    line1 = reason.substring(0, 55);
+                    line2 = reason.substring(55);
+                  }
+                }
+                return (
+                  <>
+                    <div style={{ display: 'flex', alignItems: 'baseline', whiteSpace: 'nowrap', width: '100%' }}>
+                      <span style={{ flexShrink: 0 }}><b>មូលហេតុនៃការស្នើសុំ ៖</b></span>
+                      <span style={{ borderBottom: '1px dotted #222', flex: '1 1 auto', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {line1 || '\u00A0'}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '4px', whiteSpace: 'nowrap', width: '100%' }}>
+                      <span style={{ borderBottom: '1px dotted #222', width: '100%', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', display: 'inline-block', minHeight: '18px' }}>
+                        {line2 || '\u00A0'}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
             </div>
 
             {/* Official Legal Disclaimer Text */}

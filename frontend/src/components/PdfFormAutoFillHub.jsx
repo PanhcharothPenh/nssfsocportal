@@ -243,13 +243,17 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
 
           <!-- Section 2 -->
           <div class="section-header">២. ព័ត៌មានលម្អិត និងគោលបំណង ៖</div>
-          <div style="min-height: 48px; line-height: 1.8;">
-            ${(details || '').split('\n').map(line => `<div>${line}</div>`).join('')}
-            ${!details ? '<div>...........................................................................................................................................................</div><div>...........................................................................................................................................................</div>' : ''}
+          <div style="margin-top: 4px; margin-bottom: 8px;">
+            ${(() => {
+              const rawLines = (details || '').split('\n').filter(l => l.trim() !== '');
+              const displayLines = rawLines.length > 0 ? rawLines : ['', ''];
+              while (displayLines.length < 2) displayLines.push('');
+              return displayLines.map(line => `<div style="border-bottom: 1px dotted #222; min-height: 22px; line-height: 22px; font-weight: 600; color: #1e3a8a; padding: 0 4px; font-size: 12px; width: 100%;">${line || '&nbsp;'}</div>`).join('');
+            })()}
           </div>
 
           <div style="margin: 6px 0;">
-            ប្រភេទការកែប្រែ ៖ 
+            <b>ប្រភេទការកែប្រែ ៖</b> 
             &nbsp;<span class="box">${changeTypes.dataEdit ? '✓' : ''}</span> កែទិន្នន័យ
             &nbsp;&nbsp;<span class="box">${changeTypes.configuration ? '✓' : ''}</span> កែប្រព័ន្ធ (Configuration)
             &nbsp;&nbsp;<span class="box">${changeTypes.feature ? '✓' : ''}</span> បន្ថែមមុខងារ (Feature)
@@ -257,7 +261,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           </div>
 
           <div style="margin: 6px 0;">
-            កម្រិតនៃផលប៉ះពាល់ ៖ 
+            <b>កម្រិតនៃផលប៉ះពាល់ ៖</b> 
             &nbsp;<span class="box">${impactLevel === 'low' ? '✓' : ''}</span> ទាប
             &nbsp;&nbsp;<span class="box">${impactLevel === 'medium' ? '✓' : ''}</span> មធ្យម
             &nbsp;&nbsp;<span class="box">${impactLevel === 'high' ? '✓' : ''}</span> ខ្ពស់
@@ -265,7 +269,29 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           </div>
 
           <div style="margin-top: 6px;">
-            មូលហេតុនៃការស្នើសុំ ៖ <span class="dotted" style="width: 80%;">${reason || '............................................................................................................................................'}</span>
+            ${(() => {
+              let line1 = reason || '';
+              let line2 = '';
+              if (reason && reason.length > 55) {
+                const spaceIdx = reason.lastIndexOf(' ', 55);
+                if (spaceIdx > 20) {
+                  line1 = reason.substring(0, spaceIdx);
+                  line2 = reason.substring(spaceIdx + 1);
+                } else {
+                  line1 = reason.substring(0, 55);
+                  line2 = reason.substring(55);
+                }
+              }
+              return `
+                <div style="display: flex; align-items: baseline; white-space: nowrap; width: 100%;">
+                  <span style="flex-shrink: 0;"><b>មូលហេតុនៃការស្នើសុំ ៖</b></span>
+                  <span class="dotted" style="flex: 1 1 auto; font-weight: 600; color: #1e3a8a;">${line1 || '&nbsp;'}</span>
+                </div>
+                <div style="display: flex; align-items: baseline; margin-top: 4px; white-space: nowrap; width: 100%;">
+                  <span class="dotted" style="width: 100%; font-weight: 600; color: #1e3a8a; min-height: 18px; display: inline-block;">${line2 || '&nbsp;'}</span>
+                </div>
+              `;
+            })()}
           </div>
 
           <div class="disclaimer">
