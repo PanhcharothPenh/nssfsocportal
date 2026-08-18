@@ -12,6 +12,15 @@ const KHMER_MONTHS = [
   'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'
 ];
 
+const getKhmerMonthName = (m) => {
+  if (!m) return '';
+  const num = parseInt(m, 10);
+  if (!isNaN(num) && num >= 1 && num <= 12) {
+    return KHMER_MONTHS[num - 1];
+  }
+  return toKhmerNum(m);
+};
+
 export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
   // Category Selection
   const [activeCategory, setActiveCategory] = useState('system_change');
@@ -268,27 +277,29 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             &nbsp;&nbsp;<span class="box">${impactLevel === 'other' ? '✓' : ''}</span> ផ្សេងៗ${impactOtherText ? ` (${impactOtherText})` : ''}
           </div>
 
-          <div style="margin-top: 6px;">
+          <div style="margin-top: 6px; width: 100%;">
             ${(() => {
               let line1 = reason || '';
               let line2 = '';
-              if (reason && reason.length > 55) {
-                const spaceIdx = reason.lastIndexOf(' ', 55);
-                if (spaceIdx > 20) {
+              if (reason && reason.length > 50) {
+                const spaceIdx = reason.lastIndexOf(' ', 50);
+                if (spaceIdx > 15) {
                   line1 = reason.substring(0, spaceIdx);
                   line2 = reason.substring(spaceIdx + 1);
                 } else {
-                  line1 = reason.substring(0, 55);
-                  line2 = reason.substring(55);
+                  line1 = reason.substring(0, 50);
+                  line2 = reason.substring(50);
                 }
               }
               return `
-                <div style="display: flex; align-items: baseline; white-space: nowrap; width: 100%;">
-                  <span style="flex-shrink: 0;"><b>មូលហេតុនៃការស្នើសុំ ៖</b></span>
-                  <span class="dotted" style="flex: 1 1 auto; font-weight: 600; color: #1e3a8a;">${line1 || '&nbsp;'}</span>
-                </div>
-                <div style="display: flex; align-items: baseline; margin-top: 4px; white-space: nowrap; width: 100%;">
-                  <span class="dotted" style="width: 100%; font-weight: 600; color: #1e3a8a; min-height: 18px; display: inline-block;">${line2 || '&nbsp;'}</span>
+                <div style="display: flex; flex-direction: column; gap: 4px; width: 100%;">
+                  <div style="display: flex; align-items: baseline; white-space: nowrap; width: 100%;">
+                    <span style="flex-shrink: 0; margin-right: 6px;"><b>មូលហេតុនៃការស្នើសុំ ៖</b></span>
+                    <span class="dotted" style="flex: 1 1 auto; font-weight: 600; color: #1e3a8a; overflow: hidden; text-overflow: ellipsis;">${line1 || '&nbsp;'}</span>
+                  </div>
+                  <div style="display: flex; align-items: baseline; white-space: nowrap; width: 100%;">
+                    <span class="dotted" style="width: 100%; font-weight: 600; color: #1e3a8a; min-height: 18px; display: block; overflow: hidden; text-overflow: ellipsis;">${line2 || '&nbsp;'}</span>
+                  </div>
                 </div>
               `;
             })()}
@@ -301,8 +312,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
 
           <!-- Signature Block -->
           <div style="float: right; text-align: center; margin-top: 4px; width: 310px;">
-            <div>ថ្ងៃ ${lunarDate || '.................................'} ខែ ............... ឆ្នាំ .................... ព.ស. ២៥៦${buddhistYear || '.....'}</div>
-            <div>ថ្ងៃទី <span style="font-weight: bold;">${day}</span> ខែ <span style="font-weight: bold;">${month}</span> ឆ្នាំ២០២<span style="font-weight: bold;">${year.length > 3 ? year.substring(3) : year}</span></div>
+            <div>ថ្ងៃទី <span style="font-weight: bold;">${toKhmerNum(day)}</span> ខែ <span style="font-weight: bold;">${getKhmerMonthName(month)}</span> ឆ្នាំ <span style="font-weight: bold;">${toKhmerNum(year)}</span></div>
             <div style="margin-top: 4px; font-weight: bold;">ហត្ថលេខាសាម៉ីខ្លួន</div>
             <div style="height: 60px; display: flex; align-items: center; justify-content: center; margin-top: 4px;">
               ${signatureImage ? `<img src="${signatureImage}" style="max-height: 55px; max-width: 170px;" />` : `<div style="font-weight: bold; color: #1e3a8a;">${applicantName}</div>`}

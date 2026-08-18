@@ -12,6 +12,15 @@ const KHMER_MONTHS = [
   'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'
 ];
 
+const getKhmerMonthName = (m) => {
+  if (!m) return '';
+  const num = parseInt(m, 10);
+  if (!isNaN(num) && num >= 1 && num <= 12) {
+    return KHMER_MONTHS[num - 1];
+  }
+  return toKhmerNum(m);
+};
+
 export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
   // Staff Selection
   const [selectedStaffId, setSelectedStaffId] = useState('');
@@ -431,34 +440,34 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               &nbsp;&nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{impactOther ? '✓' : ''}</span> ផ្សេងៗ{impactOtherText ? ` (${impactOtherText})` : ''}
             </div>
 
-            <div style={{ marginTop: '6px', fontSize: '12px' }}>
+            <div style={{ marginTop: '6px', fontSize: '12px', width: '100%' }}>
               {(() => {
                 let line1 = reason || '';
                 let line2 = '';
-                if (reason && reason.length > 55) {
-                  const spaceIdx = reason.lastIndexOf(' ', 55);
-                  if (spaceIdx > 20) {
+                if (reason && reason.length > 50) {
+                  const spaceIdx = reason.lastIndexOf(' ', 50);
+                  if (spaceIdx > 15) {
                     line1 = reason.substring(0, spaceIdx);
                     line2 = reason.substring(spaceIdx + 1);
                   } else {
-                    line1 = reason.substring(0, 55);
-                    line2 = reason.substring(55);
+                    line1 = reason.substring(0, 50);
+                    line2 = reason.substring(50);
                   }
                 }
                 return (
-                  <>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', width: '100%' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', whiteSpace: 'nowrap', width: '100%' }}>
-                      <span style={{ flexShrink: 0 }}><b>មូលហេតុនៃការស្នើសុំ ៖</b></span>
+                      <span style={{ flexShrink: 0, marginRight: '6px' }}><b>មូលហេតុនៃការស្នើសុំ ៖</b></span>
                       <span style={{ borderBottom: '1px dotted #222', flex: '1 1 auto', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {line1 || '\u00A0'}
                       </span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'baseline', marginTop: '4px', whiteSpace: 'nowrap', width: '100%' }}>
-                      <span style={{ borderBottom: '1px dotted #222', width: '100%', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', display: 'inline-block', minHeight: '18px' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', whiteSpace: 'nowrap', width: '100%' }}>
+                      <span style={{ borderBottom: '1px dotted #222', width: '100%', fontWeight: '600', color: '#1e3a8a', padding: '0 4px', fontSize: '12px', display: 'block', minHeight: '18px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {line2 || '\u00A0'}
                       </span>
                     </div>
-                  </>
+                  </div>
                 );
               })()}
             </div>
@@ -471,7 +480,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
             {/* Date and Signature Block */}
             <div style={{ float: 'right', textAlign: 'center', marginTop: '4px', width: '310px', fontSize: '12px' }}>
-              <div>ថ្ងៃទី <span style={{ fontWeight: 'bold' }}>{day}</span> ខែ <span style={{ fontWeight: 'bold' }}>{month}</span> ឆ្នាំ២០២<span style={{ fontWeight: 'bold' }}>{year.length > 3 ? year.substring(3) : year}</span></div>
+              <div>ថ្ងៃទី <span style={{ fontWeight: 'bold' }}>{toKhmerNum(day)}</span> ខែ <span style={{ fontWeight: 'bold' }}>{getKhmerMonthName(month)}</span> ឆ្នាំ <span style={{ fontWeight: 'bold' }}>{toKhmerNum(year)}</span></div>
               <div style={{ marginTop: '4px', fontWeight: 'bold', fontSize: '12px' }}>ហត្ថលេខាសាម៉ីខ្លួន</div>
               <div style={{ height: '60px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginTop: '4px' }}>
                 {signatureImage ? (
