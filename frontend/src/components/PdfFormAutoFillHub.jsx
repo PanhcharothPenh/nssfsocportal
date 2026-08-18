@@ -177,19 +177,20 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           <style>
             @page { size: A4 portrait; margin: 12mm 15mm 12mm 15mm; }
             * { box-sizing: border-box; }
-            body { font-family: 'Battambang', 'Kantumruy Pro', sans-serif; font-size: 13px; line-height: 1.55; color: #000; background: #fff; margin: 0; padding: 0; }
-            .moul { font-family: 'Moul', serif; }
+            @import url('https://fonts.googleapis.com/css2?family=Moul&family=Kantumruy+Pro:wght@400;600;700&family=Battambang:wght@400;700&display=swap');
+            body { font-family: 'Kantumruy Pro', 'Battambang', sans-serif; font-size: 13px; line-height: 1.55; color: #000; background: #fff; margin: 0; padding: 0; }
+            .moul { font-family: 'Moul', serif; font-weight: normal; }
             .header-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
             .logo { width: 72px; height: auto; }
             .country-title { font-size: 14.5px; font-family: 'Moul', serif; margin-bottom: 2px; text-align: center; }
             .motto { font-size: 12.5px; font-family: 'Moul', serif; text-align: center; }
             .divider { text-align: center; letter-spacing: 3px; font-size: 9px; margin-top: 2px; }
-            .form-title { text-align: center; font-family: 'Moul', serif; font-size: 17.5px; margin: 14px 0 12px 0; }
-            .section-header { font-weight: bold; font-size: 14px; margin-top: 10px; margin-bottom: 5px; }
+            .form-title { text-align: center; font-family: 'Moul', serif; font-size: 18px; margin: 14px 0 12px 0; }
+            .section-header { font-family: 'Moul', serif; font-size: 12.5px; margin-top: 10px; margin-bottom: 5px; font-weight: normal; }
             .dotted { border-bottom: 1px dotted #222; display: inline-block; padding: 0 4px; min-height: 16px; }
             .box { display: inline-block; width: 13px; height: 13px; border: 1.2px solid #000; text-align: center; line-height: 11px; font-size: 10px; font-weight: bold; margin-right: 2px; }
             .disclaimer { font-size: 11.5px; font-style: italic; margin-top: 10px; margin-bottom: 6px; text-align: justify; line-height: 1.5; }
-            .table-approvals { width: 100%; border-collapse: collapse; margin-top: 10px; clear: both; }
+            .table-approvals { width: 100%; border-collapse: collapse; margin-top: 10px; clear: both; font-family: 'Kantumruy Pro', sans-serif; }
             .table-approvals th, .table-approvals td { border: 1px solid #000; padding: 6px 3px; text-align: center; font-size: 11.5px; vertical-align: top; }
             .table-approvals th { font-weight: bold; background-color: #f8fafc; height: 42px; }
             .table-approvals td { height: 95px; }
@@ -201,10 +202,10 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             <tr>
               <td style="width: 48%; vertical-align: top;">
                 <img src="/nssf_logo.png" class="logo" alt="NSSF Logo" onerror="this.onerror=null; this.src='/Nssf_Resize_Logo.png';" /><br/>
-                <div style="font-size: 12.5px; font-weight: bold; line-height: 1.45; margin-top: 2px;">
-                  បេឡាជាតិសន្តិសុខសង្គម<br/>
-                  នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន<br/>
-                  <span style="font-weight: normal;">ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</span>
+                <div style="margin-top: 2px;">
+                  <div class="moul" style="font-size: 13px; color: #1e3a8a; line-height: 1.6;">បេឡាជាតិសន្តិសុខសង្គម</div>
+                  <div style="font-size: 12px; font-weight: bold; color: #1e3a8a; line-height: 1.4;">នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
+                  <div style="font-size: 11px; color: #334155;">ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
                 </div>
               </td>
               <td style="width: 52%; text-align: center; vertical-align: top;">

@@ -145,7 +145,11 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
   // Direct In-Page Print Handler (Bypasses Popup Blockers 100%)
   const handleDirectPrint = () => {
-    window.print();
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(() => window.print());
+    } else {
+      window.print();
+    }
   };
 
   return (
@@ -153,6 +157,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
       
       {/* Hide controls during printing */}
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Moul&family=Kantumruy+Pro:wght@400;600;700&family=Battambang:wght@400;700&display=swap');
         @media print {
           body * {
             visibility: hidden;
@@ -170,6 +175,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             margin: 0;
             box-shadow: none !important;
             border: none !important;
+            font-family: 'Kantumruy Pro', 'Battambang', sans-serif !important;
           }
         }
       `}</style>
@@ -347,15 +353,15 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
                 <tr>
                   <td style={{ width: '48%', verticalAlign: 'top', textAlign: 'left' }}>
                     <img src="/nssf_logo.png" alt="NSSF Logo" style={{ width: '72px', height: 'auto' }} onerror={(e) => { e.target.src='/Nssf_Resize_Logo.png'; }} /><br/>
-                    <div style={{ fontSize: '12.5px', fontWeight: 'bold', lineHeight: '1.45', marginTop: '2px' }}>
-                      បេឡាជាតិសន្តិសុខសង្គម<br/>
-                      នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន<br/>
-                      <span style={{ fontWeight: 'normal' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</span>
+                    <div style={{ marginTop: '2px' }}>
+                      <div style={{ fontFamily: "'Moul', serif", fontSize: '13px', color: '#1e3a8a', lineHeight: '1.6', fontWeight: 'normal' }}>បេឡាជាតិសន្តិសុខសង្គម</div>
+                      <div style={{ fontFamily: "'Kantumruy Pro', 'Battambang', sans-serif", fontSize: '12px', fontWeight: 'bold', color: '#1e3a8a', lineHeight: '1.4' }}>នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
+                      <div style={{ fontFamily: "'Kantumruy Pro', 'Battambang', sans-serif", fontSize: '11px', color: '#334155' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
                     </div>
                   </td>
                   <td style={{ width: '52%', textAlignment: 'center', verticalAlign: 'top', textAlign: 'center' }}>
-                    <div style={{ fontSize: '14.5px', fontFamily: "'Moul', serif", marginBottom: '2px' }}>ព្រះរាជាណាចក្រកម្ពុជា</div>
-                    <div style={{ fontSize: '12.5px', fontFamily: "'Moul', serif" }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+                    <div style={{ fontSize: '14.5px', fontFamily: "'Moul', serif", marginBottom: '2px', color: '#000' }}>ព្រះរាជាណាចក្រកម្ពុជា</div>
+                    <div style={{ fontSize: '12.5px', fontFamily: "'Moul', serif", color: '#000' }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
                     <div style={{ letterSpacing: '3px', fontSize: '9px', marginTop: '2px' }}>─── ❖ ───</div>
                   </td>
                 </tr>
@@ -363,30 +369,30 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </table>
 
             {/* Document Title */}
-            <div style={{ textAlign: 'center', fontFamily: "'Moul', serif", fontSize: '17.5px', margin: '14px 0 12px 0' }}>
+            <div style={{ textAlign: 'center', fontFamily: "'Moul', serif", fontSize: '18px', margin: '14px 0 12px 0', color: '#000' }}>
               ទម្រង់ស្នើសុំ
             </div>
 
             {/* Section 1 */}
-            <div style={{ fontWeight: 'bold', fontSize: '14px', marginTop: '10px', marginBottom: '5px' }}>
+            <div style={{ fontFamily: "'Moul', serif", fontSize: '12.5px', marginTop: '10px', marginBottom: '5px', color: '#000', fontWeight: 'normal' }}>
               ១. ព័ត៌មានអ្នកស្នើសុំ ៖
             </div>
             <div style={{ marginBottom: '6px' }}>
-              គោត្តនាម និងនាម ៖ <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '210px', fontWeight: 'bold', color: '#1e3a8a', padding: '0 4px' }}>{applicantName}</span>
-              &nbsp;&nbsp;ភេទ ៖ <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '55px', textAlign: 'center', padding: '0 4px' }}>{gender}</span>
-              &nbsp;&nbsp;មុខតំណែង ៖ <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '200px', padding: '0 4px' }}>{position}</span>
+              <b>គោត្តនាម និងនាម ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '210px', fontWeight: 'bold', color: '#1e3a8a', padding: '0 4px' }}>{applicantName}</span>
+              &nbsp;&nbsp;<b>ភេទ ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '55px', textAlign: 'center', padding: '0 4px' }}>{gender}</span>
+              &nbsp;&nbsp;<b>មុខតំណែង ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '200px', padding: '0 4px' }}>{position}</span>
             </div>
             <div style={{ marginBottom: '6px' }}>
-              ការិយាល័យ ៖ <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '230px', padding: '0 4px' }}>{office}</span>
-              &nbsp;&nbsp;នាយកដ្ឋាន/អង្គភាព/សាខា ៖ <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '240px', padding: '0 4px' }}>{department}</span>
+              <b>ការិយាល័យ ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '230px', padding: '0 4px' }}>{office}</span>
+              &nbsp;&nbsp;<b>នាយកដ្ឋាន/អង្គភាព/សាខា ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '240px', padding: '0 4px' }}>{department}</span>
             </div>
             <div style={{ marginBottom: '6px' }}>
-              លេខទូរស័ព្ទទំនាក់ទំនង ៖ <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '200px', padding: '0 4px' }}>{phone}</span>
-              &nbsp;&nbsp;អ៊ីមែល ៖ <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '270px', padding: '0 4px' }}>{email}</span>
+              <b>លេខទូរស័ព្ទទំនាក់ទំនង ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '200px', padding: '0 4px' }}>{phone}</span>
+              &nbsp;&nbsp;<b>អ៊ីមែល ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', minWidth: '270px', padding: '0 4px' }}>{email}</span>
             </div>
 
             {/* Section 2 */}
-            <div style={{ fontWeight: 'bold', fontSize: '14px', marginTop: '12px', marginBottom: '5px' }}>
+            <div style={{ fontFamily: "'Moul', serif", fontSize: '12.5px', marginTop: '12px', marginBottom: '5px', color: '#000', fontWeight: 'normal' }}>
               ២. ព័ត៌មានលម្អិត និងគោលបំណង ៖
             </div>
             <div style={{ minHeight: '48px', lineHeight: '1.8', marginBottom: '6px' }}>
@@ -399,7 +405,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
 
             <div style={{ margin: '6px 0' }}>
-              ប្រភេទការកែប្រែ ៖ 
+              <b>ប្រភេទការកែប្រែ ៖</b> 
               &nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{changeTypeData ? '✓' : ''}</span> កែទិន្នន័យ
               &nbsp;&nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{changeTypeConfig ? '✓' : ''}</span> កែប្រព័ន្ធ (Configuration)
               &nbsp;&nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{changeTypeFeature ? '✓' : ''}</span> បន្ថែមមុខងារ (Feature)
@@ -407,7 +413,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
 
             <div style={{ margin: '6px 0' }}>
-              កម្រិតនៃផលប៉ះពាល់ ៖ 
+              <b>កម្រិតនៃផលប៉ះពាល់ ៖</b> 
               &nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{impactLow ? '✓' : ''}</span> ទាប
               &nbsp;&nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{impactMedium ? '✓' : ''}</span> មធ្យម
               &nbsp;&nbsp;<span style={{ display: 'inline-block', width: '13px', height: '13px', border: '1.2px solid #000', textAlign: 'center', lineHeight: '11px', fontSize: '10px', fontWeight: 'bold', marginRight: '2px' }}>{impactHigh ? '✓' : ''}</span> ខ្ពស់
@@ -415,7 +421,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
 
             <div style={{ marginTop: '6px' }}>
-              មូលហេតុនៃការស្នើសុំ ៖ <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', width: '80%', fontWeight: '600', color: '#1e3a8a', padding: '0 4px' }}>{reason}</span>
+              <b>មូលហេតុនៃការស្នើសុំ ៖</b> <span style={{ borderBottom: '1px dotted #222', display: 'inline-block', width: '78%', fontWeight: '600', color: '#1e3a8a', padding: '0 4px' }}>{reason}</span>
             </div>
 
             {/* Official Legal Disclaimer Text */}
@@ -438,7 +444,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             </div>
 
             {/* Section 3 Approval Table */}
-            <div style={{ fontWeight: 'bold', fontSize: '14px', marginTop: '10px', marginBottom: '5px', clear: 'both' }}>
+            <div style={{ fontFamily: "'Moul', serif", fontSize: '12.5px', marginTop: '10px', marginBottom: '5px', clear: 'both', color: '#000', fontWeight: 'normal' }}>
               ៣. យោបល់របស់ថ្នាក់ដឹកនាំមានសមត្ថកិច្ច ៖
             </div>
             <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: '6px' }}>

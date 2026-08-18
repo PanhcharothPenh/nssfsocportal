@@ -3679,14 +3679,14 @@ def view_ticket_attachment(ticket_id: int):
     <meta charset="UTF-8">
     <title>លិខិតស្នើសុំផ្លូវការ - {t.get('ticket_code')}</title>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Moul&family=Siemreap&family=Inter:wght@400;600;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Moul&family=Kantumruy+Pro:wght@400;600;700&family=Battambang:wght@400;700&display=swap');
         * {{
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
             color-adjust: exact !important;
         }}
         body {{
-            font-family: 'Siemreap', sans-serif;
+            font-family: 'Kantumruy Pro', 'Battambang', sans-serif;
             background: #f8fafc;
             color: #0f172a;
             margin: 0;
