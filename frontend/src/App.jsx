@@ -8433,9 +8433,32 @@ export default function App() {
         {/* Public IP & DNS Tab */}
         {activeTab === 'public' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            {/* Subnet 165.99.6.0/23 Metrics Header */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+              gap: '16px',
+            }}>
+              <div className="stat-card" style={{ background: 'var(--color-bg-card)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500' }}>🌐 Subnet Block Range</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#1e3a8a', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>165.99.6.0/23</div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Total 512 IPs (165.99.6.0 - 165.99.7.255)</div>
+              </div>
+              <div className="stat-card" style={{ background: 'var(--color-bg-card)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500' }}>⚡ IPs In Use / Active</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#16a34a', marginTop: '4px' }}>{publicIPs.mappings ? publicIPs.mappings.length : 0} IPs</div>
+                <div style={{ fontSize: '12px', color: '#15803d', marginTop: '2px' }}>Assigned to NSSF Web/VPN Services</div>
+              </div>
+              <div className="stat-card" style={{ background: 'var(--color-bg-card)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500' }}>🆓 Available / Unused IPs</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#2563eb', marginTop: '4px' }}>{publicIPs.mappings ? Math.max(0, 512 - publicIPs.mappings.length) : 512} IPs</div>
+                <div style={{ fontSize: '12px', color: '#1d4ed8', marginTop: '2px' }}>Ready for new DNS & Service NAT</div>
+              </div>
+            </div>
+
             <div className="panel">
               <div className="panel-header">
-                <span className="panel-title">🌐 NSSF Public IP Host Mappings (2025-2028)</span>
+                <span className="panel-title">🌐 NSSF Public IP Host Mappings (Subnet 165.99.6.0/23)</span>
               </div>
               <div className="data-table-container">
                 <table className="data-table">

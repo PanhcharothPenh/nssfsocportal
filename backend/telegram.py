@@ -826,6 +826,32 @@ def get_hq_direct_telegram():
             return f"🏛️ <b>HQ Subnets ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
     return get_cached_report("hq", _fetch)
 
+def get_public_ip_summary_telegram():
+    def _fetch():
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT COUNT(*) FROM public_ip_mappings WHERE (new_ip_6 IS NOT NULL AND new_ip_6 != '') OR (new_ip_7 IS NOT NULL AND new_ip_7 != '')")
+            used_cnt = cursor.fetchone()[0]
+            cursor.execute("SELECT name, new_ip_6, new_ip_7, status FROM public_ip_mappings LIMIT 6")
+            rows = cursor.fetchall()
+            conn.close()
+            
+            list_str = "\n".join([f"• 🌐 <b>{r['name']}</b>\n  └ IP 6.0: <code>{r['new_ip_6'] or 'N/A'}</code> | IP 7.0: <code>{r['new_ip_7'] or 'N/A'}</code>" for r in rows])
+            total_range = 512
+            available_cnt = max(0, total_range - used_cnt)
+            return (
+                f"🌐 <b>Public IPAM Subnet 165.99.6.0/23 (512 IPs) ៖</b>\n\n"
+                f"• IP កំពុងប្រើប្រាស់ (Used/Active) ៖ <b>{used_cnt}</b>\n"
+                f"• IP ទំនេរអាចប្រើបាន (Available) ៖ <b>{available_cnt}</b>\n\n"
+                f"<b>បញ្ជី IP Host Mappings គំរូ ៖</b>\n{list_str}\n\n"
+                f"🔗 <b>គ្រប់គ្រងលើ Web Portal ៖</b> https://nssfsocportal.vercel.app"
+            )
+        except Exception as e:
+            return f"🌐 <b>Public IPAM ៖</b> មិនអាចទាញយកទិន្នន័យ ៖ {e}"
+    return get_cached_report("public_ip_summary", _fetch)
+
 def get_system_status_direct_telegram():
     def _fetch():
         try:
@@ -1192,12 +1218,9 @@ def process_telegram_incoming_update(update: dict):
     elif "hq" in t_lower or "នាយកដ្ឋាន" in t_lower:
         reply_msg = get_hq_direct_telegram()
     elif "ipam" in t_lower:
-        reply_msg = (
-            f"🌐 <b>IPAM Search Helper ៖</b>\n\n"
-            f"សូមវាយបញ្ចូលអាសយដ្ឋាន IP ឬឈ្មោះបុគ្គលិកដែលចង់ស្វែងរក ៖\n"
-            f"• ឧទាហរណ៍ ៖ <code>172.19.21.13</code>\n"
-            f"• ឧទាហរណ៍ ៖ <code>កន ប៊ុនថន</code>"
-        )
+        reply_msg = get_public_ip_summary_telegram()
+        send_telegram_message(reply_msg, chat_id, reply_markup=main_menu_kb)
+        return
     elif "status" in t_lower or "ស្ថានភាព" in t_lower:
         reply_msg = get_system_status_direct_telegram()
     elif text in ["📅 វេនប្រចាំការយប់នេះ", "/shift", "shift", "វេនប្រចាំការ"]:
