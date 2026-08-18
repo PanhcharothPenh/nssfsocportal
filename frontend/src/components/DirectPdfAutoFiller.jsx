@@ -157,7 +157,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
       
       {/* Hide controls during printing */}
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Moul&family=Kantumruy+Pro:wght@400;600;700&family=Battambang:wght@400;700&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Moul&family=Siemreap&display=swap');
         @media print {
           body * {
             visibility: hidden;
@@ -175,7 +175,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             margin: 0;
             box-shadow: none !important;
             border: none !important;
-            font-family: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif !important;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif !important;
           }
         }
       `}</style>
@@ -341,7 +341,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             border: '1px solid #cbd5e1',
             boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
             boxSizing: 'border-box',
-            fontFamily: "'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif",
+            fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif",
             fontSize: '13px',
             lineHeight: '1.55',
             color: '#000'
@@ -355,8 +355,8 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
                     <img src="/nssf_logo.png" alt="NSSF Logo" style={{ width: '72px', height: 'auto' }} onerror={(e) => { e.target.src='/Nssf_Resize_Logo.png'; }} /><br/>
                     <div style={{ marginTop: '2px' }}>
                       <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '13px', color: '#1e3a8a', lineHeight: '1.6', fontWeight: 'normal' }}>បេឡាជាតិសន្តិសុខសង្គម</div>
-                      <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif", fontSize: '12px', fontWeight: 'bold', color: '#1e3a8a', lineHeight: '1.4' }}>នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
-                      <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif", fontSize: '11px', color: '#334155' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
+                      <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif", fontSize: '12px', fontWeight: 'bold', color: '#1e3a8a', lineHeight: '1.4' }}>នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
+                      <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif", fontSize: '11px', color: '#334155' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
                     </div>
                   </td>
                   <td style={{ width: '52%', textAlignment: 'center', verticalAlign: 'top', textAlign: 'center' }}>

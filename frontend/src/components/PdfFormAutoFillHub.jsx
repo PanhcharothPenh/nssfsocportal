@@ -177,8 +177,8 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           <style>
             @page { size: A4 portrait; margin: 12mm 15mm 12mm 15mm; }
             * { box-sizing: border-box; }
-            @import url('https://fonts.googleapis.com/css2?family=Moul&family=Kantumruy+Pro:wght@400;600;700&family=Battambang:wght@400;700&display=swap');
-            body { font-family: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', 'Battambang', sans-serif; font-size: 13px; line-height: 1.55; color: #000; background: #fff; margin: 0; padding: 0; }
+            @import url('https://fonts.googleapis.com/css2?family=Moul&family=Siemreap&display=swap');
+            body { font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif; font-size: 13px; line-height: 1.55; color: #000; background: #fff; margin: 0; padding: 0; }
             .moul { font-family: 'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif; font-weight: normal; }
             .header-table { width: 100%; border-collapse: collapse; margin-bottom: 2px; }
             .logo { width: 72px; height: auto; }
@@ -190,7 +190,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             .dotted { border-bottom: 1px dotted #222; display: inline-block; padding: 0 4px; min-height: 16px; }
             .box { display: inline-block; width: 13px; height: 13px; border: 1.2px solid #000; text-align: center; line-height: 11px; font-size: 10px; font-weight: bold; margin-right: 2px; }
             .disclaimer { font-size: 11.5px; font-style: italic; margin-top: 10px; margin-bottom: 6px; text-align: justify; line-height: 1.5; }
-            .table-approvals { width: 100%; border-collapse: collapse; margin-top: 10px; clear: both; font-family: 'Khmer OS Siemreap', 'Siemreap', 'Kantumruy Pro', sans-serif; }
+            .table-approvals { width: 100%; border-collapse: collapse; margin-top: 10px; clear: both; font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif; }
             .table-approvals th, .table-approvals td { border: 1px solid #000; padding: 6px 3px; text-align: center; font-size: 11.5px; vertical-align: top; }
             .table-approvals th { font-weight: bold; background-color: #f8fafc; height: 42px; }
             .table-approvals td { height: 95px; }

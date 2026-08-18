@@ -219,7 +219,7 @@ export default function NssfFormGenerator({ currentUser, usersList = [], onSubmi
             box-sizing: border-box;
           }
           body {
-            font-family: 'Battambang', 'Kantumruy Pro', sans-serif;
+            font-family: 'Khmer OS Siemreap', 'Siemreap', sans-serif;
             font-size: 13.5px;
             line-height: 1.6;
             color: #000;
@@ -230,7 +230,7 @@ export default function NssfFormGenerator({ currentUser, usersList = [], onSubmi
             print-color-adjust: exact !important;
           }
           .moul {
-            font-family: 'Moul', cursive, serif;
+            font-family: 'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif;
           }
           .container {
             width: 100%;
