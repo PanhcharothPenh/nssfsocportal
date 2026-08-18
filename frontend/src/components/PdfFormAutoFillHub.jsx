@@ -217,15 +217,17 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
           <!-- Header -->
           <table class="header-table">
             <tr>
-              <td style="width: 48%; vertical-align: top;">
-                <img src="/nssf_logo.png" class="logo" alt="NSSF Logo" onerror="this.onerror=null; this.src='/Nssf_Resize_Logo.png';" /><br/>
-                <div style="margin-top: 2px;">
-                  <div class="moul" style="font-size: 13px; color: #1e3a8a; line-height: 1.6;">បេឡាជាតិសន្តិសុខសង្គម</div>
-                  <div style="font-size: 12px; font-weight: bold; color: #1e3a8a; line-height: 1.4;">នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
-                  <div style="font-size: 11px; color: #334155;">ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
+              <td style="width: 58%; vertical-align: top;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                  <img src="/nssf_logo.png" class="logo" style="width: 86px; height: auto; flex-shrink: 0;" alt="NSSF Logo" onerror="this.onerror=null; this.src='/Nssf_Resize_Logo.png';" />
+                  <div>
+                    <div class="moul" style="font-size: 13px; color: #1e3a8a; line-height: 1.5; white-space: nowrap;">បេឡាជាតិសន្តិសុខសង្គម</div>
+                    <div style="font-size: 12px; font-weight: bold; color: #1e3a8a; line-height: 1.4; white-space: nowrap;">នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
+                    <div style="font-size: 11px; color: #334155; line-height: 1.3; white-space: nowrap;">ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
+                  </div>
                 </div>
               </td>
-              <td style="width: 52%; text-align: right; vertical-align: top;">
+              <td style="width: 42%; text-align: right; vertical-align: top;">
                 <div style="display: inline-block; text-align: center;">
                   <div class="country-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
                   <div class="motto">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>

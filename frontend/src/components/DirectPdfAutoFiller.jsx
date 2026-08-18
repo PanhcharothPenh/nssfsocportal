@@ -420,15 +420,17 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
             <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '4px' }}>
               <tbody>
                 <tr>
-                  <td style={{ width: '48%', verticalAlign: 'top', textAlign: 'left' }}>
-                    <img src="/nssf_logo.png" alt="NSSF Logo" style={{ width: '72px', height: 'auto' }} onerror={(e) => { e.target.src='/Nssf_Resize_Logo.png'; }} /><br/>
-                    <div style={{ marginTop: '2px' }}>
-                      <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '13.5px', color: '#1e3a8a', lineHeight: '1.6', fontWeight: 'normal' }}>បេឡាជាតិសន្តិសុខសង្គម</div>
-                      <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif", fontSize: '12px', fontWeight: 'bold', color: '#1e3a8a', lineHeight: '1.4' }}>នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
-                      <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif", fontSize: '11px', color: '#334155' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
+                  <td style={{ width: '58%', verticalAlign: 'top', textAlign: 'left' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img src="/nssf_logo.png" alt="NSSF Logo" style={{ width: '86px', height: 'auto', flexShrink: 0 }} onerror={(e) => { e.target.src='/Nssf_Resize_Logo.png'; }} />
+                      <div>
+                        <div style={{ fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", fontSize: '13.5px', color: '#1e3a8a', lineHeight: '1.5', fontWeight: 'normal', whiteSpace: 'nowrap' }}>បេឡាជាតិសន្តិសុខសង្គម</div>
+                        <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif", fontSize: '12px', fontWeight: 'bold', color: '#1e3a8a', lineHeight: '1.4', whiteSpace: 'nowrap' }}>នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
+                        <div style={{ fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif", fontSize: '11px', color: '#334155', lineHeight: '1.3', whiteSpace: 'nowrap' }}>ការិយាល័យសុវត្ថិភាពប្រព័ន្ធបច្ចេកវិទ្យាព័ត៌មាន</div>
+                      </div>
                     </div>
                   </td>
-                  <td style={{ width: '52%', verticalAlign: 'top', textAlign: 'right' }}>
+                  <td style={{ width: '42%', verticalAlign: 'top', textAlign: 'right' }}>
                     <div style={{ display: 'inline-block', textAlign: 'center' }}>
                       <div style={{ fontSize: '14px', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", marginBottom: '2px', color: '#000' }}>ព្រះរាជាណាចក្រកម្ពុជា</div>
                       <div style={{ fontSize: '13px', fontFamily: "'Khmer OS Muol Light', 'Khmer OS Moul Light', 'Khmer OS Muol', 'Moul', serif", color: '#000' }}>ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
