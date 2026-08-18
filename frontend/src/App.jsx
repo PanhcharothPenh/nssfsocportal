@@ -178,6 +178,11 @@ export default function App() {
   const [showConfirmPass, setShowConfirmPass] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [showNotificationDropdown, setShowNotificationDropdown] = useState(false);
+
+  // Public Subnet 165.99.6.0/23 IPAM Filter & View states
+  const [pubIpamFilterTab, setPubIpamFilterTab] = useState('all'); // 'all', 'used', 'available'
+  const [pubIpamViewMode, setPubIpamViewMode] = useState('grid'); // 'grid' or 'table'
+  const [pubIpamSearchTerm, setPubIpamSearchTerm] = useState('');
   
   // Bitrix Task Management & Kanban Board States
   const [kanbanTasks, setKanbanTasks] = useState([]);
@@ -2272,6 +2277,73 @@ export default function App() {
     } catch (err) {
       console.error("Error deleting public IP mapping:", err);
     }
+  };
+
+  const handleOpenAddSpecificIp = (ipAddress) => {
+    setEditingPublicIp(null);
+    const isIp7 = ipAddress.startsWith('165.99.7.');
+    setPublicIpForm({
+      no: (publicIPs.mappings ? publicIPs.mappings.length + 1 : 1),
+      name: '',
+      old_ip: '',
+      new_ip_6: isIp7 ? `165.99.6.${ipAddress.split('.').pop()}` : ipAddress,
+      new_ip_7: isIp7 ? ipAddress : `165.99.7.${ipAddress.split('.').pop()}`,
+      dns_name: '',
+      status: 'using',
+      firewall_allowed: 'already & working',
+      public_dns_changed: 'already & working',
+      note: '',
+      note_other: ''
+    });
+    setPublicIpModal(true);
+  };
+
+  const getSubnetFullIpList = () => {
+    const mapDict = {};
+    if (publicIPs.mappings) {
+      publicIPs.mappings.forEach(m => {
+        if (m.new_ip_6 && m.new_ip_6.trim()) {
+          const ip = m.new_ip_6.trim();
+          mapDict[ip] = { ...m, active_ip: ip, ip_type: 'Primary (6.0)' };
+        }
+        if (m.new_ip_7 && m.new_ip_7.trim() && m.new_ip_7.trim() !== m.new_ip_6?.trim()) {
+          const ip = m.new_ip_7.trim();
+          if (!mapDict[ip]) {
+            mapDict[ip] = { ...m, active_ip: ip, ip_type: 'Secondary (7.0)' };
+          }
+        }
+      });
+    }
+
+    const fullList = [];
+    [6, 7].forEach(thirdOctet => {
+      for (let host = 0; host <= 255; host++) {
+        const ipStr = `165.99.${thirdOctet}.${host}`;
+        const isReservedOctet = host === 0 || host === 255;
+        const mapped = mapDict[ipStr];
+
+        if (mapped) {
+          fullList.push({
+            ip: ipStr,
+            thirdOctet,
+            host,
+            status: mapped.status || 'using',
+            isUsed: true,
+            mapped: mapped
+          });
+        } else {
+          fullList.push({
+            ip: ipStr,
+            thirdOctet,
+            host,
+            status: isReservedOctet ? 'network/broadcast' : 'available',
+            isUsed: false,
+            mapped: null
+          });
+        }
+      }
+    });
+    return fullList;
   };
 
   const fetchPublicIPs = async () => {
@@ -8519,90 +8591,406 @@ export default function App() {
 
         {/* Public IP & DNS Tab */}
         {activeTab === 'public' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             {/* Subnet 165.99.6.0/23 Metrics Header */}
             <div style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
               gap: '16px',
             }}>
-              <div className="stat-card" style={{ background: 'var(--color-bg-card)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
+              <div
+                className="stat-card"
+                onClick={() => setPubIpamFilterTab('all')}
+                style={{
+                  background: 'var(--color-bg-card)',
+                  padding: '16px 20px',
+                  borderRadius: '12px',
+                  border: pubIpamFilterTab === 'all' ? '2px solid #2563eb' : '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
                 <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500' }}>🌐 Subnet Block Range</div>
                 <div style={{ fontSize: '20px', fontWeight: '700', color: '#1e3a8a', fontFamily: 'var(--font-mono)', marginTop: '4px' }}>165.99.6.0/23</div>
-                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>Total 512 IPs (165.99.6.0 - 165.99.7.255)</div>
+                <div style={{ fontSize: '12px', color: '#64748b', marginTop: '2px' }}>សរុប 512 IPs (165.99.6.0 - 165.99.7.255)</div>
               </div>
-              <div className="stat-card" style={{ background: 'var(--color-bg-card)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500' }}>⚡ IPs In Use / Active</div>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#16a34a', marginTop: '4px' }}>{publicIPs.mappings ? publicIPs.mappings.length : 0} IPs</div>
-                <div style={{ fontSize: '12px', color: '#15803d', marginTop: '2px' }}>Assigned to NSSF Web/VPN Services</div>
+
+              <div
+                className="stat-card"
+                onClick={() => setPubIpamFilterTab('used')}
+                style={{
+                  background: 'var(--color-bg-card)',
+                  padding: '16px 20px',
+                  borderRadius: '12px',
+                  border: pubIpamFilterTab === 'used' ? '2px solid #16a34a' : '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500' }}>⚡ IPs កំពុងប្រើប្រាស់ (In Use)</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#16a34a', marginTop: '4px' }}>
+                  {publicIPs.mappings ? publicIPs.mappings.length : 0} IPs
+                </div>
+                <div style={{ fontSize: '12px', color: '#15803d', marginTop: '2px' }}>ភ្ជាប់ទៅកាន់ Web & Gateway Services</div>
               </div>
-              <div className="stat-card" style={{ background: 'var(--color-bg-card)', padding: '16px 20px', borderRadius: '12px', border: '1px solid var(--color-border)' }}>
-                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500' }}>🆓 Available / Unused IPs</div>
-                <div style={{ fontSize: '20px', fontWeight: '700', color: '#2563eb', marginTop: '4px' }}>{publicIPs.mappings ? Math.max(0, 512 - publicIPs.mappings.length) : 512} IPs</div>
-                <div style={{ fontSize: '12px', color: '#1d4ed8', marginTop: '2px' }}>Ready for new DNS & Service NAT</div>
+
+              <div
+                className="stat-card"
+                onClick={() => setPubIpamFilterTab('available')}
+                style={{
+                  background: 'var(--color-bg-card)',
+                  padding: '16px 20px',
+                  borderRadius: '12px',
+                  border: pubIpamFilterTab === 'available' ? '2px solid #2563eb' : '1px solid var(--color-border)',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <div style={{ fontSize: '13px', color: 'var(--color-text-muted)', fontWeight: '500' }}>🆓 IPs នៅទំនេរ (Available)</div>
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#2563eb', marginTop: '4px' }}>
+                  {publicIPs.mappings ? Math.max(0, 512 - publicIPs.mappings.length) : 512} IPs
+                </div>
+                <div style={{ fontSize: '12px', color: '#1d4ed8', marginTop: '2px' }}>អាចយកទៅកំណត់ DNS & Service NAT ថ្មី</div>
               </div>
             </div>
 
-            <div className="panel">
-              <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span className="panel-title">🌐 NSSF Public IP Host Mappings (Subnet 165.99.6.0/23)</span>
+            {/* Filter Controls & Search Bar */}
+            <div className="panel" style={{ padding: '16px 20px', display: 'flex', flexWrap: 'wrap', gap: '14px', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: 'var(--color-text-muted)', marginRight: '4px' }}>តម្រង IP:</span>
+                <button
+                  className={`btn ${pubIpamFilterTab === 'used' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '13px', borderRadius: '8px' }}
+                  onClick={() => setPubIpamFilterTab('used')}
+                >
+                  ⚡ កំពុងប្រើប្រាស់ ({publicIPs.mappings ? publicIPs.mappings.length : 0})
+                </button>
+                <button
+                  className={`btn ${pubIpamFilterTab === 'available' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '13px', borderRadius: '8px' }}
+                  onClick={() => setPubIpamFilterTab('available')}
+                >
+                  🆓 នៅទំនេរ ({publicIPs.mappings ? Math.max(0, 512 - publicIPs.mappings.length) : 512})
+                </button>
+                <button
+                  className={`btn ${pubIpamFilterTab === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+                  style={{ padding: '6px 14px', fontSize: '13px', borderRadius: '8px' }}
+                  onClick={() => setPubIpamFilterTab('all')}
+                >
+                  🌐 ទាំងអស់ (512 IPs)
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="🔍 ស្វែងរក IP, ឈ្មោះប្រព័ន្ធ, DNS..."
+                  value={pubIpamSearchTerm}
+                  onChange={(e) => setPubIpamSearchTerm(e.target.value)}
+                  style={{ width: '240px', padding: '6px 12px', fontSize: '13px' }}
+                />
+
+                <div style={{ display: 'flex', borderRadius: '8px', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
+                  <button
+                    onClick={() => setPubIpamViewMode('grid')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      border: 'none',
+                      background: pubIpamViewMode === 'grid' ? '#2563eb' : 'transparent',
+                      color: pubIpamViewMode === 'grid' ? '#fff' : 'var(--color-text)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    🧩 Visual Grid
+                  </button>
+                  <button
+                    onClick={() => setPubIpamViewMode('table')}
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      border: 'none',
+                      background: pubIpamViewMode === 'table' ? '#2563eb' : 'transparent',
+                      color: pubIpamViewMode === 'table' ? '#fff' : 'var(--color-text)',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    📊 Table List
+                  </button>
+                </div>
+
                 {!isViewer && (
-                  <button className="btn btn-primary" onClick={handleOpenAddPublicIp} style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px', cursor: 'pointer' }}>
-                    + ចាត់ចែង IP ថ្មី (Assign Public IP)
+                  <button className="btn btn-primary" onClick={handleOpenAddPublicIp} style={{ fontSize: '13px', padding: '6px 14px', borderRadius: '8px' }}>
+                    + ចាត់ចែង IP ថ្មី
                   </button>
                 )}
               </div>
-              <div className="data-table-container">
-                <table className="data-table">
-                  <thead>
-                    <tr>
-                      <th>ល.រ</th>
-                      <th>System/Host Name</th>
-                      <th>OLD Public IP</th>
-                      <th>NEW IP 6.0</th>
-                      <th>NEW IP 7.0</th>
-                      <th>DNS Name</th>
-                      <th>Status</th>
-                      <th>Firewall Allowed</th>
-                      <th>Public DNS Changed</th>
-                      <th>Note</th>
-                      {!isViewer && <th style={{ textAlign: 'center' }}>សកម្មភាព (Actions)</th>}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {publicIPs.mappings && publicIPs.mappings.map((m) => (
-                      <tr key={m.id}>
-                        <td>{m.no}</td>
-                        <td style={{ fontWeight: '600' }}>{m.name}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)' }}>{m.old_ip || '-'}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: '600', color: '#16a34a' }}>{m.new_ip_6 || '-'}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', fontWeight: '600', color: '#2563eb' }}>{m.new_ip_7 || '-'}</td>
-                        <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)' }}>{m.dns_name || '-'}</td>
-                        <td>
-                          <span className={`status-badge ${m.status === 'using' || m.status === 'Completed' ? 'badge-active' : 'badge-using'}`}>
-                            {m.status || 'using'}
-                          </span>
-                        </td>
-                        <td>{m.firewall_allowed || '-'}</td>
-                        <td>{m.public_dns_changed || '-'}</td>
-                        <td>{m.note} {m.note_other}</td>
-                        {!isViewer && (
-                          <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
-                            <button className="btn btn-secondary" style={{ padding: '3px 8px', fontSize: '12px', marginRight: '6px' }} onClick={() => handleEditPublicIp(m)}>
-                              ✏️ កែប្រែ
-                            </button>
-                            <button className="btn btn-danger" style={{ padding: '3px 8px', fontSize: '12px' }} onClick={() => handleDeletePublicIp(m.id)}>
-                              🗑️ លុប
-                            </button>
-                          </td>
-                        )}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
             </div>
 
+            {/* VISUAL MATRIX GRID VIEW */}
+            {pubIpamViewMode === 'grid' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                {/* Subnet 165.99.6.0/24 Matrix */}
+                {(pubIpamFilterTab === 'all' || pubIpamFilterTab === 'used' || pubIpamFilterTab === 'available') && (
+                  <div className="panel" style={{ padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#1e3a8a', fontFamily: 'var(--font-mono)' }}>
+                        🌐 Subnet Block: 165.99.6.0/24 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'normal' }}>(IPs 165.99.6.0 - 165.99.6.255)</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '14px', fontSize: '12px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#22c55e' }}></span> កំពុងប្រើ (In Use)
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }}></span> នៅទំនេរ (Available)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
+                      gap: '8px'
+                    }}>
+                      {getSubnetFullIpList()
+                        .filter(item => item.thirdOctet === 6)
+                        .filter(item => {
+                          if (pubIpamFilterTab === 'used') return item.isUsed;
+                          if (pubIpamFilterTab === 'available') return !item.isUsed && item.status === 'available';
+                          return true;
+                        })
+                        .filter(item => {
+                          if (!pubIpamSearchTerm) return true;
+                          const q = pubIpamSearchTerm.toLowerCase();
+                          return item.ip.includes(q) || (item.mapped && (item.mapped.name.toLowerCase().includes(q) || (item.mapped.dns_name || '').toLowerCase().includes(q)));
+                        })
+                        .map(item => (
+                          <div
+                            key={item.ip}
+                            onClick={() => {
+                              if (item.mapped) {
+                                handleEditPublicIp(item.mapped);
+                              } else if (item.status === 'available' && !isViewer) {
+                                handleOpenAddSpecificIp(item.ip);
+                              }
+                            }}
+                            title={item.mapped ? `${item.ip}\nHost: ${item.mapped.name}\nDNS: ${item.mapped.dns_name || '-'}\nNote: ${item.mapped.note || '-'}` : `${item.ip} - Available (Click to Assign)`}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              border: item.isUsed ? '1px solid #15803d' : '1px solid #93c5fd',
+                              background: item.isUsed ? '#f0fdf4' : '#eff6ff',
+                              color: item.isUsed ? '#14532d' : '#1e40af',
+                              cursor: item.status === 'available' || item.isUsed ? 'pointer' : 'default',
+                              transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '2px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', fontSize: '13px' }}>
+                                .{item.host}
+                              </span>
+                              <span style={{
+                                fontSize: '10px',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                background: item.isUsed ? '#22c55e' : '#3b82f6',
+                                color: '#fff',
+                                fontWeight: '600'
+                              }}>
+                                {item.isUsed ? 'USED' : 'FREE'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500', marginTop: '2px' }}>
+                              {item.mapped ? item.mapped.name : '165.99.6.' + item.host}
+                            </div>
+                            {item.mapped && item.mapped.dns_name && (
+                              <div style={{ fontSize: '10px', color: '#15803d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                🌐 {item.mapped.dns_name}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Subnet 165.99.7.0/24 Matrix */}
+                {(pubIpamFilterTab === 'all' || pubIpamFilterTab === 'used' || pubIpamFilterTab === 'available') && (
+                  <div className="panel" style={{ padding: '20px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                      <div style={{ fontSize: '15px', fontWeight: '700', color: '#1e3a8a', fontFamily: 'var(--font-mono)' }}>
+                        🌐 Subnet Block: 165.99.7.0/24 <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 'normal' }}>(IPs 165.99.7.0 - 165.99.7.255)</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '14px', fontSize: '12px' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#22c55e' }}></span> កំពុងប្រើ (In Use)
+                        </span>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                          <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: '#3b82f6' }}></span> នៅទំនេរ (Available)
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fill, minmax(135px, 1fr))',
+                      gap: '8px'
+                    }}>
+                      {getSubnetFullIpList()
+                        .filter(item => item.thirdOctet === 7)
+                        .filter(item => {
+                          if (pubIpamFilterTab === 'used') return item.isUsed;
+                          if (pubIpamFilterTab === 'available') return !item.isUsed && item.status === 'available';
+                          return true;
+                        })
+                        .filter(item => {
+                          if (!pubIpamSearchTerm) return true;
+                          const q = pubIpamSearchTerm.toLowerCase();
+                          return item.ip.includes(q) || (item.mapped && (item.mapped.name.toLowerCase().includes(q) || (item.mapped.dns_name || '').toLowerCase().includes(q)));
+                        })
+                        .map(item => (
+                          <div
+                            key={item.ip}
+                            onClick={() => {
+                              if (item.mapped) {
+                                handleEditPublicIp(item.mapped);
+                              } else if (item.status === 'available' && !isViewer) {
+                                handleOpenAddSpecificIp(item.ip);
+                              }
+                            }}
+                            title={item.mapped ? `${item.ip}\nHost: ${item.mapped.name}\nDNS: ${item.mapped.dns_name || '-'}\nNote: ${item.mapped.note || '-'}` : `${item.ip} - Available (Click to Assign)`}
+                            style={{
+                              padding: '8px 10px',
+                              borderRadius: '8px',
+                              border: item.isUsed ? '1px solid #15803d' : '1px solid #93c5fd',
+                              background: item.isUsed ? '#f0fdf4' : '#eff6ff',
+                              color: item.isUsed ? '#14532d' : '#1e40af',
+                              cursor: item.status === 'available' || item.isUsed ? 'pointer' : 'default',
+                              transition: 'transform 0.1s ease, box-shadow 0.1s ease',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '2px'
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', fontSize: '13px' }}>
+                                .{item.host}
+                              </span>
+                              <span style={{
+                                fontSize: '10px',
+                                padding: '1px 5px',
+                                borderRadius: '4px',
+                                background: item.isUsed ? '#22c55e' : '#3b82f6',
+                                color: '#fff',
+                                fontWeight: '600'
+                              }}>
+                                {item.isUsed ? 'USED' : 'FREE'}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: '11px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: '500', marginTop: '2px' }}>
+                              {item.mapped ? item.mapped.name : '165.99.7.' + item.host}
+                            </div>
+                            {item.mapped && item.mapped.dns_name && (
+                              <div style={{ fontSize: '10px', color: '#15803d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                🌐 {item.mapped.dns_name}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* DETAILED TABLE VIEW */}
+            {pubIpamViewMode === 'table' && (
+              <div className="panel">
+                <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span className="panel-title">
+                    🌐 បញ្ជីព័ត៌មានលម្អិត IPAM Range (165.99.6.0/23) - {pubIpamFilterTab === 'used' ? 'កំពុងប្រើប្រាស់' : pubIpamFilterTab === 'available' ? 'នៅទំនេរ' : 'ទាំងអស់'}
+                  </span>
+                </div>
+                <div className="data-table-container">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>IP Address</th>
+                        <th>Subnet Block</th>
+                        <th>System / Host Name</th>
+                        <th>DNS Domain Name</th>
+                        <th>ស្ថានភាព (Status)</th>
+                        <th>Firewall Allowed</th>
+                        <th>Public DNS Changed</th>
+                        <th>ចំណាំ (Notes)</th>
+                        {!isViewer && <th style={{ textAlign: 'center' }}>សកម្មភាព (Actions)</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {getSubnetFullIpList()
+                        .filter(item => {
+                          if (pubIpamFilterTab === 'used') return item.isUsed;
+                          if (pubIpamFilterTab === 'available') return !item.isUsed && item.status === 'available';
+                          return true;
+                        })
+                        .filter(item => {
+                          if (!pubIpamSearchTerm) return true;
+                          const q = pubIpamSearchTerm.toLowerCase();
+                          return item.ip.includes(q) || (item.mapped && (item.mapped.name.toLowerCase().includes(q) || (item.mapped.dns_name || '').toLowerCase().includes(q)));
+                        })
+                        .map(item => (
+                          <tr key={item.ip}>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontWeight: '700', color: item.isUsed ? '#16a34a' : '#2563eb' }}>
+                              {item.ip}
+                            </td>
+                            <td style={{ fontFamily: 'var(--font-mono)', fontSize: '12px' }}>
+                              165.99.{item.thirdOctet}.0/24
+                            </td>
+                            <td style={{ fontWeight: item.isUsed ? '600' : 'normal' }}>
+                              {item.mapped ? item.mapped.name : '-'}
+                            </td>
+                            <td style={{ fontFamily: 'var(--font-mono)', color: 'var(--color-accent)' }}>
+                              {item.mapped ? item.mapped.dns_name || '-' : '-'}
+                            </td>
+                            <td>
+                              <span className={`status-badge ${item.isUsed ? 'badge-active' : 'badge-using'}`}>
+                                {item.isUsed ? (item.mapped?.status || 'using') : item.status}
+                              </span>
+                            </td>
+                            <td>{item.mapped ? item.mapped.firewall_allowed || '-' : '-'}</td>
+                            <td>{item.mapped ? item.mapped.public_dns_changed || '-' : '-'}</td>
+                            <td>{item.mapped ? `${item.mapped.note || ''} ${item.mapped.note_other || ''}` : 'Unassigned IP Address'}</td>
+                            {!isViewer && (
+                              <td style={{ textAlign: 'center', whiteSpace: 'nowrap' }}>
+                                {item.isUsed ? (
+                                  <>
+                                    <button className="btn btn-secondary" style={{ padding: '3px 8px', fontSize: '12px', marginRight: '6px' }} onClick={() => handleEditPublicIp(item.mapped)}>
+                                      ✏️ កែប្រែ
+                                    </button>
+                                    <button className="btn btn-danger" style={{ padding: '3px 8px', fontSize: '12px' }} onClick={() => handleDeletePublicIp(item.mapped.id)}>
+                                      🗑️ លុប
+                                    </button>
+                                  </>
+                                ) : (
+                                  item.status === 'available' && (
+                                    <button className="btn btn-primary" style={{ padding: '3px 10px', fontSize: '12px' }} onClick={() => handleOpenAddSpecificIp(item.ip)}>
+                                      + ចាត់ចែង IP នេះ
+                                    </button>
+                                  )
+                                )}
+                              </td>
+                            )}
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
             {/* Modal Dialog for Add / Edit Public IP */}
             {publicIpModal && (
               <div className="modal-overlay">
