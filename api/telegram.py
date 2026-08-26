@@ -1291,8 +1291,8 @@ def process_telegram_incoming_update(update: dict):
                 if matched_user:
                     user_dict = dict(matched_user)
                     cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (str(chat_id), user_dict['id']))
-                    cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status, user_id, username, full_name) VALUES (?, ?, ?, ?, ?)",
-                                   (token, 'authorized', user_dict['id'], user_dict['username'], user_dict['full_name']))
+                    cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status, username) VALUES (?, ?, ?)",
+                                   (token, 'authorized', user_dict['username']))
                     conn.commit()
                     conn.close()
                     
