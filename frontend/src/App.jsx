@@ -310,13 +310,15 @@ export default function App() {
 
   const normalizeKhmerName = (rawName) => {
     if (!rawName || typeof rawName !== 'string') return '';
-    let clean = rawName.trim();
-    // Strip honorific prefixes: លោក, លោកស្រី, កញ្ញា, បង, លោកជំទាវ, ឯកឧត្តម
+    let clean = rawName
+      .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, ' ')
+      .trim();
+    clean = clean.replace(/\s+/g, ' ');
     const honorificRegex = /^(លោកស្រី|លោកជំទាវ|ឯកឧត្តម|លោក|កញ្ញា|បង)\s+/i;
     while (honorificRegex.test(clean)) {
       clean = clean.replace(honorificRegex, '').trim();
     }
-    return clean;
+    return clean.replace(/\s+/g, ' ').trim();
   };
 
   const getStaffPoolFromShiftSchedule = () => {
@@ -2116,7 +2118,7 @@ export default function App() {
     else if (activeTab === 'switches') fetchSwitches();
     else if (activeTab === 'storage') fetchDriveFiles();
     else if (activeTab === 'users' && hasPermission('user_management', 'read')) fetchUsersList();
-    else if (activeTab === 'shift') fetchShiftSchedule();
+    else if (activeTab === 'shift' || activeTab === 'shift_generator') fetchShiftSchedule();
   };
 
   // Fetch Dashboard Stats
@@ -2152,7 +2154,7 @@ export default function App() {
       fetchDriveFiles();
     } else if (activeTab === 'users' && hasPermission('user_management', 'read')) {
       fetchUsersList();
-    } else if (activeTab === 'shift') {
+    } else if (activeTab === 'shift' || activeTab === 'shift_generator') {
       fetchShiftSchedule();
     }
     // reset inner filters
@@ -2165,7 +2167,15 @@ export default function App() {
       const res = await fetch(`${API_BASE}/shift/schedule`);
       if (res.ok) {
         const data = await res.json();
-        setShiftSchedule(data.schedule || {});
+        const rawSchedule = data.schedule || {};
+        const cleanedSchedule = {};
+        Object.keys(rawSchedule).forEach(dateKey => {
+          const names = rawSchedule[dateKey] || [];
+          cleanedSchedule[dateKey] = names
+            .map(n => normalizeKhmerName(n))
+            .filter(Boolean);
+        });
+        setShiftSchedule(cleanedSchedule);
       }
     } catch (err) {
       console.error('Error fetching shift schedule:', err);

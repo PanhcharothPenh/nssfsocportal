@@ -2803,11 +2803,15 @@ def delete_user(user_id: int):
 FIRESTORE_REST_URL = "https://firestore.googleapis.com/v1/projects/shift-dashboard-efda2/databases/(default)/documents/shiftboard/schedule"
 
 def normalize_khmer_name(name: str) -> str:
-    if not name:
+    if not name or not isinstance(name, str):
         return ""
-    clean = name.strip()
     import re
-    clean = re.sub(r'^(លោកស្រី|លោកជំទាវ|ឯកឧត្តម|លោក|កញ្ញា|បង)\s+', '', clean).strip()
+    clean = re.sub(r'[\u200B-\u200D\uFEFF\u00A0]', ' ', name).strip()
+    clean = re.sub(r'\s+', ' ', clean)
+    honorific_regex = r'^(លោកស្រី|លោកជំទាវ|ឯកឧត្តម|លោក|កញ្ញា|បង)\s+'
+    while re.search(honorific_regex, clean, flags=re.IGNORECASE):
+        clean = re.sub(honorific_regex, '', clean, flags=re.IGNORECASE).strip()
+    clean = re.sub(r'\s+', ' ', clean).strip()
     return clean
 
 def fetch_shift_schedule_from_firestore():
