@@ -2393,6 +2393,7 @@ def send_user_telegram_notification(user_id: int):
 @app.post("/api/send-pdf-to-telegram")
 async def send_pdf_to_telegram(
     file: UploadFile = File(...),
+    attached_files: List[UploadFile] = File(None),
     chat_id: Optional[str] = Form(None),
     title: Optional[str] = Form(None),
     applicant_name: Optional[str] = Form(None),
@@ -2431,38 +2432,53 @@ async def send_pdf_to_telegram(
         if applicant_name:
             caption_parts.append(f"• <b>សាម៉ីខ្លួនស្នើសុំ ៖</b> <b>{applicant_name}</b>")
         if department:
-            caption_parts.append(f"• <b>អង្គភាព/នាយកដ្ឋាន ៖</b> {department}")
+            caption_parts.append(f"• <b>អង្គភាព/នាយកដ្ឋាន ៖</b> <b>{department}</b>")
         if reason:
             caption_parts.append(f"• <b>មូលហេតុ ៖</b> {reason}")
         if recipient_note:
             caption_parts.append(recipient_note)
             
-        caption_parts.append("\n✅ <i>លិខិតផ្លូវការជា PDF ត្រូវបានបង្កើត និងផ្ញើចេញពី NSSF SOC Portal!</i>")
-        
+        caption_parts.append("\n✅ <b>លិខិតផ្លូវការជា PDF ត្រូវបានបង្កើត និងផ្ញើចេញពី NSSF SOC Portal!</b>")
         caption_text = "\n".join(caption_parts)
         
         url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
-        files = {
-            "document": (filename, file_bytes, "application/pdf")
-        }
-        data = {
-            "chat_id": target_chat,
-            "caption": caption_text,
-            "parse_mode": "HTML"
-        }
+        files = {"document": (filename, file_bytes, "application/pdf")}
+        data = {"chat_id": target_chat, "caption": caption_text, "parse_mode": "HTML"}
         
         res = requests.post(url, data=data, files=files, timeout=30)
-        if res.status_code == 200:
-            return {"status": "success", "message": "បានផ្ញើលិខិតជា PDF ទៅកាន់ Telegram រួចរាល់!"}
-        else:
-            # Fallback to group chat if direct chat fails
-            if str(target_chat).strip() != str(default_group).strip():
-                data["chat_id"] = default_group
-                data["caption"] = caption_text + "\n\n⚠️ <i>(បានផ្ញើចូល Group ដោយសារសាម៉ីខ្លួនមិនទាន់បាន Start Telegram Bot)</i>"
-                res_g = requests.post(url, data=data, files=files, timeout=30)
-                if res_g.status_code == 200:
-                    return {"status": "success", "message": "បានផ្ញើលិខិតជា PDF ទៅកាន់ Telegram Group រួចរាល់!"}
+        
+        # Fallback to group chat if direct chat fails
+        if res.status_code != 200 and str(target_chat).strip() != str(default_group).strip():
+            target_chat = default_group
+            data["chat_id"] = default_group
+            data["caption"] = caption_text + "\n⚠️ <b>(បានផ្ញើចូល Group ដោយសារសាម៉ីខ្លួនមិនទាន់បាន Start Telegram Bot)</b>"
+            res = requests.post(url, data=data, files=files, timeout=30)
+            
+        if res.status_code != 200:
             raise HTTPException(status_code=400, detail=f"Telegram API Error: {res.text}")
+
+        # Send Extra File Attachments if provided
+        if attached_files:
+            for extra_f in attached_files:
+                if not extra_f.filename:
+                    continue
+                ef_bytes = await extra_f.read()
+                ef_name = extra_f.filename
+                ef_mime = extra_f.content_type or "application/octet-stream"
+                
+                extra_caption = f"📎 <b>ឯកសារភ្ជាប់បន្ថែម ៖</b> <code>{ef_name}</code>\n• សាម៉ីខ្លួន ៖ <b>{applicant_name or 'N/A'}</b>"
+                
+                is_img = ef_mime.startswith("image/") or any(ef_name.lower().endswith(ext) for ext in [".png", ".jpg", ".jpeg", ".gif", ".webp"])
+                endpoint = "sendPhoto" if is_img else "sendDocument"
+                param_name = "photo" if is_img else "document"
+                
+                req_url = f"https://api.telegram.org/bot{bot_token}/{endpoint}"
+                req_files = {param_name: (ef_name, ef_bytes, ef_mime)}
+                req_data = {"chat_id": target_chat, "caption": extra_caption, "parse_mode": "HTML"}
+                
+                requests.post(req_url, data=req_data, files=req_files, timeout=30)
+
+        return {"status": "success", "message": "បានផ្ញើលិខិតជា PDF និងឯកសារភ្ជាប់ទៅកាន់ Telegram រួចរាល់!"}
             
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -204,6 +204,14 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
       formData.append('department', department || '');
       formData.append('reason', reason || '');
       
+      if (attachedFiles && attachedFiles.length > 0) {
+        attachedFiles.forEach(item => {
+          if (item.rawFile) {
+            formData.append('attached_files', item.rawFile);
+          }
+        });
+      }
+      
       const response = await fetch('/api/send-pdf-to-telegram', {
         method: 'POST',
         body: formData
