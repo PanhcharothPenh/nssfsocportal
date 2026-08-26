@@ -2,6 +2,7 @@ import sys
 import os
 import sqlite3
 import time
+import requests
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Request, Body, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
@@ -2416,8 +2417,29 @@ async def send_pdf_to_telegram(
 ):
     try:
         bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAFahP_Ikijfy7v6vlR7iVczKuc-IJ15wxc"
-        target_chat = chat_id or os.getenv("TELEGRAM_CHAT_ID") or "-1002124589536"
+        default_group = os.getenv("TELEGRAM_CHAT_ID") or "-1002124589536"
         
+        target_chat = default_group
+        recipient_note = ""
+        
+        if chat_id and str(chat_id).strip() and str(chat_id).strip() != "group":
+            cid = str(chat_id).strip()
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT full_name, username, telegram_chat_id, telegram_username FROM users WHERE CAST(id AS TEXT) = ? OR username = ? OR telegram_chat_id = ? OR LOWER(telegram_username) = LOWER(?)", (cid, cid, cid, cid.replace("@", "")))
+            u = cursor.fetchone()
+            conn.close()
+            
+            if u and u['telegram_chat_id']:
+                target_chat = str(u['telegram_chat_id'])
+                recipient_note = f"• <b>ផ្ញើផ្ទាល់ជូន ៖</b> <b>{u['full_name'] or u['username']}</b>"
+            elif u and u['telegram_username']:
+                recipient_note = f"• <b>ផ្ញើជូន ៖</b> @{u['telegram_username']} ({u['full_name'] or u['username']})"
+            elif u:
+                recipient_note = f"• <b>ផ្ញើជូន ៖</b> <b>{u['full_name'] or u['username']}</b>"
+            else:
+                target_chat = cid
+
         file_bytes = await file.read()
         filename = file.filename or "SOC_Request_Form.pdf"
         
@@ -2428,6 +2450,9 @@ async def send_pdf_to_telegram(
             caption_parts.append(f"• <b>អង្គភាព/នាយកដ្ឋាន ៖</b> {department}")
         if reason:
             caption_parts.append(f"• <b>មូលហេតុ ៖</b> {reason}")
+        if recipient_note:
+            caption_parts.append(recipient_note)
+            
         caption_parts.append("\n✅ <i>លិខិតផ្លូវការជា PDF ត្រូវបានបង្កើត និងផ្ញើចេញពី NSSF SOC Portal!</i>")
         
         caption_text = "\n".join(caption_parts)
@@ -2446,6 +2471,13 @@ async def send_pdf_to_telegram(
         if res.status_code == 200:
             return {"status": "success", "message": "បានផ្ញើលិខិតជា PDF ទៅកាន់ Telegram រួចរាល់!"}
         else:
+            # Fallback to group chat if direct chat fails
+            if str(target_chat).strip() != str(default_group).strip():
+                data["chat_id"] = default_group
+                data["caption"] = caption_text + "\n\n⚠️ <i>(បានផ្ញើចូល Group ដោយសារសាម៉ីខ្លួនមិនទាន់បាន Start Telegram Bot)</i>"
+                res_g = requests.post(url, data=data, files=files, timeout=30)
+                if res_g.status_code == 200:
+                    return {"status": "success", "message": "បានផ្ញើលិខិតជា PDF ទៅកាន់ Telegram Group រួចរាល់!"}
             raise HTTPException(status_code=400, detail=f"Telegram API Error: {res.text}")
             
     except Exception as e:

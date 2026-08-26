@@ -72,6 +72,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
 
   // Attached files ("another file too")
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [targetTelegramRecipient, setTargetTelegramRecipient] = useState('group');
 
   // Auto-Fill Handler
   const handleAutoFillUser = () => {
@@ -197,6 +198,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
       
       const formData = new FormData();
       formData.append('file', pdfBlob, `NSSF_Request_${applicantName || 'SOC'}.pdf`);
+      formData.append('chat_id', targetTelegramRecipient);
       formData.append('title', docTitle || 'ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC');
       formData.append('applicant_name', applicantName || '');
       formData.append('department', department || '');
@@ -739,16 +741,32 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
       </div>
 
       {/* Action Bar */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px', flexWrap: 'wrap' }}>
-        <button
-          type="button"
-          className="btn btn-info"
-          onClick={handleSendPdfToTelegram}
-          disabled={isSendingTelegram}
-          style={{ borderRadius: '10px', padding: '10px 20px', fontWeight: '800', backgroundColor: '#0088cc', borderColor: '#0088cc', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0,136,204,0.3)' }}
-        >
-          {isSendingTelegram ? '⏳ កំពុងផ្ញើ...' : '📲 ផ្ញើជា PDF ទៅ Telegram'}
-        </button>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <select
+            className="form-input"
+            value={targetTelegramRecipient}
+            onChange={(e) => setTargetTelegramRecipient(e.target.value)}
+            style={{ padding: '8px 10px', fontSize: '12.5px', borderRadius: '10px', borderColor: '#0088cc', color: '#0f172a', fontWeight: '700', backgroundColor: '#f0f9ff' }}
+          >
+            <option value="group">📢 ផ្ញើចូល Telegram Group SOC (Default)</option>
+            {usersList && usersList.map(u => (
+              <option key={u.id} value={u.telegram_chat_id || u.username}>
+                👤 ផ្ញើជូន ៖ {u.full_name || u.username} ({u.position || 'មន្ត្រី'})
+              </option>
+            ))}
+          </select>
+          
+          <button
+            type="button"
+            className="btn btn-info"
+            onClick={handleSendPdfToTelegram}
+            disabled={isSendingTelegram}
+            style={{ borderRadius: '10px', padding: '10px 18px', fontWeight: '800', backgroundColor: '#0088cc', borderColor: '#0088cc', color: '#fff', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 12px rgba(0,136,204,0.3)' }}
+          >
+            {isSendingTelegram ? '⏳ កំពុងផ្ញើ...' : '📲 ផ្ញើជា PDF ទៅ Telegram'}
+          </button>
+        </div>
 
         <button type="button" className="btn btn-primary" onClick={handlePrintPDF} style={{ borderRadius: '10px', padding: '10px 24px', fontWeight: '800', backgroundColor: '#10b981', borderColor: '#10b981' }}>
           🖨️ បោះពុម្ព / នាំចេញ PDF (ទម្រង់ដើម ១០០%)
