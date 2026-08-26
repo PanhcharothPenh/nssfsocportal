@@ -308,14 +308,29 @@ export default function App() {
   const [generatedShiftPreview, setGeneratedShiftPreview] = useState(null);
   const [isSavingGeneratedShift, setIsSavingGeneratedShift] = useState(false);
 
-  const handleOpenRandomShiftModal = () => {
-    let pool = [];
-    if (usersList && usersList.length > 0) {
+  const getStaffPoolFromShiftSchedule = () => {
+    const namesSet = new Set();
+    Object.values(shiftSchedule || {}).forEach(namesList => {
+      if (Array.isArray(namesList)) {
+        namesList.forEach(n => {
+          if (n && typeof n === 'string' && n.trim()) {
+            namesSet.add(n.trim());
+          }
+        });
+      }
+    });
+    let pool = Array.from(namesSet);
+    if (!pool.length && usersList && usersList.length > 0) {
       pool = usersList.map(u => u.full_name || u.username).filter(Boolean);
     }
     if (!pool.length) {
       pool = ['អ៊ុក សុធារ៉ារិទ្ធ', 'ពេញ បញ្ញារតន៍', 'ហ៊ាង ចាន់ថន', 'ហន សុភ័ក្រ', 'ចាន់ រដ្ឋា', 'សោម ចាន់ឌី', 'លី ម៉េង', 'គីម សៀង', 'កែវ វិបុល', 'ជា សុខា'];
     }
+    return pool;
+  };
+
+  const handleOpenRandomShiftModal = () => {
+    const pool = getStaffPoolFromShiftSchedule();
     setRandomSelectedStaff(pool);
     const nextMonth = new Date();
     nextMonth.setMonth(nextMonth.getMonth() + 1);
@@ -3622,16 +3637,13 @@ export default function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <label style={{ fontWeight: '800', fontSize: '13.5px', color: '#1e3a8a' }}>👥 ជ្រើសរើសបុគ្គលិកចូលរួមប្រចាំការ ({randomSelectedStaff.length} នាក់) ៖</label>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <button type="button" className="btn btn-secondary" onClick={() => setRandomSelectedStaff((usersList && usersList.length > 0 ? usersList : [{ full_name: 'អ៊ុក សុធារ៉ារិទ្ធ' }, { full_name: 'ពេញ បញ្ញារតន៍' }, { full_name: 'ហ៊ាង ចាន់ថន' }, { full_name: 'ហន សុភ័ក្រ' }, { full_name: 'ចាន់ រដ្ឋា' }, { full_name: 'សោម ចាន់ឌី' }, { full_name: 'លី ម៉េង' }, { full_name: 'គីម សៀង' }]).map(u => u.full_name || u.username))} style={{ padding: '4px 10px', fontSize: '11px' }}>ជ្រើសរើសទាំងអស់</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setRandomSelectedStaff(getStaffPoolFromShiftSchedule())} style={{ padding: '4px 10px', fontSize: '11px' }}>ជ្រើសរើសទាំងអស់</button>
                     <button type="button" className="btn btn-secondary" onClick={() => setRandomSelectedStaff([])} style={{ padding: '4px 10px', fontSize: '11px' }}>សម្អាត</button>
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px', maxHeight: '180px', overflowY: 'auto', paddingRight: '6px' }}>
-                  {(usersList && usersList.length > 0 ? usersList : [
-                    { full_name: 'អ៊ុក សុធារ៉ារិទ្ធ' }, { full_name: 'ពេញ បញ្ញារតន៍' }, { full_name: 'ហ៊ាង ចាន់ថន' }, { full_name: 'ហន សុភ័ក្រ' }, { full_name: 'ចាន់ រដ្ឋា' }, { full_name: 'សោម ចាន់ឌី' }, { full_name: 'លី ម៉េង' }, { full_name: 'គីម សៀង' }
-                  ]).map((u, i) => {
-                    const name = u.full_name || u.username;
+                  {getStaffPoolFromShiftSchedule().map((name, i) => {
                     const isChecked = randomSelectedStaff.includes(name);
                     return (
                       <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '8px', backgroundColor: isChecked ? '#eff6ff' : '#fff', border: `1px solid ${isChecked ? '#93c5fd' : '#cbd5e1'}`, fontSize: '12.5px', cursor: 'pointer', fontWeight: isChecked ? '700' : 'normal' }}>
