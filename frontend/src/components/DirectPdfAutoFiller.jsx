@@ -211,10 +211,16 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
         filename:     'NSSF_SOC_Request_Form.pdf',
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: 'avoid-all' }
       };
       
+      const origStyle = element.getAttribute('style') || '';
+      element.style.maxHeight = '295mm';
+      element.style.overflow = 'hidden';
+      
       const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+      element.setAttribute('style', origStyle);
       
       const formData = new FormData();
       formData.append('file', pdfBlob, 'NSSF_SOC_Request_Form.pdf');

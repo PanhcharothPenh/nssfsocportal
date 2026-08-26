@@ -208,8 +208,15 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
         filename:     'NSSF_SOC_Request_Form.pdf',
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true, logging: false },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+        pagebreak:    { mode: 'avoid-all' }
       };
+      
+      const docNode = tempDiv.firstElementChild || tempDiv;
+      if (docNode) {
+        docNode.style.maxHeight = '295mm';
+        docNode.style.overflow = 'hidden';
+      }
       
       const pdfBlob = await html2pdf().set(opt).from(tempDiv).output('blob');
       document.body.removeChild(tempDiv);
