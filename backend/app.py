@@ -2819,10 +2819,40 @@ def fetch_shift_schedule_from_firestore():
         print("Error fetching Firestore shift schedule:", e)
     return {}
 
+def get_merged_shift_schedule():
+    schedule = fetch_shift_schedule_from_firestore() or {}
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS custom_shift_schedules (
+                date_str TEXT PRIMARY KEY,
+                officer_names TEXT
+            )
+        """)
+        conn.commit()
+        cursor.execute("SELECT date_str, officer_names FROM custom_shift_schedules")
+        rows = cursor.fetchall()
+        conn.close()
+        
+        import json
+        for r in rows:
+            d_str = r['date_str']
+            names_raw = r['officer_names']
+            try:
+                names = json.loads(names_raw) if names_raw else []
+            except Exception:
+                names = [n.strip() for n in names_raw.split(',') if n.strip()]
+            schedule[d_str] = names
+    except Exception as e:
+        print("SQLite shift schedule merge warning:", e)
+        
+    return schedule
+
 @app.get("/api/shift/today")
 def get_today_shift():
     from datetime import datetime
-    schedule = fetch_shift_schedule_from_firestore()
+    schedule = get_merged_shift_schedule()
     today_str = datetime.now().strftime("%Y-%m-%d")
     today_names = schedule.get(today_str, [])
     return {
@@ -2833,8 +2863,87 @@ def get_today_shift():
 
 @app.get("/api/shift/schedule")
 def get_full_shift_schedule():
-    schedule = fetch_shift_schedule_from_firestore()
+    schedule = get_merged_shift_schedule()
     return {"schedule": schedule}
+
+class ShiftGeneratePayload(BaseModel):
+    year: int
+    month: int
+    staff_list: List[str]
+    officers_per_night: Optional[int] = 2
+    avoid_consecutive: Optional[bool] = True
+
+@app.post("/api/shift/generate")
+def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
+    import calendar
+    import random
+    
+    year = payload.year
+    month = payload.month
+    staff_list = [s.strip() for s in payload.staff_list if s and s.strip()]
+    officers_per_night = max(1, payload.officers_per_night or 2)
+    
+    if not staff_list:
+        raise HTTPException(status_code=400, detail="សូមជ្រើសរើសបញ្ជីបុគ្គលិកយ៉ាងតិច ១នាក់!")
+        
+    num_days = calendar.monthrange(year, month)[1]
+    staff_counts = {s: 0 for s in staff_list}
+    generated_schedule = {}
+    prev_assigned = set()
+    
+    for d in range(1, num_days + 1):
+        date_str = f"{year:04d}-{month:02d}-{d:02d}"
+        candidates = [s for s in staff_list if not (payload.avoid_consecutive and s in prev_assigned)]
+        if len(candidates) < officers_per_night:
+            candidates = list(staff_list)
+            
+        candidates.sort(key=lambda s: (staff_counts[s], random.random()))
+        assigned_today = candidates[:officers_per_night]
+        for s in assigned_today:
+            staff_counts[s] += 1
+            
+        generated_schedule[date_str] = assigned_today
+        prev_assigned = set(assigned_today)
+        
+    return {
+        "status": "success",
+        "year": year,
+        "month": month,
+        "days_count": num_days,
+        "officers_per_night": officers_per_night,
+        "generated_schedule": generated_schedule,
+        "staff_statistics": staff_counts
+    }
+
+class ShiftSavePayload(BaseModel):
+    schedule: Dict[str, List[str]]
+
+@app.post("/api/shift/save")
+def save_shift_schedule(payload: ShiftSavePayload):
+    import json
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS custom_shift_schedules (
+                date_str TEXT PRIMARY KEY,
+                officer_names TEXT
+            )
+        """)
+        
+        for date_str, names in payload.schedule.items():
+            names_json = json.dumps(names, ensure_ascii=False)
+            cursor.execute("""
+                INSERT INTO custom_shift_schedules (date_str, officer_names)
+                VALUES (?, ?)
+                ON CONFLICT(date_str) DO UPDATE SET officer_names = excluded.officer_names
+            """, (date_str, names_json))
+            
+        conn.commit()
+        conn.close()
+        return {"status": "success", "message": "បានរក្សាទុកកាលវិភាគប្រចាំការថ្មីរួចរាល់!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.api_route("/api/shift/notify-today", methods=["GET", "POST"])
 def notify_today_shift_staff():

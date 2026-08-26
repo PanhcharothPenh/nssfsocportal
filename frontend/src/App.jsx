@@ -290,6 +290,110 @@ export default function App() {
   const [isShiftLoading, setIsShiftLoading] = useState(false);
   const [isNotifyingShift, setIsNotifyingShift] = useState(false);
   const [shiftNotifyResult, setShiftNotifyResult] = useState(null);
+  
+  // Shift Random Generator & Monthly Statistics States
+  const [selectedShiftMonth, setSelectedShiftMonth] = useState(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  });
+  const [showRandomShiftModal, setShowRandomShiftModal] = useState(false);
+  const [randomShiftYear, setRandomShiftYear] = useState(() => new Date().getFullYear());
+  const [randomShiftMonth, setRandomShiftMonth] = useState(() => new Date().getMonth() + 1);
+  const [randomOfficersPerNight, setRandomOfficersPerNight] = useState(2);
+  const [randomAvoidConsecutive, setRandomAvoidConsecutive] = useState(true);
+  const [randomSelectedStaff, setRandomSelectedStaff] = useState([]);
+  const [isGeneratingShift, setIsGeneratingShift] = useState(false);
+  const [generatedShiftPreview, setGeneratedShiftPreview] = useState(null);
+  const [isSavingGeneratedShift, setIsSavingGeneratedShift] = useState(false);
+
+  const handleOpenRandomShiftModal = () => {
+    let pool = [];
+    if (usersList && usersList.length > 0) {
+      pool = usersList.map(u => u.full_name || u.username).filter(Boolean);
+    }
+    if (!pool.length) {
+      pool = ['អ៊ុក សុធារ៉ារិទ្ធ', 'ពេញ បញ្ញារតន៍', 'ហ៊ាង ចាន់ថន', 'ហន សុភ័ក្រ', 'ចាន់ រដ្ឋា', 'សោម ចាន់ឌី', 'លី ម៉េង', 'គីម សៀង', 'កែវ វិបុល', 'ជា សុខា'];
+    }
+    setRandomSelectedStaff(pool);
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    setRandomShiftYear(nextMonth.getFullYear());
+    setRandomShiftMonth(nextMonth.getMonth() + 1);
+    setGeneratedShiftPreview(null);
+    setShowRandomShiftModal(true);
+  };
+
+  const handleToggleStaffForRandom = (staffName) => {
+    setRandomSelectedStaff(prev => 
+      prev.includes(staffName) ? prev.filter(s => s !== staffName) : [...prev, staffName]
+    );
+  };
+
+  const handleGenerateRandomShift = async () => {
+    if (!randomSelectedStaff || randomSelectedStaff.length === 0) {
+      alert("សូមជ្រើសរើសបុគ្គលិកយ៉ាងតិច ១នាក់!");
+      return;
+    }
+    try {
+      setIsGeneratingShift(true);
+      const res = await fetch('/api/shift/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          year: parseInt(randomShiftYear),
+          month: parseInt(randomShiftMonth),
+          staff_list: randomSelectedStaff,
+          officers_per_night: parseInt(randomOfficersPerNight),
+          avoid_consecutive: randomAvoidConsecutive
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGeneratedShiftPreview(data);
+      } else {
+        alert(`❌ ការបង្កើតកាលវិភាគបរាជ័យ ៖ ${data.detail || 'សូមព្យាយាមម្តងទៀត'}`);
+      }
+    } catch (err) {
+      console.error("Generate shift error:", err);
+      alert(`❌ Error generating shift: ${err.message}`);
+    } finally {
+      setIsGeneratingShift(false);
+    }
+  };
+
+  const handleSaveGeneratedShift = async () => {
+    if (!generatedShiftPreview || !generatedShiftPreview.generated_schedule) return;
+    try {
+      setIsSavingGeneratedShift(true);
+      const res = await fetch('/api/shift/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          schedule: generatedShiftPreview.generated_schedule
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        alert("✅ បានរក្សាទុកកាលវិភាគប្រចាំការថ្មីរួចរាល់!");
+        setShiftSchedule(prev => ({
+          ...prev,
+          ...generatedShiftPreview.generated_schedule
+        }));
+        const ymStr = `${generatedShiftPreview.year}-${String(generatedShiftPreview.month).padStart(2, '0')}`;
+        setSelectedShiftMonth(ymStr);
+        setShowRandomShiftModal(false);
+      } else {
+        alert(`❌ ការរក្សាទុកបរាជ័យ ៖ ${data.detail || 'សូមព្យាយាមម្តងទៀត'}`);
+      }
+    } catch (err) {
+      console.error("Save shift error:", err);
+      alert(`❌ Error saving shift: ${err.message}`);
+    } finally {
+      setIsSavingGeneratedShift(false);
+    }
+  };
   const [dbSettings, setDbSettings] = useState({
     telegram_leave_template: 'សូមគោរព: {recipients}\n\nតាងនាមខ្ញុំបាទ/នាងខ្ញុំ៖ {name}\n\nកម្មវត្ថុ: {subject}\n\nមូលហេតុ: {reason}\n\n{closing}\n\nសូមអរគុណ។',
     telegram_alert_template: '🔔 <b>[NSSF SOC ALERT]</b>\n\n<b>Type:</b> {alert_type}\n<b>Host:</b> {host}\n<b>IP:</b> {ip}\n<b>Status:</b> {status}\n<b>Time:</b> {time}'
@@ -3041,6 +3145,7 @@ export default function App() {
     const filteredDates = Object.keys(shiftSchedule)
       .sort((a, b) => new Date(a) - new Date(b))
       .filter(dateKey => {
+        if (selectedShiftMonth && !dateKey.startsWith(selectedShiftMonth)) return false;
         const query = (subnetSearch || '').toLowerCase().trim();
         if (!query) return true;
         if (dateKey.includes(query)) return true;
@@ -3048,11 +3153,37 @@ export default function App() {
         return names.some(n => n.toLowerCase().includes(query));
       });
 
+    // Calculate Monthly Shift Statistics per Staff for selectedShiftMonth
+    const monthDates = Object.keys(shiftSchedule).filter(d => d.startsWith(selectedShiftMonth));
+    const staffStatsMap = {};
+    let totalSlotsAssigned = 0;
+
+    monthDates.forEach(dateKey => {
+      const names = shiftSchedule[dateKey] || [];
+      const dayNum = dateKey.split('-')[2];
+      names.forEach(name => {
+        totalSlotsAssigned += 1;
+        if (!staffStatsMap[name]) {
+          staffStatsMap[name] = { count: 0, dates: [] };
+        }
+        staffStatsMap[name].count += 1;
+        staffStatsMap[name].dates.push(dayNum);
+      });
+    });
+
+    const monthStaffStats = Object.keys(staffStatsMap)
+      .map(name => ({
+        name,
+        count: staffStatsMap[name].count,
+        dates: staffStatsMap[name].dates
+      }))
+      .sort((a, b) => b.count - a.count);
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         
         {/* Top Cards Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
           
           {/* Card 1: Today's Standing Officers */}
           <div className="card" style={{ 
@@ -3068,7 +3199,6 @@ export default function App() {
             position: 'relative',
             overflow: 'hidden'
           }}>
-            {/* Background Accent */}
             <div style={{ 
               position: 'absolute', 
               top: '-20px', 
@@ -3081,16 +3211,7 @@ export default function App() {
             }} />
             
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ 
-                width: '40px', 
-                height: '40px', 
-                borderRadius: '50%', 
-                backgroundColor: 'rgba(56, 189, 248, 0.2)', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '20px' 
-              }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(56, 189, 248, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
                 📅
               </div>
               <div>
@@ -3143,17 +3264,7 @@ export default function App() {
             gap: '16px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ 
-                width: '40px', 
-                height: '40px', 
-                borderRadius: '50%', 
-                backgroundColor: 'rgba(0, 136, 204, 0.1)', 
-                display: 'flex', 
-                alignItems: 'center', 
-                justifyContent: 'center', 
-                fontSize: '20px',
-                color: '#0088cc'
-              }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(0, 136, 204, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#0088cc' }}>
                 🔔
               </div>
               <div>
@@ -3164,7 +3275,7 @@ export default function App() {
 
             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <p style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5', margin: 0 }}>
-                ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការយប់នេះ ទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួនរបស់ពួកគេ។ សាររួមមានម៉ោង កាលបរិច្ឆេទ និងសមាជិកប្រចាំការរួមគ្នា។
+                ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការយប់នេះ ទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួនរបស់ពួកគេ។
               </p>
 
               {shiftNotifyResult && (
@@ -3199,19 +3310,115 @@ export default function App() {
                 cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer'
               }}
             >
-              {isNotifyingShift ? (
-                <>
-                  <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true" style={{ width: '14px', height: '14px', borderWidth: '2px', borderStyle: 'solid', borderColor: 'currentColor', borderRightColor: 'transparent', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.75s linear infinite' }} />
-                  <span>កំពុងបញ្ជូន...</span>
-                </>
-              ) : (
-                <>
-                  <span>📢 បញ្ជូនសាររំលឹកទៅ Telegram (Send Alert)</span>
-                </>
-              )}
+              {isNotifyingShift ? '⏳ កំពុងបញ្ជូន...' : '📢 បញ្ជូនសាររំលឹកទៅ Telegram (Send Alert)'}
             </button>
           </div>
 
+          {/* Card 3: Random Shift Generator Action Trigger */}
+          <div className="card" style={{ 
+            padding: '24px', 
+            borderRadius: '16px', 
+            backgroundColor: '#faf5ff', 
+            border: '1px solid #e9d5ff',
+            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#9333ea' }}>
+                🎲
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#6b21a8' }}>Random កាលវិភាគសម្រាប់ខែថ្មី</h3>
+                <span style={{ fontSize: '12px', color: '#7e22ce' }}>ចែកវេនប្រចាំការស្មើភាពគ្នា ១០០%</span>
+              </div>
+            </div>
+
+            <div style={{ borderTop: '1px solid #f3e8ff', paddingTop: '14px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <p style={{ fontSize: '12px', color: '#6b21a8', lineHeight: '1.5', margin: 0 }}>
+                បង្កើតកាលវិភាគប្រចាំការយប់ដោយ Random និងស្មើភាពគ្នា សម្រាប់ខែខាងមុខ និងបង្ហាញចំនួនវេនដែលបុគ្គលិកម្នាក់ៗទទួលបាន។
+              </p>
+            </div>
+
+            <button
+              className="btn btn-primary"
+              onClick={handleOpenRandomShiftModal}
+              style={{ 
+                width: '100%', 
+                padding: '12px', 
+                borderRadius: '10px', 
+                fontWeight: '800', 
+                fontSize: '13px',
+                backgroundColor: '#9333ea',
+                borderColor: '#9333ea',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 12px rgba(147, 51, 234, 0.3)'
+              }}
+            >
+              <span>🎲</span> ដំណើរការ Random កាលវិភាគខែថ្មី
+            </button>
+          </div>
+
+        </div>
+
+        {/* Monthly Shift Statistics per Staff (ប្រាប់ចំនួន ក្នុង១នាក់ ១ខែបានប៉ុន្មាន) */}
+        <div className="panel" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📊</span> របាយការណ៍សរុបចំនួនវេនប្រចាំការក្នុង ១ខែ ({selectedShiftMonth})
+              </h3>
+              <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+                សរុបថ្ងៃក្នុងខែ ៖ <b>{monthDates.length} ថ្ងៃ</b> | ចំនួនវេនសរុប ៖ <b>{totalSlotsAssigned} វេន</b>
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>ជ្រើសរើសខែ ៖</label>
+              <input
+                type="month"
+                className="form-input"
+                value={selectedShiftMonth}
+                onChange={(e) => setSelectedShiftMonth(e.target.value)}
+                style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', borderColor: '#3b82f6', color: '#1e3a8a', backgroundColor: '#eff6ff' }}
+              />
+            </div>
+          </div>
+
+          {/* Statistics Summary Grid */}
+          {monthStaffStats.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
+              {monthStaffStats.map((st, idx) => (
+                <div key={idx} style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'all 0.2s' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>👤</span> {st.name}
+                    </span>
+                    <span style={{ padding: '4px 12px', borderRadius: '20px', backgroundColor: '#3b82f6', color: '#fff', fontSize: '12px', fontWeight: '800', boxShadow: '0 2px 4px rgba(59,130,246,0.3)' }}>
+                      {st.count} វេន / ខែ
+                    </span>
+                  </div>
+                  
+                  <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
+                    <span style={{ fontWeight: '700' }}>📅 ថ្ងៃប្រចាំការ ៖</span>
+                    {st.dates.map((d, i) => (
+                      <span key={i} style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: '#e2e8f0', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+              ℹ️ មិនទាន់មានទិន្នន័យកាលវិភាគប្រចាំការសម្រាប់ខែ {selectedShiftMonth} ឡើយ។ សូមប្រើប្រាស់ប៊ូតុង **"Random កាលវិភាគសម្រាប់ខែថ្មី"** ដើម្បីបង្កើត!
+            </div>
+          )}
         </div>
 
         {/* Calendar Timeline / List Section */}
@@ -3302,6 +3509,155 @@ export default function App() {
             </table>
           </div>
         </div>
+
+        {/* Modal: Random Shift Generator Modal */}
+        {showRandomShiftModal && (
+          <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 99999, padding: '20px' }}>
+            <div className="modal-content" style={{ backgroundColor: '#fff', borderRadius: '20px', width: '100%', maxWidth: '780px', maxHeight: '90vh', overflowY: 'auto', border: 'none', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', padding: '24px' }}>
+              
+              {/* Modal Header */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '16px', marginBottom: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#f3e8ff', color: '#9333ea', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
+                    🎲
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a' }}>Random បង្កើតកាលវិភាគសម្រាប់ខែថ្មី</h3>
+                    <span style={{ fontSize: '12.5px', color: '#64748b' }}>ចែកវេនប្រចាំការស្មើភាពគ្នា និងបង្ហាញចំនួនវេនក្នុង ១នាក់</span>
+                  </div>
+                </div>
+                <button type="button" onClick={() => setShowRandomShiftModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+              </div>
+
+              {/* Form Options */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '13px' }}>ឆ្នាំ (Year) ៖</label>
+                  <input type="number" className="form-input" value={randomShiftYear} onChange={(e) => setRandomShiftYear(e.target.value)} style={{ padding: '8px 12px', fontSize: '13px' }} />
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '13px' }}>ខែ (Month) ៖</label>
+                  <select className="form-input" value={randomShiftMonth} onChange={(e) => setRandomShiftMonth(e.target.value)} style={{ padding: '8px 12px', fontSize: '13px' }}>
+                    {Array.from({ length: 12 }, (_, i) => (
+                      <option key={i + 1} value={i + 1}>ខែ {i + 1}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '13px' }}>ចំនួនមន្ត្រីក្នុង ១យប់ (Officers per Night) ៖</label>
+                  <input type="number" min="1" max="5" className="form-input" value={randomOfficersPerNight} onChange={(e) => setRandomOfficersPerNight(e.target.value)} style={{ padding: '8px 12px', fontSize: '13px' }} />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', paddingTop: '24px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '13px', fontWeight: '700', color: '#334155' }}>
+                    <input type="checkbox" checked={randomAvoidConsecutive} onChange={(e) => setRandomAvoidConsecutive(e.target.checked)} style={{ width: '18px', height: '18px' }} />
+                    ជៀសវាងវេនជាប់គ្នា ២យប់ (Avoid Consecutive Nights)
+                  </label>
+                </div>
+              </div>
+
+              {/* Staff Pool Selection */}
+              <div style={{ marginBottom: '20px', backgroundColor: '#f8fafc', padding: '16px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <label style={{ fontWeight: '800', fontSize: '13.5px', color: '#1e3a8a' }}>👥 ជ្រើសរើសបុគ្គលិកចូលរួមប្រចាំការ ({randomSelectedStaff.length} នាក់) ៖</label>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button type="button" className="btn btn-secondary" onClick={() => setRandomSelectedStaff((usersList && usersList.length > 0 ? usersList : [{ full_name: 'អ៊ុក សុធារ៉ារិទ្ធ' }, { full_name: 'ពេញ បញ្ញារតន៍' }, { full_name: 'ហ៊ាង ចាន់ថន' }, { full_name: 'ហន សុភ័ក្រ' }, { full_name: 'ចាន់ រដ្ឋា' }, { full_name: 'សោម ចាន់ឌី' }, { full_name: 'លី ម៉េង' }, { full_name: 'គីម សៀង' }]).map(u => u.full_name || u.username))} style={{ padding: '4px 10px', fontSize: '11px' }}>ជ្រើសរើសទាំងអស់</button>
+                    <button type="button" className="btn btn-secondary" onClick={() => setRandomSelectedStaff([])} style={{ padding: '4px 10px', fontSize: '11px' }}>សម្អាត</button>
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '10px', maxHeight: '180px', overflowY: 'auto', paddingRight: '6px' }}>
+                  {(usersList && usersList.length > 0 ? usersList : [
+                    { full_name: 'អ៊ុក សុធារ៉ារិទ្ធ' }, { full_name: 'ពេញ បញ្ញារតន៍' }, { full_name: 'ហ៊ាង ចាន់ថន' }, { full_name: 'ហន សុភ័ក្រ' }, { full_name: 'ចាន់ រដ្ឋា' }, { full_name: 'សោម ចាន់ឌី' }, { full_name: 'លី ម៉េង' }, { full_name: 'គីម សៀង' }
+                  ]).map((u, i) => {
+                    const name = u.full_name || u.username;
+                    const isChecked = randomSelectedStaff.includes(name);
+                    return (
+                      <label key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', borderRadius: '8px', backgroundColor: isChecked ? '#eff6ff' : '#fff', border: `1px solid ${isChecked ? '#93c5fd' : '#cbd5e1'}`, fontSize: '12.5px', cursor: 'pointer', fontWeight: isChecked ? '700' : 'normal' }}>
+                        <input type="checkbox" checked={isChecked} onChange={() => handleToggleStaffForRandom(name)} style={{ width: '16px', height: '16px' }} />
+                        <span>{name}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Action Button: Generate */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleGenerateRandomShift}
+                  disabled={isGeneratingShift}
+                  style={{ borderRadius: '12px', padding: '12px 28px', fontWeight: '800', fontSize: '14px', backgroundColor: '#9333ea', borderColor: '#9333ea', boxShadow: '0 4px 14px rgba(147,51,234,0.4)', display: 'flex', alignItems: 'center', gap: '8px' }}
+                >
+                  {isGeneratingShift ? '⏳ កំពុងដំណើរការ Random...' : '🎲 ដំណើរការ Random បង្កើតកាលវិភាគ'}
+                </button>
+              </div>
+
+              {/* Preview of Generated Shift & Statistics */}
+              {generatedShiftPreview && (
+                <div style={{ borderTop: '2px dashed #cbd5e1', paddingTop: '20px', marginTop: '20px' }}>
+                  <h4 style={{ margin: '0 0 14px 0', fontSize: '15px', fontWeight: '800', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>📊</span> លទ្ធផល Random & របាយការណ៍ចំនួនវេនក្នុង ១នាក់ (Preview)
+                  </h4>
+
+                  {/* Summary Table */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '10px', marginBottom: '20px' }}>
+                    {Object.entries(generatedShiftPreview.staff_statistics || {}).map(([name, count], i) => (
+                      <div key={i} style={{ padding: '10px 14px', borderRadius: '10px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '13px', fontWeight: '700', color: '#166534' }}>👤 {name}</span>
+                        <span style={{ padding: '2px 10px', borderRadius: '12px', backgroundColor: '#16a34a', color: '#fff', fontSize: '12px', fontWeight: '800' }}>
+                          {count} វេន / ខែ
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Generated Roster List */}
+                  <div style={{ maxHeight: '220px', overflowY: 'auto', border: '1px solid #cbd5e1', borderRadius: '10px', padding: '10px', backgroundColor: '#fff', marginBottom: '20px' }}>
+                    <table style={{ width: '100%', fontSize: '12.5px', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
+                          <th style={{ padding: '6px 10px' }}>កាលបរិច្ឆេទ</th>
+                          <th style={{ padding: '6px 10px' }}>មន្ត្រីប្រចាំការ</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(generatedShiftPreview.generated_schedule || {}).map(([dStr, names], idx) => (
+                          <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                            <td style={{ padding: '6px 10px', fontWeight: '700', color: '#1e293b' }}>{dStr}</td>
+                            <td style={{ padding: '6px 10px', color: '#334155' }}>
+                              {names.map((n, i) => (
+                                <span key={i} style={{ marginRight: '8px', padding: '2px 8px', borderRadius: '4px', backgroundColor: '#f1f5f9', fontSize: '11.5px', fontWeight: '700' }}>👤 {n}</span>
+                              ))}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Save Button */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                    <button type="button" className="btn btn-secondary" onClick={handleGenerateRandomShift} style={{ borderRadius: '10px', padding: '10px 18px', fontWeight: '700' }}>
+                      🔄 Random សារជាថ្មី
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleSaveGeneratedShift}
+                      disabled={isSavingGeneratedShift}
+                      style={{ borderRadius: '10px', padding: '10px 24px', fontWeight: '800', backgroundColor: '#10b981', borderColor: '#10b981', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}
+                    >
+                      {isSavingGeneratedShift ? '⏳ កំពុងរក្សាទុក...' : '💾 រក្សាទុកកាលវិភាគថ្មី (Save & Publish)'}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </div>
+          </div>
+        )}
 
       </div>
     );
