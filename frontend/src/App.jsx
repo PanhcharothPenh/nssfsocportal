@@ -3024,6 +3024,330 @@ export default function App() {
         </body>
       </html>
     `);
+  };
+
+  // Random Shift Schedule PDF export handler matching VPN Remote Access official styling
+  const handlePrintRandomShiftPDF = (scheduleData, staffStats, year, month, signatureImgOverride) => {
+    const daysKhmer = ['ថ្ងៃអាទិត្យ', 'ថ្ងៃចន្ទ', 'ថ្ងៃអង្គារ', 'ថ្ងៃពុធ', 'ថ្ងៃព្រហស្បតិ៍', 'ថ្ងៃសុក្រ', 'ថ្ងៃសៅរ៍'];
+    const monthsKhmer = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+    const digitsKhmer = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+    
+    const toKhmerDigits = (num) => {
+      return String(num).split('').map(d => digitsKhmer[d] || d).join('');
+    };
+    
+    const now = new Date();
+    const dayOfWeek = daysKhmer[now.getDay()];
+    const day = now.getDate();
+    const curMonth = monthsKhmer[now.getMonth()];
+    const curYear = now.getFullYear();
+    
+    const solarDate = `រាជធានីភ្នំពេញ ថ្ងៃទី${toKhmerDigits(day)} ខែ${curMonth} ឆ្នាំ${toKhmerDigits(curYear)}`;
+    
+    // Khmer Lunar Date Calculation
+    const refDate = new Date('2026-07-16');
+    const diffTime = now - refDate;
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const synodicMonth = 29.53059;
+    const lunarAge = (1.5 + diffDays) % synodicMonth;
+    const lunarAgeNormalized = lunarAge < 0 ? lunarAge + synodicMonth : lunarAge;
+    
+    const lunarDay = Math.floor(lunarAgeNormalized) + 1;
+    let lunarPhase = '';
+    let lunarDayNum = 1;
+    if (lunarDay <= 15) {
+      lunarPhase = 'កើត';
+      lunarDayNum = lunarDay;
+    } else {
+      lunarPhase = 'រោច';
+      lunarDayNum = lunarDay - 15;
+    }
+    
+    const lunarMonths = ['បុស្ស', 'មាឃ', 'ផល្គុន', 'ចេត្រ', 'ពិសាខ', 'ជេស្ឋ', 'អាសាឍ', 'ស្រាពណ៍', 'ភទ្របទ', 'អស្សុជ', 'កត្តិក', 'មិគសិរ'];
+    const currentLunarMonth = lunarMonths[(now.getMonth() + 6) % 12];
+    const zodiacs = ['ជូត', 'ឆ្លូវ', 'ខាល', 'ថោះ', 'រោង', 'ម្សាញ់', 'មមី', 'មមែ', 'វក', 'រកា', 'ច​ថ', 'កុរ'];
+    const currentZodiac = zodiacs[(curYear - 4) % 12];
+    const budEra = curYear + 544;
+    
+    const lunarDate = `${dayOfWeek} ${toKhmerDigits(lunarDayNum)}${lunarPhase} ខែ${currentLunarMonth} ឆ្នាំ${currentZodiac} អដ្ឋស័ក ព.ស.${toKhmerDigits(budEra)}`;
+
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert("សូមអនុញ្ញាត Popup Window នៅក្នុង Browser ដើម្បីទាញយក PDF!");
+      return;
+    }
+
+    const scheduleEntries = Object.entries(scheduleData || {}).sort((a, b) => a[0].localeCompare(b[0]));
+    
+    // Stats Summary Badges
+    const statsHtml = Object.entries(staffStats || {}).map(([name, count]) => `
+      <div style="display: inline-flex; align-items: center; justify-content: space-between; padding: 6px 12px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; margin: 4px; min-width: 170px;">
+        <span style="font-size: 11px; font-weight: 700; color: #166534;">👤 ${name}</span>
+        <span style="padding: 2px 8px; border-radius: 10px; background-color: #16a34a; color: #fff; font-size: 10.5px; font-weight: 800; margin-left: 8px;">${toKhmerDigits(count)} វេន</span>
+      </div>
+    `).join('');
+
+    const rowsHtml = scheduleEntries.map(([dateStr, officers], index) => {
+      let dateKhmerLabel = dateStr;
+      try {
+        const dObj = new Date(dateStr);
+        if (!isNaN(dObj.getTime())) {
+          const dName = daysKhmer[dObj.getDay()];
+          const parts = dateStr.split('-');
+          dateKhmerLabel = `${dName} ទី${toKhmerDigits(parseInt(parts[2] || '1'))}`;
+        }
+      } catch (e) {}
+
+      const userIconSvg = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#003bb3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; display: inline-block; vertical-align: middle;">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+      `;
+
+      const officersBadges = (Array.isArray(officers) ? officers : [officers]).map(name => `
+        <span style="display: inline-flex; align-items: center; padding: 4px 10px; margin: 2px 4px; border-radius: 6px; background-color: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700;">
+          ${userIconSvg} ${name}
+        </span>
+      `).join('');
+
+      const indexBadgeHtml = `<div style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background-color: #0b45b5; color: white; border-radius: 6px; font-weight: 800; font-size: 11px; margin: 0 auto;">${toKhmerDigits(index + 1)}</div>`;
+
+      return `
+        <tr>
+          <td style="text-align: center; vertical-align: middle;">${indexBadgeHtml}</td>
+          <td style="font-weight: 700; color: #0b45b5; white-space: nowrap;">${dateKhmerLabel}</td>
+          <td style="color: #475569; font-size: 10.5px; font-weight: 600; white-space: nowrap;">${dateStr}</td>
+          <td>${officersBadges}</td>
+          <td style="font-size: 10.5px; color: #334155; font-weight: 600; text-align: center;">🌙 យប់ (១៧:០០ - ០៨:០០)</td>
+          <td style="font-size: 10px; color: #64748b;">SOC Monitoring</td>
+        </tr>
+      `;
+    }).join('');
+
+    const targetMonthText = monthsKhmer[parseInt(month) - 1] || `ខែទី${toKhmerDigits(month)}`;
+    const targetYearText = toKhmerDigits(year);
+    const targetSignerName = (currentLoginUser && currentLoginUser.full_name) ? currentLoginUser.full_name : 'Miller';
+    const targetSignerTitle = 'អ្នករៀបចំកាលវិភាគប្រចាំការ';
+
+    printWindow.document.write(`
+      <html>
+        <head>
+          <title>NSSF SOC Standby Schedule - ${month}/${year}</title>
+          <style>
+            @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
+            
+            @font-face {
+              font-family: 'MiSans Khmer';
+              src: local('MiSans Khmer'), local('MiSansKhmer-Regular');
+            }
+            
+            body {
+              font-family: 'MiSans Khmer', 'Outfit', sans-serif;
+              margin: 40px;
+              color: #1e293b;
+              background-color: #fff;
+              font-size: 11px;
+            }
+            
+            .header-container {
+              display: flex;
+              justify-content: space-between;
+              align-items: flex-start;
+              margin-bottom: 20px;
+              width: 100%;
+            }
+            
+            .header-left {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
+            }
+            
+            .header-left-text-primary {
+              font-size: 13px;
+              font-weight: 800;
+              color: #0b45b5;
+              margin-top: 6px;
+            }
+            
+            .header-left-text-secondary {
+              font-size: 11px;
+              font-weight: 700;
+              color: #334155;
+              margin-top: 2px;
+            }
+
+            .header-left-text-soc {
+              font-size: 10px;
+              font-weight: 700;
+              color: #64748b;
+              margin-top: 1px;
+            }
+            
+            .header-right {
+              display: flex;
+              flex-direction: column;
+              align-items: center;
+              text-align: center;
+            }
+            
+            .header-right-title {
+              font-size: 13px;
+              font-weight: 800;
+              color: #1e293b;
+            }
+            
+            .header-right-subtitle {
+              font-size: 11px;
+              font-weight: 700;
+              color: #1e293b;
+              margin-top: 4px;
+            }
+            
+            .document-title {
+              text-align: center;
+              font-size: 15px;
+              font-weight: 800;
+              color: #0b45b5;
+              margin: 20px 0 10px 0;
+            }
+
+            .document-subtitle {
+              text-align: center;
+              font-size: 12px;
+              font-weight: 700;
+              color: #334155;
+              margin-bottom: 15px;
+            }
+            
+            table {
+              width: 100%;
+              border-collapse: collapse;
+              margin-top: 10px;
+            }
+            
+            th {
+              background-color: #0b45b5;
+              border: 1px solid #cbd5e1;
+              padding: 10px 8px;
+              font-weight: 800;
+              font-size: 11px;
+              text-align: left;
+              color: white;
+            }
+            
+            td {
+              border: 1px solid #cbd5e1;
+              padding: 10px 8px;
+              font-size: 11px;
+              color: #1e293b;
+              vertical-align: middle;
+            }
+            
+            tr:nth-child(even) {
+              background-color: #f8fafc;
+            }
+            
+            * {
+              -webkit-print-color-adjust: exact !important;
+              print-color-adjust: exact !important;
+              color-adjust: exact !important;
+            }
+            @media print {
+              * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+              }
+              body {
+                margin: 20px;
+              }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header-container">
+            <div class="header-left">
+              <img src="${nssfLogo}" style="width: 75px; height: 75px; object-fit: contain; margin-bottom: 2px;" alt="NSSF Logo" />
+              <div class="header-left-text-primary">បេឡាជាតិសន្តិសុខសង្គម</div>
+              <div class="header-left-text-secondary">នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
+              <div class="header-left-text-soc">ការិយាល័យមជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខសាយប័រ (SOC)</div>
+            </div>
+            
+            <div class="header-right">
+              <div class="header-right-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
+              <div class="header-right-subtitle">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+              <div style="display: flex; align-items: center; justify-content: center; margin-top: 8px;">
+                <svg width="100" height="12" viewBox="0 0 100 12" fill="none" stroke="#0b45b5" stroke-width="1.5">
+                  <line x1="0" y1="6" x2="35" y2="6" stroke="#0b45b5" />
+                  <circle cx="50" cy="6" r="2.5" fill="#0b45b5" />
+                  <circle cx="43" cy="6" r="1.2" fill="#0b45b5" />
+                  <circle cx="57" cy="6" r="1.2" fill="#0b45b5" />
+                  <line x1="65" y1="6" x2="100" y2="6" stroke="#0b45b5" stroke-linecap="round" />
+                </svg>
+              </div>
+            </div>
+          </div>
+          
+          <div class="document-title">តារាងកាលវិភាគមន្ត្រីប្រចាំការយប់ (Standby Roster)</div>
+          <div class="document-subtitle">ប្រចាំខែ${targetMonthText} ឆ្នាំ${targetYearText} (SOC Operation Monitoring)</div>
+          
+          <div style="width: 100%; height: 3px; background-color: #0b45b5; margin-bottom: 15px; margin-top: 5px;"></div>
+
+          ${statsHtml ? `
+            <div style="margin-bottom: 15px; padding: 10px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
+              <div style="font-weight: 800; color: #1e3a8a; font-size: 11.5px; margin-bottom: 6px;">📊 សេចក្តីសង្ខេបចំនួនវេនក្នុង ១នាក់ ៖</div>
+              <div style="display: flex; flex-wrap: wrap;">
+                ${statsHtml}
+              </div>
+            </div>
+          ` : ''}
+          
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 40px; text-align: center; font-weight: 800;">ល.រ</th>
+                <th style="width: 140px; font-weight: 800;">ថ្ងៃ / កាលបរិច្ឆេទ</th>
+                <th style="width: 90px; font-weight: 800;">Date</th>
+                <th style="font-weight: 800;">មន្ត្រីប្រចាំការ (Standby Officers)</th>
+                <th style="width: 140px; text-align: center; font-weight: 800;">វេនប្រចាំការ</th>
+                <th style="width: 110px; font-weight: 800;">ភារកិច្ច</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml}
+            </tbody>
+          </table>
+
+          <!-- Sign and Dates Container -->
+          <div style="margin-top: 40px; display: flex; justify-content: flex-end; width: 100%; page-break-inside: avoid;">
+            <div style="text-align: center; display: flex; flex-direction: column; align-items: center; width: 300px;">
+              <div style="font-size: 11px; color: #334155; margin-bottom: 2px;">${lunarDate}</div>
+              <div style="font-size: 11px; color: #334155; margin-bottom: 8px;">${solarDate}</div>
+              <div style="font-size: 11px; font-weight: 800; color: #0b45b5; margin-bottom: 2px;">${targetSignerTitle}</div>
+              
+              <!-- Signature container -->
+              <div style="height: 55px; display: flex; align-items: center; justify-content: center; margin: 2px 0;">
+                ${(signatureImgOverride !== undefined ? signatureImgOverride : signatureImage) ? `<img src="${signatureImgOverride !== undefined ? signatureImgOverride : signatureImage}" style="height: 50px; object-fit: contain; margin: 0;" alt="Signature" />` : '<div style="height: 50px; width: 150px; border-bottom: 1px dashed #cbd5e1; margin-top: 5px;"></div>'}
+              </div>
+              
+              <div style="font-size: 11px; font-weight: 800; color: #1e293b; margin-top: 2px;">${targetSignerName}</div>
+            </div>
+          </div>
+          
+          <script>
+            window.onload = function() {
+              setTimeout(function() {
+                window.print();
+                window.close();
+              }, 300);
+            };
+          </script>
+        </body>
+      </html>
+    `);
     printWindow.document.close();
   };
 
@@ -3442,17 +3766,50 @@ export default function App() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
             <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>📅 តារាងកាលវិភាគប្រចាំការយប់ (Standby Roster)</h3>
             
-            {/* Search Input within Roster Panel */}
-            <div className="search-container" style={{ width: '280px', margin: 0 }}>
-              <span className="search-icon-left">🔍</span>
-              <input
-                type="text"
-                className="search-input"
-                placeholder="ស្វែងរកថ្ងៃ ឬឈ្មោះបុគ្គលិក..."
-                value={subnetSearch}
-                onChange={(e) => setSubnetSearch(e.target.value)}
-                style={{ padding: '8px 12px 8px 32px', fontSize: '12.5px' }}
-              />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              {/* Export PDF Button */}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  const stats = {};
+                  Object.values(shiftSchedule || {}).forEach(names => {
+                    (Array.isArray(names) ? names : [names]).forEach(n => {
+                      if (n) stats[n] = (stats[n] || 0) + 1;
+                    });
+                  });
+                  const now = new Date();
+                  handlePrintRandomShiftPDF(shiftSchedule, stats, now.getFullYear(), now.getMonth() + 1);
+                }}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontWeight: '700',
+                  fontSize: '12.5px',
+                  backgroundColor: '#dc2626',
+                  color: '#fff',
+                  borderColor: '#dc2626',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer'
+                }}
+              >
+                📕 ទាញយកជា PDF
+              </button>
+
+              {/* Search Input within Roster Panel */}
+              <div className="search-container" style={{ width: '240px', margin: 0 }}>
+                <span className="search-icon-left">🔍</span>
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="ស្វែងរកថ្ងៃ ឬឈ្មោះបុគ្គលិក..."
+                  value={subnetSearch}
+                  onChange={(e) => setSubnetSearch(e.target.value)}
+                  style={{ padding: '8px 12px 8px 32px', fontSize: '12.5px' }}
+                />
+              </div>
             </div>
           </div>
 
@@ -3942,10 +4299,34 @@ export default function App() {
                     </table>
                   </div>
 
-                  {/* Save Button */}
-                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+                  {/* Save & Export PDF Buttons */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', flexWrap: 'wrap' }}>
                     <button type="button" className="btn btn-secondary" onClick={handleGenerateRandomShift} style={{ borderRadius: '10px', padding: '10px 18px', fontWeight: '700' }}>
                       🔄 Random សារជាថ្មី
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => handlePrintRandomShiftPDF(
+                        generatedShiftPreview.generated_schedule,
+                        generatedShiftPreview.staff_statistics,
+                        randomShiftYear,
+                        randomShiftMonth
+                      )}
+                      style={{
+                        borderRadius: '10px',
+                        padding: '10px 18px',
+                        fontWeight: '800',
+                        backgroundColor: '#dc2626',
+                        borderColor: '#dc2626',
+                        color: '#fff',
+                        boxShadow: '0 4px 12px rgba(220,38,38,0.3)',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px'
+                      }}
+                    >
+                      📕 ទាញយកជា PDF (Export PDF)
                     </button>
                     <button
                       type="button"
