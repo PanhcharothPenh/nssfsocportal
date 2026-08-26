@@ -506,14 +506,16 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               {(() => {
                 let line1 = reason || '';
                 let line2 = '';
-                if (reason && reason.length > 50) {
-                  const spaceIdx = reason.lastIndexOf(' ', 50);
-                  if (spaceIdx > 15) {
-                    line1 = reason.substring(0, spaceIdx);
-                    line2 = reason.substring(spaceIdx + 1);
-                  } else {
-                    line1 = reason.substring(0, 50);
-                    line2 = reason.substring(50);
+                if (reason) {
+                  if (reason.includes('\n')) {
+                    const parts = reason.split('\n');
+                    line1 = parts[0] || '';
+                    line2 = parts[1] || '';
+                  } else if (reason.length > 95) {
+                    let spaceIdx = reason.lastIndexOf(' ', 95);
+                    if (spaceIdx < 40) spaceIdx = 95;
+                    line1 = reason.substring(0, spaceIdx).trim();
+                    line2 = reason.substring(spaceIdx).trim();
                   }
                 }
                 return (
