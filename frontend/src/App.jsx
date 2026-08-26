@@ -618,28 +618,6 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
-  const handleQuickAdminLogin = (username = 'miller') => {
-    const adminUser = {
-      id: username === 'miller' ? 8 : 4,
-      username: username,
-      role: 'admin',
-      full_name: username === 'miller' ? 'Miller (SOC Administrator)' : 'System Administrator',
-      email: `${username}@nssf.gov.kh`,
-      department: 'SOC Operations Center',
-      language: 'English',
-      permissions: {
-        all: 'readwrite',
-        user_management: 'readwrite',
-        shift_management: 'readwrite',
-        network: 'readwrite'
-      }
-    };
-    setCurrentLoginUser(adminUser);
-    localStorage.setItem('currentLoginUser', JSON.stringify(adminUser));
-    setActiveTab('dashboard');
-    fetchDashboardStats();
-  };
-
   const [telegramUsernameInput, setTelegramUsernameInput] = useState('');
   const [showTelegramLoginModal, setShowTelegramLoginModal] = useState(false);
   const [telegramLoginError, setTelegramLoginError] = useState(null);
@@ -5268,37 +5246,6 @@ export default function App() {
               >
                 {loginLoading ? '⏳ កំពុងចូល...' : 'ចូលប្រព័ន្ធ (Sign In)'}
               </button>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 6px 0' }}>
-                <div style={{ flex: 1, height: '1px', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }} />
-                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>ឬ (OR)</span>
-                <div style={{ flex: 1, height: '1px', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }} />
-              </div>
-
-              <button
-                type="button"
-                onClick={() => handleQuickAdminLogin('miller')}
-                style={{
-                  width: '100%',
-                  padding: '10px',
-                  backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
-                  color: '#059669',
-                  border: '1px solid rgba(16, 185, 129, 0.3)',
-                  borderRadius: '10px',
-                  fontSize: '12.5px',
-                  fontWeight: '700',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#10b981'; e.currentTarget.style.color = '#fff'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5'; e.currentTarget.style.color = '#059669'; }}
-              >
-                ⚡ ចូលគណនីរហ័ស (Quick 1-Click Access)
-              </button>
             </form>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
@@ -5307,68 +5254,35 @@ export default function App() {
               </p>
 
               {!telegramPollingActive ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={startTelegramBotLogin}
-                    style={{
-                      width: '100%',
-                      padding: '14px',
-                      backgroundColor: '#0088cc',
-                      color: '#ffffff',
-                      border: 'none',
-                      borderRadius: '12px',
-                      fontSize: '14px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s, transform 0.1s',
-                      marginTop: '5px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      boxShadow: '0 4px 12px rgba(0, 136, 204, 0.2)'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0077b5'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0088cc'}
-                  >
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21.5 2L2 11.5l6.5 3L18.5 6l-8.5 10.5 8.5 3L21.5 2z"></path>
-                    </svg>
-                    ចូលតាមកម្មវិធី Telegram (Login with Telegram)
-                  </button>
-
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '4px 0' }}>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }} />
-                    <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>ឬ (OR)</span>
-                    <div style={{ flex: 1, height: '1px', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }} />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleQuickAdminLogin('miller')}
-                    style={{
-                      width: '100%',
-                      padding: '10px',
-                      backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
-                      color: '#059669',
-                      border: '1px solid rgba(16, 185, 129, 0.3)',
-                      borderRadius: '10px',
-                      fontSize: '12.5px',
-                      fontWeight: '700',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '6px'
-                    }}
-                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#10b981'; e.currentTarget.style.color = '#fff'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5'; e.currentTarget.style.color = '#059669'; }}
-                  >
-                    ⚡ ចូលគណនីរហ័ស (Quick 1-Click Access)
-                  </button>
-                </>
+                <button
+                  type="button"
+                  onClick={startTelegramBotLogin}
+                  style={{
+                    width: '100%',
+                    padding: '14px',
+                    backgroundColor: '#0088cc',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s, transform 0.1s',
+                    marginTop: '5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    boxShadow: '0 4px 12px rgba(0, 136, 204, 0.2)'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0077b5'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0088cc'}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21.5 2L2 11.5l6.5 3L18.5 6l-8.5 10.5 8.5 3L21.5 2z"></path>
+                  </svg>
+                  ចូលតាមកម្មវិធី Telegram (Login with Telegram)
+                </button>
               ) : (
                 <div style={{
                   display: 'flex',
@@ -5443,43 +5357,27 @@ export default function App() {
                     </a>
                   )}
 
-                  <div style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '6px' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleQuickAdminLogin('miller')}
-                      style={{
-                        flex: 1,
-                        padding: '9px',
-                        fontSize: '11.5px',
-                        fontWeight: '700',
-                        color: '#059669',
-                        backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
-                        border: '1px solid rgba(16, 185, 129, 0.3)',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                    >
-                      ⚡ ចូលគណនីភ្លាមៗ
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelTelegramBotLogin}
-                      style={{
-                        padding: '9px 14px',
-                        fontSize: '11.5px',
-                        fontWeight: '700',
-                        color: isDarkMode ? '#cbd5e1' : '#64748b',
-                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-                        border: 'none',
-                        borderRadius: '8px',
-                        cursor: 'pointer',
-                        transition: 'background-color 0.2s'
-                      }}
-                    >
-                      បោះបង់
-                    </button>
-                  </div>
+                  <button
+                    type="button"
+                    onClick={cancelTelegramBotLogin}
+                    style={{
+                      width: '100%',
+                      padding: '10px 16px',
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      color: isDarkMode ? '#cbd5e1' : '#64748b',
+                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                      border: 'none',
+                      borderRadius: '10px',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s',
+                      marginTop: '4px'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}
+                  >
+                    បោះបង់ (Cancel)
+                  </button>
                 </div>
               )}
 
