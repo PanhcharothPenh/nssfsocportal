@@ -4071,7 +4071,7 @@ export default function App() {
               </span>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>ជ្រើសរើសខែ ៖</label>
               <input
                 type="month"
@@ -4080,6 +4080,49 @@ export default function App() {
                 onChange={(e) => setSelectedShiftMonth(e.target.value)}
                 style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', borderColor: '#3b82f6', color: '#1e3a8a', backgroundColor: '#eff6ff' }}
               />
+
+              {/* Export PDF Button right near ជ្រើសរើសខែ */}
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  const [yStr, mStr] = selectedShiftMonth.split('-');
+                  const yearNum = parseInt(yStr) || new Date().getFullYear();
+                  const monthNum = parseInt(mStr) || (new Date().getMonth() + 1);
+                  
+                  const currentMonthSchedule = {};
+                  Object.keys(activeDisplaySchedule)
+                    .filter(d => d.startsWith(selectedShiftMonth))
+                    .sort()
+                    .forEach(d => {
+                      currentMonthSchedule[d] = activeDisplaySchedule[d];
+                    });
+                    
+                  const statsObj = {};
+                  monthStaffStats.forEach(st => {
+                    statsObj[st.name] = st.count;
+                  });
+                  
+                  openRandomShiftPdfModal(currentMonthSchedule, statsObj, yearNum, monthNum);
+                }}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontWeight: '800',
+                  fontSize: '12.5px',
+                  backgroundColor: '#dc2626',
+                  color: '#fff',
+                  borderColor: '#dc2626',
+                  boxShadow: '0 4px 10px rgba(220,38,38,0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                📕 ទាញយកជា PDF
+              </button>
             </div>
           </div>
 
