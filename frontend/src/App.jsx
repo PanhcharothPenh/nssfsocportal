@@ -3145,7 +3145,6 @@ export default function App() {
     const filteredDates = Object.keys(shiftSchedule)
       .sort((a, b) => new Date(a) - new Date(b))
       .filter(dateKey => {
-        if (selectedShiftMonth && !dateKey.startsWith(selectedShiftMonth)) return false;
         const query = (subnetSearch || '').toLowerCase().trim();
         if (!query) return true;
         if (dateKey.includes(query)) return true;
@@ -3153,37 +3152,11 @@ export default function App() {
         return names.some(n => n.toLowerCase().includes(query));
       });
 
-    // Calculate Monthly Shift Statistics per Staff for selectedShiftMonth
-    const monthDates = Object.keys(shiftSchedule).filter(d => d.startsWith(selectedShiftMonth));
-    const staffStatsMap = {};
-    let totalSlotsAssigned = 0;
-
-    monthDates.forEach(dateKey => {
-      const names = shiftSchedule[dateKey] || [];
-      const dayNum = dateKey.split('-')[2];
-      names.forEach(name => {
-        totalSlotsAssigned += 1;
-        if (!staffStatsMap[name]) {
-          staffStatsMap[name] = { count: 0, dates: [] };
-        }
-        staffStatsMap[name].count += 1;
-        staffStatsMap[name].dates.push(dayNum);
-      });
-    });
-
-    const monthStaffStats = Object.keys(staffStatsMap)
-      .map(name => ({
-        name,
-        count: staffStatsMap[name].count,
-        dates: staffStatsMap[name].dates
-      }))
-      .sort((a, b) => b.count - a.count);
-
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         
         {/* Top Cards Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
           
           {/* Card 1: Today's Standing Officers */}
           <div className="card" style={{ 
@@ -3275,7 +3248,7 @@ export default function App() {
 
             <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <p style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5', margin: 0 }}>
-                ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការយប់នេះ ទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួនរបស់ពួកគេ។
+                ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការយប់នេះ ទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួនរបស់ពួកគេ។ សាររួមមានម៉ោង កាលបរិច្ឆេទ និងសមាជិកប្រចាំការរួមគ្នា។
               </p>
 
               {shiftNotifyResult && (
@@ -3314,111 +3287,6 @@ export default function App() {
             </button>
           </div>
 
-          {/* Card 3: Random Shift Generator Action Trigger */}
-          <div className="card" style={{ 
-            padding: '24px', 
-            borderRadius: '16px', 
-            backgroundColor: '#faf5ff', 
-            border: '1px solid #e9d5ff',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '16px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: '#f3e8ff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#9333ea' }}>
-                🎲
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#6b21a8' }}>Random កាលវិភាគសម្រាប់ខែថ្មី</h3>
-                <span style={{ fontSize: '12px', color: '#7e22ce' }}>ចែកវេនប្រចាំការស្មើភាពគ្នា ១០០%</span>
-              </div>
-            </div>
-
-            <div style={{ borderTop: '1px solid #f3e8ff', paddingTop: '14px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <p style={{ fontSize: '12px', color: '#6b21a8', lineHeight: '1.5', margin: 0 }}>
-                បង្កើតកាលវិភាគប្រចាំការយប់ដោយ Random និងស្មើភាពគ្នា សម្រាប់ខែខាងមុខ និងបង្ហាញចំនួនវេនដែលបុគ្គលិកម្នាក់ៗទទួលបាន។
-              </p>
-            </div>
-
-            <button
-              className="btn btn-primary"
-              onClick={handleOpenRandomShiftModal}
-              style={{ 
-                width: '100%', 
-                padding: '12px', 
-                borderRadius: '10px', 
-                fontWeight: '800', 
-                fontSize: '13px',
-                backgroundColor: '#9333ea',
-                borderColor: '#9333ea',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 12px rgba(147, 51, 234, 0.3)'
-              }}
-            >
-              <span>🎲</span> ដំណើរការ Random កាលវិភាគខែថ្មី
-            </button>
-          </div>
-
-        </div>
-
-        {/* Monthly Shift Statistics per Staff (ប្រាប់ចំនួន ក្នុង១នាក់ ១ខែបានប៉ុន្មាន) */}
-        <div className="panel" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px' }}>
-            <div>
-              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>📊</span> របាយការណ៍សរុបចំនួនវេនប្រចាំការក្នុង ១ខែ ({selectedShiftMonth})
-              </h3>
-              <span style={{ fontSize: '12.5px', color: '#64748b' }}>
-                សរុបថ្ងៃក្នុងខែ ៖ <b>{monthDates.length} ថ្ងៃ</b> | ចំនួនវេនសរុប ៖ <b>{totalSlotsAssigned} វេន</b>
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>ជ្រើសរើសខែ ៖</label>
-              <input
-                type="month"
-                className="form-input"
-                value={selectedShiftMonth}
-                onChange={(e) => setSelectedShiftMonth(e.target.value)}
-                style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', borderColor: '#3b82f6', color: '#1e3a8a', backgroundColor: '#eff6ff' }}
-              />
-            </div>
-          </div>
-
-          {/* Statistics Summary Grid */}
-          {monthStaffStats.length > 0 ? (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
-              {monthStaffStats.map((st, idx) => (
-                <div key={idx} style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'all 0.2s' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <span>👤</span> {st.name}
-                    </span>
-                    <span style={{ padding: '4px 12px', borderRadius: '20px', backgroundColor: '#3b82f6', color: '#fff', fontSize: '12px', fontWeight: '800', boxShadow: '0 2px 4px rgba(59,130,246,0.3)' }}>
-                      {st.count} វេន / ខែ
-                    </span>
-                  </div>
-                  
-                  <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
-                    <span style={{ fontWeight: '700' }}>📅 ថ្ងៃប្រចាំការ ៖</span>
-                    {st.dates.map((d, i) => (
-                      <span key={i} style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: '#e2e8f0', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>
-                        {d}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
-              ℹ️ មិនទាន់មានទិន្នន័យកាលវិភាគប្រចាំការសម្រាប់ខែ {selectedShiftMonth} ឡើយ។ សូមប្រើប្រាស់ប៊ូតុង **"Random កាលវិភាគសម្រាប់ខែថ្មី"** ដើម្បីបង្កើត!
-            </div>
-          )}
         </div>
 
         {/* Calendar Timeline / List Section */}
@@ -3502,6 +3370,200 @@ export default function App() {
                   <tr>
                     <td colSpan="3" style={{ padding: '30px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
                       🚫 មិនស្វែងរកឃើញទិន្នន័យឡើយ។
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    );
+  };
+
+  const renderShiftGeneratorTab = () => {
+    // Calculate Monthly Shift Statistics per Staff for selectedShiftMonth
+    const monthDates = Object.keys(shiftSchedule).filter(d => d.startsWith(selectedShiftMonth));
+    const staffStatsMap = {};
+    let totalSlotsAssigned = 0;
+
+    monthDates.forEach(dateKey => {
+      const names = shiftSchedule[dateKey] || [];
+      const dayNum = dateKey.split('-')[2];
+      names.forEach(name => {
+        totalSlotsAssigned += 1;
+        if (!staffStatsMap[name]) {
+          staffStatsMap[name] = { count: 0, dates: [] };
+        }
+        staffStatsMap[name].count += 1;
+        staffStatsMap[name].dates.push(dayNum);
+      });
+    });
+
+    const monthStaffStats = Object.keys(staffStatsMap)
+      .map(name => ({
+        name,
+        count: staffStatsMap[name].count,
+        dates: staffStatsMap[name].dates
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    const filteredDates = monthDates
+      .sort((a, b) => new Date(a) - new Date(b))
+      .filter(dateKey => {
+        const query = (subnetSearch || '').toLowerCase().trim();
+        if (!query) return true;
+        if (dateKey.includes(query)) return true;
+        const names = shiftSchedule[dateKey] || [];
+        return names.some(n => n.toLowerCase().includes(query));
+      });
+
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        
+        {/* Header Hero Banner Card */}
+        <div className="card" style={{ padding: '24px', borderRadius: '16px', backgroundColor: '#4c1d95', color: '#fff', boxShadow: '0 10px 25px -5px rgba(76, 29, 149, 0.3)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: '20px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '10px', color: '#f3e8ff' }}>
+              <span>🎲</span> ប្រព័ន្ធរៀបចំ និង Random កាលវិភាគប្រចាំការសម្រាប់ខែថ្មី
+            </h2>
+            <div style={{ fontSize: '13px', color: '#e9d5ff', marginTop: '6px' }}>
+              បង្កើតកាលវិភាគប្រចាំការដោយ Random ស្មើភាពគ្នា គណនាចំនួនវេនក្នុង១ខែមន្ត្រីម្នាក់ៗ និងរក្សាទុកទិន្នន័យ
+            </div>
+          </div>
+
+          <button
+            className="btn btn-primary"
+            onClick={handleOpenRandomShiftModal}
+            style={{ borderRadius: '12px', padding: '12px 24px', fontWeight: '800', fontSize: '14px', backgroundColor: '#a855f7', borderColor: '#a855f7', boxShadow: '0 4px 14px rgba(168,85,247,0.4)', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <span>🎲</span> ដំណើរការ Random បង្កើតកាលវិភាគខែថ្មី
+          </button>
+        </div>
+
+        {/* Monthly Shift Statistics Panel (ប្រាប់ចំនួន ក្នុង១នាក់ ១ខែបានប៉ុន្មាន) */}
+        <div className="panel" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', marginBottom: '18px', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px' }}>
+            <div>
+              <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#1e3a8a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>📊</span> របាយការណ៍សរុបចំនួនវេនប្រចាំការក្នុង ១ខែ ({selectedShiftMonth})
+              </h3>
+              <span style={{ fontSize: '12.5px', color: '#64748b' }}>
+                សរុបថ្ងៃក្នុងខែ ៖ <b>{monthDates.length} ថ្ងៃ</b> | ចំនួនវេនសរុប ៖ <b>{totalSlotsAssigned} វេន</b>
+              </span>
+            </div>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <label style={{ fontSize: '13px', fontWeight: '700', color: '#334155' }}>ជ្រើសរើសខែ ៖</label>
+              <input
+                type="month"
+                className="form-input"
+                value={selectedShiftMonth}
+                onChange={(e) => setSelectedShiftMonth(e.target.value)}
+                style={{ padding: '6px 12px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', borderColor: '#3b82f6', color: '#1e3a8a', backgroundColor: '#eff6ff' }}
+              />
+            </div>
+          </div>
+
+          {/* Statistics Summary Grid */}
+          {monthStaffStats.length > 0 ? (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
+              {monthStaffStats.map((st, idx) => (
+                <div key={idx} style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '8px', transition: 'all 0.2s' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>👤</span> {st.name}
+                    </span>
+                    <span style={{ padding: '4px 12px', borderRadius: '20px', backgroundColor: '#3b82f6', color: '#fff', fontSize: '12px', fontWeight: '800', boxShadow: '0 2px 4px rgba(59,130,246,0.3)' }}>
+                      {st.count} វេន / ខែ
+                    </span>
+                  </div>
+                  
+                  <div style={{ fontSize: '11.5px', color: '#64748b', display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '4px', alignItems: 'center' }}>
+                    <span style={{ fontWeight: '700' }}>📅 ថ្ងៃប្រចាំការ ៖</span>
+                    {st.dates.map((d, i) => (
+                      <span key={i} style={{ padding: '2px 6px', borderRadius: '4px', backgroundColor: '#e2e8f0', color: '#1e293b', fontSize: '11px', fontWeight: '700' }}>
+                        {d}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div style={{ padding: '20px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+              ℹ️ មិនទាន់មានទិន្នន័យកាលវិភាគប្រចាំការសម្រាប់ខែ {selectedShiftMonth} ឡើយ។ សូមប្រើប្រាស់ប៊ូតុង **"Random កាលវិភាគសម្រាប់ខែថ្មី"** ដើម្បីបង្កើត!
+            </div>
+          )}
+        </div>
+
+        {/* Calendar Timeline / List Section */}
+        <div className="panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>📅 តារាងកាលវិភាគប្រចាំការខែ {selectedShiftMonth}</h3>
+            
+            <div className="search-container" style={{ width: '280px', margin: 0 }}>
+              <span className="search-icon-left">🔍</span>
+              <input
+                type="text"
+                className="search-input"
+                placeholder="ស្វែងរកថ្ងៃ ឬឈ្មោះបុគ្គលិក..."
+                value={subnetSearch}
+                onChange={(e) => setSubnetSearch(e.target.value)}
+                style={{ padding: '8px 12px 8px 32px', fontSize: '12.5px' }}
+              />
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+            <table className="table" style={{ width: '100%', borderCollapse: 'collapse', margin: 0 }}>
+              <thead>
+                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>កាលបរិច្ឆេទ (Date)</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>ឈ្មោះអ្នកប្រចាំការ (Standby Officers)</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>វេន (Shift Type)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredDates.length > 0 ? (
+                  filteredDates.map((dateKey) => {
+                    const names = shiftSchedule[dateKey] || [];
+                    return (
+                      <tr key={dateKey} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                        <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
+                          {dateKey}
+                        </td>
+                        <td style={{ padding: '14px 16px' }}>
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            {names.map((name, idx) => (
+                              <span 
+                                key={idx} 
+                                style={{ 
+                                  padding: '4px 10px', 
+                                  borderRadius: '6px', 
+                                  fontSize: '12px', 
+                                  fontWeight: '700',
+                                  backgroundColor: '#f1f5f9',
+                                  color: '#334155',
+                                  border: '1px solid #cbd5e1'
+                                }}
+                              >
+                                👤 {name}
+                              </span>
+                            ))}
+                          </div>
+                        </td>
+                        <td style={{ padding: '14px 16px', fontSize: '12.5px', color: '#64748b' }}>
+                          🌙 Night Standby (១៧:០០ - ០៨:០០)
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan="3" style={{ padding: '30px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                      🚫 មិនទាន់មានកាលវិភាគសម្រាប់ខែ {selectedShiftMonth} ឡើយ។
                     </td>
                   </tr>
                 )}
@@ -6477,6 +6539,11 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>📅</span> វេនប្រចាំការ (Shift)
             </li>
           )}
+          {hasPermission('dashboard', 'read') && (
+            <li className={`menu-item ${activeTab === 'shift_generator' ? 'active' : ''}`} onClick={() => handleMenuClick('shift_generator')}>
+              <span className="menu-icon" style={{ fontSize: '15px' }}>🎲</span> Random កាលវិភាគប្រចាំការ
+            </li>
+          )}
           {hasPermission('user_management', 'read') && (
             <li className={`menu-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => handleMenuClick('users')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>👥</span> គ្រប់គ្រងអ្នកប្រើប្រាស់
@@ -6540,6 +6607,7 @@ export default function App() {
               {(activeTab === 'pdf_hub' || activeTab === 'forms') && 'ប្រព័ន្ធទម្រង់ PDF តាមប្រភេទ (Categorized PDF Form Hub)'}
               {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
               {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់ (Night Shift Standby Roster)'}
+              {activeTab === 'shift_generator' && 'ប្រព័ន្ធ Random & គ្រប់គ្រងកាលវិភាគប្រចាំការ (Shift Schedule Generator)'}
             </h1>
             <p>
               {activeTab === 'dashboard' && 'Security Operations Center (SOC) & Electronic Request Management System'}
@@ -6560,6 +6628,7 @@ export default function App() {
               {activeTab === 'forms' && 'ប្រព័ន្ធបង្កើត និងបោះពុម្ពទម្រង់ឯកសារស្នើសុំផ្លូវការ (Auto-Fill, ហត្ថលេខាឌីជីថល, ភ្ជាប់ឯកសារ និងទាញយក PDF)'}
               {activeTab === 'leave' && 'Generate formatted Khmer requests and post them automatically to the Telegram group'}
               {activeTab === 'shift' && 'Roster of active on-duty standby officers and daily notification alert dispatcher'}
+              {activeTab === 'shift_generator' && 'បង្កើត និង Random កាលវិភាគប្រចាំការខែថ្មី រក្សាទុកទិន្នន័យ និងបង្ហាញចំនួនវេនសរុបក្នុង ១នាក់'}
             </p>
           </div>
 
@@ -9570,6 +9639,9 @@ export default function App() {
 
         {/* Shift Schedule Tab */}
         {activeTab === 'shift' && renderShiftTab()}
+
+        {/* Dedicated Standalone Tab: Random Shift Schedule Generator & Monthly Statistics */}
+        {activeTab === 'shift_generator' && renderShiftGeneratorTab()}
 
         {/* User Management Tab */}
         {activeTab === 'users' && hasPermission('user_management', 'read') && renderUsersTab()}
