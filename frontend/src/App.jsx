@@ -155,8 +155,14 @@ export default function App() {
   const [signerTitle, setSignerTitle] = useState('ប្រធាននាយកដ្ឋានសេវាមូលដ្ឋានសុខាភិបាល');
   const [signatureImage, setSignatureImage] = useState('');
   const [currentLoginUser, setCurrentLoginUser] = useState(() => {
-    const saved = localStorage.getItem('currentLoginUser');
-    return saved ? JSON.parse(saved) : null;
+    try {
+      const saved = localStorage.getItem('currentLoginUser');
+      if (!saved || saved === 'undefined' || saved === 'null') return null;
+      return JSON.parse(saved);
+    } catch (e) {
+      console.error("Error parsing saved login user:", e);
+      return null;
+    }
   });
 
   // Login interface states
