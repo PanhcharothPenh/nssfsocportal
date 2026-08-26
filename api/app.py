@@ -3021,7 +3021,6 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
         "generated_schedule": generated_schedule,
         "staff_statistics": staff_counts
     }
-    }
 
 class ShiftSavePayload(BaseModel):
     schedule: Dict[str, List[str]]
