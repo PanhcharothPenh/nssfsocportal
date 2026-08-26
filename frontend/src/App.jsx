@@ -3226,41 +3226,44 @@ export default function App() {
       }))
       .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 
-    // Stats Table Html (Person in 1 month with times and dates)
+    // Stats Table Html (Person in 1 month with times and dates - compact & clean)
     const statsTableHtml = includeStats && staffSummaryList.length > 0 ? `
-      <div style="margin-bottom: 22px; page-break-inside: avoid;">
-        <div style="font-size: 12px; font-weight: 800; color: #0b45b5; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
-          <span>📊 ១. តារាងសង្ខេបចំនួនវេនប្រចាំការក្នុង ១ខែ របស់មន្ត្រីម្នាក់ៗ (Staff Monthly Duty Breakdown) ៖</span>
-          <span style="font-size: 10.5px; color: #475569; font-weight: 700;">សរុបមន្ត្រី ៖ ${toKhmerDigits(staffSummaryList.length)} នាក់</span>
+      <div style="margin-bottom: 16px;">
+        <div style="font-size: 11px; font-weight: 800; color: #0b45b5; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
+          <span>📊 ១. តារាងសង្ខេបចំនួនវេនប្រចាំការក្នុង ១ខែ របស់មន្ត្រីម្នាក់ៗ (Staff Duty Breakdown) ៖</span>
+          <span style="font-size: 10px; color: #475569; font-weight: 700;">សរុបមន្ត្រី ៖ ${toKhmerDigits(staffSummaryList.length)} នាក់</span>
         </div>
-        <table style="width: 100%; border-collapse: collapse; margin-top: 4px; margin-bottom: 15px;">
+        <table style="width: 100%; border-collapse: collapse; margin-top: 2px; margin-bottom: 8px;">
           <thead>
-            <tr style="background-color: #1e3a8a; color: #fff;">
-              <th style="width: 40px; text-align: center; font-weight: 800; padding: 7px 5px; font-size: 10.5px;">ល.រ</th>
-              <th style="width: 150px; font-weight: 800; padding: 7px 8px; font-size: 10.5px;">ឈ្មោះមន្ត្រីប្រចាំការ</th>
-              <th style="width: 100px; text-align: center; font-weight: 800; padding: 7px 5px; font-size: 10.5px;">ចំនួនវេន / ខែ</th>
-              <th style="font-weight: 800; padding: 7px 8px; font-size: 10.5px;">កាលបរិច្ឆេទ / ថ្ងៃប្រចាំការក្នុងខែ</th>
-              <th style="width: 110px; text-align: center; font-weight: 800; padding: 7px 5px; font-size: 10.5px;">វេនប្រចាំការ</th>
+            <tr style="background-color: #0b45b5; color: #fff;">
+              <th style="width: 35px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">ល.រ</th>
+              <th style="width: 130px; font-weight: 800; padding: 6px 8px; font-size: 10px;">ឈ្មោះមន្ត្រីប្រចាំការ</th>
+              <th style="width: 85px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">ចំនួនវេន / ខែ</th>
+              <th style="font-weight: 800; padding: 6px 8px; font-size: 10px;">កាលបរិច្ឆេទ / ថ្ងៃប្រចាំការក្នុងខែ (Days)</th>
+              <th style="width: 105px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">វេនប្រចាំការ</th>
             </tr>
           </thead>
           <tbody>
             ${staffSummaryList.map((st, idx) => `
-              <tr>
-                <td style="text-align: center; font-weight: 800; color: #0b45b5; padding: 6px 4px; font-size: 10.5px;">${toKhmerDigits(idx + 1)}</td>
-                <td style="font-weight: 800; color: #0f172a; padding: 6px 8px; font-size: 10.5px;">👤 ${st.name}</td>
-                <td style="text-align: center; padding: 6px 4px;">
-                  <span style="display: inline-block; padding: 2px 8px; border-radius: 10px; background-color: #dbeafe; color: #1e40af; font-weight: 800; font-size: 10.5px; border: 1px solid #bfdbfe;">
+              <tr style="page-break-inside: avoid; background-color: ${idx % 2 === 1 ? '#f8fafc' : '#ffffff'};">
+                <td style="text-align: center; font-weight: 800; color: #0b45b5; padding: 5px 4px; font-size: 10px; border: 1px solid #cbd5e1;">${toKhmerDigits(idx + 1)}</td>
+                <td style="font-weight: 800; color: #0f172a; padding: 5px 8px; font-size: 10px; border: 1px solid #cbd5e1; white-space: nowrap;">👤 ${st.name}</td>
+                <td style="text-align: center; padding: 5px 4px; border: 1px solid #cbd5e1;">
+                  <span style="display: inline-block; padding: 1.5px 7px; border-radius: 8px; background-color: #dbeafe; color: #1e40af; font-weight: 800; font-size: 10px; border: 1px solid #bfdbfe;">
                     ${toKhmerDigits(st.count)} វេន
                   </span>
                 </td>
-                <td style="padding: 6px 8px; font-size: 10px;">
-                  ${st.days.map(d => `
-                    <span style="display: inline-block; padding: 2px 6px; margin: 1px 2px; border-radius: 4px; background-color: #f1f5f9; color: #334155; font-size: 10px; font-weight: 700; border: 1px solid #cbd5e1;">
-                      ថ្ងៃទី${toKhmerDigits(d)}
-                    </span>
-                  `).join('')}
+                <td style="padding: 4px 6px; font-size: 9.5px; border: 1px solid #cbd5e1;">
+                  <div style="display: flex; flex-wrap: wrap; gap: 3px; align-items: center;">
+                    <span style="color: #64748b; font-size: 9px; font-weight: 700; margin-right: 2px;">ថ្ងៃទី៖</span>
+                    ${st.days.map(d => `
+                      <span style="display: inline-block; padding: 1px 5px; border-radius: 3px; background-color: #f1f5f9; color: #1e293b; font-size: 9.5px; font-weight: 700; border: 1px solid #e2e8f0;">
+                        ${toKhmerDigits(d)}
+                      </span>
+                    `).join('')}
+                  </div>
                 </td>
-                <td style="text-align: center; font-size: 10px; color: #475569; font-weight: 600; padding: 6px 4px;">🌙 យប់ (១៧:០០ - ០៨:០០)</td>
+                <td style="text-align: center; font-size: 9.5px; color: #475569; font-weight: 600; padding: 5px 4px; border: 1px solid #cbd5e1; white-space: nowrap;">🌙 យប់ (១៧:០០-០៨:០០)</td>
               </tr>
             `).join('')}
           </tbody>
@@ -3280,28 +3283,28 @@ export default function App() {
       } catch (e) {}
 
       const userIconSvg = `
-        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#003bb3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; display: inline-block; vertical-align: middle;">
+        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#003bb3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; display: inline-block; vertical-align: middle;">
           <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
           <circle cx="12" cy="7" r="4"></circle>
         </svg>
       `;
 
       const officersBadges = (Array.isArray(officers) ? officers : [officers]).map(name => `
-        <span style="display: inline-flex; align-items: center; padding: 4px 10px; margin: 2px 4px; border-radius: 6px; background-color: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; font-size: 11px; font-weight: 700;">
+        <span style="display: inline-flex; align-items: center; padding: 2px 7px; margin: 1px 2px; border-radius: 4px; background-color: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; font-size: 10px; font-weight: 700;">
           ${userIconSvg} ${name}
         </span>
       `).join('');
 
-      const indexBadgeHtml = `<div style="display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; background-color: #0b45b5; color: white; border-radius: 6px; font-weight: 800; font-size: 11px; margin: 0 auto;">${toKhmerDigits(index + 1)}</div>`;
+      const indexBadgeHtml = `<div style="display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; background-color: #0b45b5; color: white; border-radius: 4px; font-weight: 800; font-size: 10px; margin: 0 auto;">${toKhmerDigits(index + 1)}</div>`;
 
       return `
-        <tr>
-          <td style="text-align: center; vertical-align: middle;">${indexBadgeHtml}</td>
-          <td style="font-weight: 700; color: #0b45b5; white-space: nowrap;">${dateKhmerLabel}</td>
-          <td style="color: #475569; font-size: 10.5px; font-weight: 600; white-space: nowrap;">${dateStr}</td>
-          <td>${officersBadges}</td>
-          <td style="font-size: 10.5px; color: #334155; font-weight: 600; text-align: center;">🌙 យប់ (១៧:០០ - ០៨:០០)</td>
-          <td style="font-size: 10px; color: #64748b;">${dutyNote}</td>
+        <tr style="page-break-inside: avoid; background-color: ${index % 2 === 1 ? '#f8fafc' : '#ffffff'};">
+          <td style="text-align: center; vertical-align: middle; padding: 5px 4px; border: 1px solid #cbd5e1;">${indexBadgeHtml}</td>
+          <td style="font-weight: 700; color: #0b45b5; white-space: nowrap; padding: 5px 6px; border: 1px solid #cbd5e1; font-size: 10px;">${dateKhmerLabel}</td>
+          <td style="color: #475569; font-size: 9.5px; font-weight: 600; white-space: nowrap; padding: 5px 4px; border: 1px solid #cbd5e1;">${dateStr}</td>
+          <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${officersBadges}</td>
+          <td style="font-size: 9.5px; color: #334155; font-weight: 600; text-align: center; padding: 5px 4px; border: 1px solid #cbd5e1; white-space: nowrap;">🌙 យប់ (១៧:០០-០៨:០០)</td>
+          <td style="font-size: 9.5px; color: #64748b; padding: 5px 6px; border: 1px solid #cbd5e1;">${dutyNote}</td>
         </tr>
       `;
     }).join('');
@@ -3318,19 +3321,26 @@ export default function App() {
               src: local('MiSans Khmer'), local('MiSansKhmer-Regular');
             }
             
+            @page {
+              size: A4 portrait;
+              margin: 10mm 12mm 10mm 12mm;
+            }
+            
             body {
               font-family: 'MiSans Khmer', 'Outfit', sans-serif;
-              margin: 40px;
+              margin: 0;
+              padding: 0;
               color: #1e293b;
               background-color: #fff;
-              font-size: 11px;
+              font-size: 10px;
+              line-height: 1.25;
             }
             
             .header-container {
               display: flex;
               justify-content: space-between;
               align-items: flex-start;
-              margin-bottom: 20px;
+              margin-bottom: 8px;
               width: 100%;
             }
             
@@ -3342,21 +3352,21 @@ export default function App() {
             }
             
             .header-left-text-primary {
-              font-size: 13px;
+              font-size: 12px;
               font-weight: 800;
               color: #0b45b5;
-              margin-top: 6px;
+              margin-top: 3px;
             }
             
             .header-left-text-secondary {
-              font-size: 11px;
+              font-size: 10px;
               font-weight: 700;
               color: #334155;
-              margin-top: 2px;
+              margin-top: 1px;
             }
 
             .header-left-text-soc {
-              font-size: 10px;
+              font-size: 9.5px;
               font-weight: 700;
               color: #64748b;
               margin-top: 1px;
@@ -3370,60 +3380,64 @@ export default function App() {
             }
             
             .header-right-title {
-              font-size: 13px;
+              font-size: 12.5px;
               font-weight: 800;
               color: #1e293b;
             }
             
             .header-right-subtitle {
-              font-size: 11px;
+              font-size: 10.5px;
               font-weight: 700;
               color: #1e293b;
-              margin-top: 4px;
+              margin-top: 2px;
             }
             
             .document-title {
               text-align: center;
-              font-size: 15px;
+              font-size: 13.5px;
               font-weight: 800;
               color: #0b45b5;
-              margin: 20px 0 6px 0;
+              margin: 6px 0 2px 0;
             }
 
             .document-subtitle {
               text-align: center;
-              font-size: 12px;
+              font-size: 11px;
               font-weight: 700;
               color: #334155;
-              margin-bottom: 15px;
+              margin-bottom: 6px;
             }
             
             table {
               width: 100%;
               border-collapse: collapse;
-              margin-top: 6px;
+              margin-top: 4px;
             }
             
             th {
               background-color: #0b45b5;
               border: 1px solid #cbd5e1;
-              padding: 9px 8px;
+              padding: 6px 6px;
               font-weight: 800;
-              font-size: 11px;
+              font-size: 10px;
               text-align: left;
               color: white;
             }
             
             td {
               border: 1px solid #cbd5e1;
-              padding: 9px 8px;
-              font-size: 11px;
+              padding: 5px 6px;
+              font-size: 10px;
               color: #1e293b;
               vertical-align: middle;
             }
             
-            tr:nth-child(even) {
-              background-color: #f8fafc;
+            thead {
+              display: table-header-group;
+            }
+            
+            tr {
+              page-break-inside: avoid;
             }
             
             * {
@@ -3438,7 +3452,8 @@ export default function App() {
                 color-adjust: exact !important;
               }
               body {
-                margin: 20px;
+                margin: 0;
+                padding: 0;
               }
             }
           </style>
@@ -3446,7 +3461,7 @@ export default function App() {
         <body>
           <div class="header-container">
             <div class="header-left">
-              <img src="${nssfLogo}" style="width: 75px; height: 75px; object-fit: contain; margin-bottom: 2px;" alt="NSSF Logo" />
+              <img src="${nssfLogo}" style="width: 62px; height: 62px; object-fit: contain; margin-bottom: 1px;" alt="NSSF Logo" />
               <div class="header-left-text-primary">បេឡាជាតិសន្តិសុខសង្គម</div>
               <div class="header-left-text-secondary">${department}</div>
               <div class="header-left-text-soc">${office}</div>
@@ -3455,8 +3470,8 @@ export default function App() {
             <div class="header-right">
               <div class="header-right-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
               <div class="header-right-subtitle">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
-              <div style="display: flex; align-items: center; justify-content: center; margin-top: 8px;">
-                <svg width="100" height="12" viewBox="0 0 100 12" fill="none" stroke="#0b45b5" stroke-width="1.5">
+              <div style="display: flex; align-items: center; justify-content: center; margin-top: 5px;">
+                <svg width="85" height="10" viewBox="0 0 100 12" fill="none" stroke="#0b45b5" stroke-width="1.5">
                   <line x1="0" y1="6" x2="35" y2="6" stroke="#0b45b5" />
                   <circle cx="50" cy="6" r="2.5" fill="#0b45b5" />
                   <circle cx="43" cy="6" r="1.2" fill="#0b45b5" />
@@ -3470,23 +3485,23 @@ export default function App() {
           <div class="document-title">${docTitle}</div>
           <div class="document-subtitle">${docSubtitle}</div>
           
-          <div style="width: 100%; height: 3px; background-color: #0b45b5; margin-bottom: 15px; margin-top: 5px;"></div>
+          <div style="width: 100%; height: 2px; background-color: #0b45b5; margin-bottom: 10px; margin-top: 3px;"></div>
 
           ${statsTableHtml}
           
-          <div style="font-size: 12px; font-weight: 800; color: #0b45b5; margin-top: 10px; margin-bottom: 6px;">
+          <div style="font-size: 11px; font-weight: 800; color: #0b45b5; margin-top: 8px; margin-bottom: 4px;">
             📅 ២. តារាងកាលវិភាគប្រចាំការលម្អិតប្រចាំថ្ងៃ (Daily Standby Roster Schedule) ៖
           </div>
 
           <table>
             <thead>
               <tr>
-                <th style="width: 40px; text-align: center; font-weight: 800;">ល.រ</th>
-                <th style="width: 140px; font-weight: 800;">ថ្ងៃ / កាលបរិច្ឆេទ</th>
-                <th style="width: 90px; font-weight: 800;">Date</th>
+                <th style="width: 35px; text-align: center; font-weight: 800;">ល.រ</th>
+                <th style="width: 120px; font-weight: 800;">ថ្ងៃ / កាលបរិច្ឆេទ</th>
+                <th style="width: 80px; font-weight: 800;">Date</th>
                 <th style="font-weight: 800;">មន្ត្រីប្រចាំការ (Standby Officers)</th>
-                <th style="width: 140px; text-align: center; font-weight: 800;">វេនប្រចាំការ</th>
-                <th style="width: 120px; font-weight: 800;">ភារកិច្ច</th>
+                <th style="width: 120px; text-align: center; font-weight: 800;">វេនប្រចាំការ</th>
+                <th style="width: 105px; font-weight: 800;">ភារកិច្ច</th>
               </tr>
             </thead>
             <tbody>
@@ -3495,18 +3510,18 @@ export default function App() {
           </table>
 
           <!-- Sign and Dates Container -->
-          <div style="margin-top: 40px; display: flex; justify-content: flex-end; width: 100%; page-break-inside: avoid;">
-            <div style="text-align: center; display: flex; flex-direction: column; align-items: center; width: 300px;">
-              <div style="font-size: 11px; color: #334155; margin-bottom: 2px;">${lunarDate}</div>
-              <div style="font-size: 11px; color: #334155; margin-bottom: 8px;">${solarDate}</div>
+          <div style="margin-top: 25px; display: flex; justify-content: flex-end; width: 100%; page-break-inside: avoid;">
+            <div style="text-align: center; display: flex; flex-direction: column; align-items: center; width: 280px;">
+              <div style="font-size: 10.5px; color: #334155; margin-bottom: 1px;">${lunarDate}</div>
+              <div style="font-size: 10.5px; color: #334155; margin-bottom: 6px;">${solarDate}</div>
               <div style="font-size: 11px; font-weight: 800; color: #0b45b5; margin-bottom: 2px;">${targetSignerTitle}</div>
               
               <!-- Signature container -->
-              <div style="height: 55px; display: flex; align-items: center; justify-content: center; margin: 2px 0;">
-                ${signatureImg ? `<img src="${signatureImg}" style="height: 50px; object-fit: contain; margin: 0;" alt="Signature" />` : '<div style="height: 50px; width: 150px; border-bottom: 1px dashed #cbd5e1; margin-top: 5px;"></div>'}
+              <div style="height: 50px; display: flex; align-items: center; justify-content: center; margin: 2px 0;">
+                ${signatureImg ? `<img src="${signatureImg}" style="height: 46px; object-fit: contain; margin: 0;" alt="Signature" />` : '<div style="height: 46px; width: 140px; border-bottom: 1px dashed #cbd5e1; margin-top: 4px;"></div>'}
               </div>
               
-              <div style="font-size: 11px; font-weight: 800; color: #1e293b; margin-top: 2px;">${targetSignerName}</div>
+              <div style="font-size: 10.5px; font-weight: 800; color: #1e293b; margin-top: 1px;">${targetSignerName}</div>
             </div>
           </div>
           
