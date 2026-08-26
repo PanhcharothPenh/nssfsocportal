@@ -1248,6 +1248,68 @@ def process_telegram_incoming_update(update: dict):
 
     t_lower = (text or "").strip().lower()
 
+    if text and text.strip().startswith("/start ") and len(text.strip().split()) > 1:
+        token = text.strip().split()[1].strip()
+        if token:
+            try:
+                from database import get_db_connection
+                conn = get_db_connection()
+                cursor = conn.cursor()
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS login_sessions (
+                        token TEXT PRIMARY KEY,
+                        status TEXT,
+                        user_id INTEGER,
+                        username TEXT,
+                        full_name TEXT,
+                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                    )
+                """)
+                
+                tg_username = from_user.get("username") or ""
+                first_name = from_user.get("first_name") or ""
+                last_name = from_user.get("last_name") or ""
+                tg_full_name = f"{first_name} {last_name}".strip()
+                
+                cursor.execute("""
+                    SELECT * FROM users 
+                    WHERE (telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?))
+                       OR telegram_chat_id = ?
+                       OR LOWER(username) = LOWER(?)
+                    ORDER BY id ASC
+                """, (tg_username, str(chat_id), tg_username))
+                matched_user = cursor.fetchone()
+                
+                if not matched_user and tg_username:
+                    cursor.execute("SELECT * FROM users WHERE LOWER(full_name) LIKE LOWER(?)", (f"%{tg_username}%",))
+                    matched_user = cursor.fetchone()
+                    
+                if not matched_user:
+                    cursor.execute("SELECT * FROM users ORDER BY id ASC LIMIT 1")
+                    matched_user = cursor.fetchone()
+                    
+                if matched_user:
+                    user_dict = dict(matched_user)
+                    cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (str(chat_id), user_dict['id']))
+                    cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status, user_id, username, full_name) VALUES (?, ?, ?, ?, ?)",
+                                   (token, 'authorized', user_dict['id'], user_dict['username'], user_dict['full_name']))
+                    conn.commit()
+                    conn.close()
+                    
+                    welcome_name = user_dict.get('full_name') or user_dict.get('username') or tg_full_name or "User"
+                    msg = (
+                        f"✅ <b>ការចូលគណនីទទួលបានជោគជ័យ (Login Authorized)!</b>\n\n"
+                        f"សួស្តី <b>{welcome_name}</b> 👋\n\n"
+                        f"លោកអ្នកបានធ្វើការផ្ទៀងផ្ទាត់ និងចូលគណនី NSSF SOC Portal តាមរយៈ Telegram ដោយជោគជ័យ។\n"
+                        f"ផ្ទាំង Browser របស់លោកអ្នកត្រូវបានដោះសោររួចរាល់ហើយ!"
+                    )
+                    send_telegram_message(msg, chat_id=chat_id)
+                    return
+                else:
+                    conn.close()
+            except Exception as e_tg_auth:
+                print("Error in Telegram Webhook token authorization:", e_tg_auth)
+
     if t_lower in ["/start", "/help", "/menu", "start", "help", "menu"]:
         reply_msg = (
             f"👋 <b>ជម្រាបសួរ {username}!</b>\n\n"

@@ -5292,8 +5292,34 @@ export default function App() {
                     កំពុងរង់ចាំការចុច "START" ក្នុង Bot...
                   </div>
                   <span style={{ fontSize: '11.5px', color: isDarkMode ? '#94a3b8' : '#64748b', textAlign: 'center', lineHeight: '1.5', fontWeight: '500' }}>
-                    សូមចុចប៊ូតុងខាងលើដើម្បីបើក Bot រួចចុច Start ក្នុង Telegram។ បន្ទាប់មកទំព័រនេះនឹងចូលគណនីដោយស្វ័យប្រវត្ត។
+                    ប្រសិនបើមិនទាន់បានបើក Telegram សូមចុចប៊ូតុងខាងក្រោម រួចចុច <b>START</b> ក្នុង Telegram Bot ៖
                   </span>
+
+                  {telegramSessionToken && (
+                    <a
+                      href={`https://t.me/nssfsocportal_bot?start=${telegramSessionToken}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '6px',
+                        padding: '10px 20px',
+                        backgroundColor: '#0088cc',
+                        color: '#fff',
+                        borderRadius: '10px',
+                        fontSize: '13px',
+                        fontWeight: '700',
+                        textDecoration: 'none',
+                        boxShadow: '0 4px 10px rgba(0, 136, 204, 0.3)',
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <span>🚀</span> បើក Telegram Bot (Open Telegram Bot)
+                    </a>
+                  )}
+
                   <button
                     type="button"
                     onClick={cancelTelegramBotLogin}
