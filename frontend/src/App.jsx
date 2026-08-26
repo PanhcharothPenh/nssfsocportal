@@ -154,6 +154,20 @@ export default function App() {
   const [signerName, setSignerName] = useState('មាន ណារិមន្ត');
   const [signerTitle, setSignerTitle] = useState('ប្រធាននាយកដ្ឋានសេវាមូលដ្ឋានសុខាភិបាល');
   const [signatureImage, setSignatureImage] = useState('');
+
+  // Random Shift PDF Customization states
+  const [showRandomShiftPdfModal, setShowRandomShiftPdfModal] = useState(false);
+  const [randomShiftPdfData, setRandomShiftPdfData] = useState({ schedule: {}, stats: {}, year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
+  const [randomShiftPdfDocTitle, setRandomShiftPdfDocTitle] = useState('តារាងកាលវិភាគមន្ត្រីប្រចាំការយប់ (Standby Roster)');
+  const [randomShiftPdfDepartment, setRandomShiftPdfDepartment] = useState('នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន');
+  const [randomShiftPdfOffice, setRandomShiftPdfOffice] = useState('ការិយាល័យមជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខសាយប័រ (SOC)');
+  const [randomShiftPdfSignerTitle, setRandomShiftPdfSignerTitle] = useState('អ្នករៀបចំកាលវិភាគប្រចាំការ');
+  const [randomShiftPdfSignerName, setRandomShiftPdfSignerName] = useState('Miller');
+  const [randomShiftPdfIncludeStats, setRandomShiftPdfIncludeStats] = useState(true);
+  const [randomShiftPdfDutyNote, setRandomShiftPdfDutyNote] = useState('SOC Incident & System Monitoring');
+  const [randomShiftPdfCustomSignature, setRandomShiftPdfCustomSignature] = useState('');
+  const randomShiftCanvasRef = useRef(null);
+  const [isRandomShiftDrawing, setIsRandomShiftDrawing] = useState(false);
   const [currentLoginUser, setCurrentLoginUser] = useState(() => {
     try {
       const saved = localStorage.getItem('currentLoginUser');
@@ -2075,6 +2089,92 @@ export default function App() {
     setSignatureImage('');
   };
 
+  const startRandomShiftDrawing = (e) => {
+    const canvas = randomShiftCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.lineWidth = 3;
+    ctx.lineCap = 'round';
+    ctx.strokeStyle = '#003bb3';
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    setIsRandomShiftDrawing(true);
+  };
+
+  const drawRandomShift = (e) => {
+    if (!isRandomShiftDrawing) return;
+    const canvas = randomShiftCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const clientX = e.clientX !== undefined ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : 0);
+    const clientY = e.clientY !== undefined ? e.clientY : (e.touches && e.touches[0] ? e.touches[0].clientY : 0);
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    ctx.lineTo(x, y);
+    ctx.stroke();
+  };
+
+  const stopRandomShiftDrawing = () => {
+    setIsRandomShiftDrawing(false);
+  };
+
+  const clearRandomShiftCanvas = () => {
+    const canvas = randomShiftCanvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    setRandomShiftPdfCustomSignature('');
+  };
+
+  const handleRandomShiftSignatureUpload = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const base64 = event.target.result;
+        setRandomShiftPdfCustomSignature(base64);
+        const canvas = randomShiftCanvasRef.current;
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          const img = new Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          };
+          img.src = base64;
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const openRandomShiftPdfModal = (schedule, stats, year, month) => {
+    setRandomShiftPdfData({ schedule: schedule || {}, stats: stats || {}, year: year || new Date().getFullYear(), month: month || (new Date().getMonth() + 1) });
+    if (currentLoginUser) {
+      setRandomShiftPdfSignerName(currentLoginUser.full_name || currentLoginUser.username || 'Miller');
+    }
+    setRandomShiftPdfCustomSignature(signatureImage || '');
+    setShowRandomShiftPdfModal(true);
+    setTimeout(() => {
+      if (signatureImage && randomShiftCanvasRef.current) {
+        const canvas = randomShiftCanvasRef.current;
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        };
+        img.src = signatureImage;
+      }
+    }, 100);
+  };
+
   const getFilteredVpnUsers = () => {
     // Filter out summary/header rows (TOTAL Inactive, TOTAL Active, Inactive, active)
     return vpnUsers.filter(user => {
@@ -3027,7 +3127,7 @@ export default function App() {
   };
 
   // Random Shift Schedule PDF export handler matching VPN Remote Access official styling
-  const handlePrintRandomShiftPDF = (scheduleData, staffStats, year, month, signatureImgOverride) => {
+  const handlePrintRandomShiftPDF = (scheduleData, staffStats, year, month, options = {}) => {
     const daysKhmer = ['ថ្ងៃអាទិត្យ', 'ថ្ងៃចន្ទ', 'ថ្ងៃអង្គារ', 'ថ្ងៃពុធ', 'ថ្ងៃព្រហស្បតិ៍', 'ថ្ងៃសុក្រ', 'ថ្ងៃសៅរ៍'];
     const monthsKhmer = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
     const digitsKhmer = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
@@ -3071,6 +3171,20 @@ export default function App() {
     
     const lunarDate = `${dayOfWeek} ${toKhmerDigits(lunarDayNum)}${lunarPhase} ខែ${currentLunarMonth} ឆ្នាំ${currentZodiac} អដ្ឋស័ក ព.ស.${toKhmerDigits(budEra)}`;
 
+    const targetMonthText = monthsKhmer[parseInt(month) - 1] || `ខែទី${toKhmerDigits(month)}`;
+    const targetYearText = toKhmerDigits(year);
+
+    // Custom options destructured with safe defaults
+    const docTitle = options.docTitle || 'តារាងកាលវិភាគមន្ត្រីប្រចាំការយប់ (Standby Roster)';
+    const docSubtitle = options.docSubtitle || `ប្រចាំខែ${targetMonthText} ឆ្នាំ${targetYearText} (SOC Operation Monitoring)`;
+    const department = options.department || 'នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន';
+    const office = options.office || 'ការិយាល័យមជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខសាយប័រ (SOC)';
+    const targetSignerTitle = options.signerTitle || 'អ្នករៀបចំកាលវិភាគប្រចាំការ';
+    const targetSignerName = options.signerName || ((currentLoginUser && currentLoginUser.full_name) ? currentLoginUser.full_name : 'Miller');
+    const signatureImg = options.signatureImg !== undefined ? options.signatureImg : signatureImage;
+    const includeStats = options.includeStats !== undefined ? options.includeStats : true;
+    const dutyNote = options.dutyNote || 'SOC Monitoring';
+
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       alert("សូមអនុញ្ញាត Popup Window នៅក្នុង Browser ដើម្បីទាញយក PDF!");
@@ -3080,12 +3194,12 @@ export default function App() {
     const scheduleEntries = Object.entries(scheduleData || {}).sort((a, b) => a[0].localeCompare(b[0]));
     
     // Stats Summary Badges
-    const statsHtml = Object.entries(staffStats || {}).map(([name, count]) => `
+    const statsHtml = includeStats ? Object.entries(staffStats || {}).map(([name, count]) => `
       <div style="display: inline-flex; align-items: center; justify-content: space-between; padding: 6px 12px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; margin: 4px; min-width: 170px;">
         <span style="font-size: 11px; font-weight: 700; color: #166534;">👤 ${name}</span>
         <span style="padding: 2px 8px; border-radius: 10px; background-color: #16a34a; color: #fff; font-size: 10.5px; font-weight: 800; margin-left: 8px;">${toKhmerDigits(count)} វេន</span>
       </div>
-    `).join('');
+    `).join('') : '';
 
     const rowsHtml = scheduleEntries.map(([dateStr, officers], index) => {
       let dateKhmerLabel = dateStr;
@@ -3120,20 +3234,15 @@ export default function App() {
           <td style="color: #475569; font-size: 10.5px; font-weight: 600; white-space: nowrap;">${dateStr}</td>
           <td>${officersBadges}</td>
           <td style="font-size: 10.5px; color: #334155; font-weight: 600; text-align: center;">🌙 យប់ (១៧:០០ - ០៨:០០)</td>
-          <td style="font-size: 10px; color: #64748b;">SOC Monitoring</td>
+          <td style="font-size: 10px; color: #64748b;">${dutyNote}</td>
         </tr>
       `;
     }).join('');
 
-    const targetMonthText = monthsKhmer[parseInt(month) - 1] || `ខែទី${toKhmerDigits(month)}`;
-    const targetYearText = toKhmerDigits(year);
-    const targetSignerName = (currentLoginUser && currentLoginUser.full_name) ? currentLoginUser.full_name : 'Miller';
-    const targetSignerTitle = 'អ្នករៀបចំកាលវិភាគប្រចាំការ';
-
     printWindow.document.write(`
       <html>
         <head>
-          <title>NSSF SOC Standby Schedule - ${month}/${year}</title>
+          <title>${docTitle} - ${month}/${year}</title>
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&display=swap');
             
@@ -3211,7 +3320,7 @@ export default function App() {
               font-size: 15px;
               font-weight: 800;
               color: #0b45b5;
-              margin: 20px 0 10px 0;
+              margin: 20px 0 6px 0;
             }
 
             .document-subtitle {
@@ -3272,8 +3381,8 @@ export default function App() {
             <div class="header-left">
               <img src="${nssfLogo}" style="width: 75px; height: 75px; object-fit: contain; margin-bottom: 2px;" alt="NSSF Logo" />
               <div class="header-left-text-primary">បេឡាជាតិសន្តិសុខសង្គម</div>
-              <div class="header-left-text-secondary">នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន</div>
-              <div class="header-left-text-soc">ការិយាល័យមជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខសាយប័រ (SOC)</div>
+              <div class="header-left-text-secondary">${department}</div>
+              <div class="header-left-text-soc">${office}</div>
             </div>
             
             <div class="header-right">
@@ -3291,8 +3400,8 @@ export default function App() {
             </div>
           </div>
           
-          <div class="document-title">តារាងកាលវិភាគមន្ត្រីប្រចាំការយប់ (Standby Roster)</div>
-          <div class="document-subtitle">ប្រចាំខែ${targetMonthText} ឆ្នាំ${targetYearText} (SOC Operation Monitoring)</div>
+          <div class="document-title">${docTitle}</div>
+          <div class="document-subtitle">${docSubtitle}</div>
           
           <div style="width: 100%; height: 3px; background-color: #0b45b5; margin-bottom: 15px; margin-top: 5px;"></div>
 
@@ -3313,7 +3422,7 @@ export default function App() {
                 <th style="width: 90px; font-weight: 800;">Date</th>
                 <th style="font-weight: 800;">មន្ត្រីប្រចាំការ (Standby Officers)</th>
                 <th style="width: 140px; text-align: center; font-weight: 800;">វេនប្រចាំការ</th>
-                <th style="width: 110px; font-weight: 800;">ភារកិច្ច</th>
+                <th style="width: 120px; font-weight: 800;">ភារកិច្ច</th>
               </tr>
             </thead>
             <tbody>
@@ -3330,7 +3439,7 @@ export default function App() {
               
               <!-- Signature container -->
               <div style="height: 55px; display: flex; align-items: center; justify-content: center; margin: 2px 0;">
-                ${(signatureImgOverride !== undefined ? signatureImgOverride : signatureImage) ? `<img src="${signatureImgOverride !== undefined ? signatureImgOverride : signatureImage}" style="height: 50px; object-fit: contain; margin: 0;" alt="Signature" />` : '<div style="height: 50px; width: 150px; border-bottom: 1px dashed #cbd5e1; margin-top: 5px;"></div>'}
+                ${signatureImg ? `<img src="${signatureImg}" style="height: 50px; object-fit: contain; margin: 0;" alt="Signature" />` : '<div style="height: 50px; width: 150px; border-bottom: 1px dashed #cbd5e1; margin-top: 5px;"></div>'}
               </div>
               
               <div style="font-size: 11px; font-weight: 800; color: #1e293b; margin-top: 2px;">${targetSignerName}</div>
@@ -3779,7 +3888,7 @@ export default function App() {
                     });
                   });
                   const now = new Date();
-                  handlePrintRandomShiftPDF(shiftSchedule, stats, now.getFullYear(), now.getMonth() + 1);
+                  openRandomShiftPdfModal(shiftSchedule, stats, now.getFullYear(), now.getMonth() + 1);
                 }}
                 style={{
                   padding: '7px 14px',
@@ -4307,7 +4416,7 @@ export default function App() {
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      onClick={() => handlePrintRandomShiftPDF(
+                      onClick={() => openRandomShiftPdfModal(
                         generatedShiftPreview.generated_schedule,
                         generatedShiftPreview.staff_statistics,
                         randomShiftYear,
@@ -4323,10 +4432,11 @@ export default function App() {
                         boxShadow: '0 4px 12px rgba(220,38,38,0.3)',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '6px'
+                        gap: '6px',
+                        cursor: 'pointer'
                       }}
                     >
-                      📕 ទាញយកជា PDF (Export PDF)
+                      📕 កំណត់ទម្រង់ & ទាញយក PDF (Customize PDF)
                     </button>
                     <button
                       type="button"
@@ -11854,6 +11964,216 @@ export default function App() {
                 }}
               >
                 📕 Export & Print PDF
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 5b. Random Shift PDF Customization & Signature Modal */}
+      {showRandomShiftPdfModal && (
+        <div className="modal-overlay" style={{ zIndex: 1050 }}>
+          <div className="modal-content" style={{ maxWidth: '560px', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div className="modal-header">
+              <div className="modal-title">✍️ កំណត់ទម្រង់បោះពុម្ពកាលវិភាគ / Shift PDF Options</div>
+              <button type="button" className="modal-close" onClick={() => setShowRandomShiftPdfModal(false)}>×</button>
+            </div>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              
+              {/* Document Title */}
+              <div className="form-group">
+                <label className="form-label" style={{ fontWeight: '700' }}>ចំណងជើងឯកសារ (Document Title) ៖</label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={randomShiftPdfDocTitle}
+                  onChange={(e) => setRandomShiftPdfDocTitle(e.target.value)}
+                  placeholder="ឧ. តារាងកាលវិភាគមន្ត្រីប្រចាំការយប់ (Standby Roster)"
+                />
+              </div>
+
+              {/* Department & Office in 2 columns */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '700' }}>នាយកដ្ឋាន (Department) ៖</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={randomShiftPdfDepartment}
+                    onChange={(e) => setRandomShiftPdfDepartment(e.target.value)}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '700' }}>ការិយាល័យ (Office / Unit) ៖</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={randomShiftPdfOffice}
+                    onChange={(e) => setRandomShiftPdfOffice(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              {/* Signer Title & Name */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '700' }}>តួនាទីអ្នករៀបចំ/ចុះហត្ថលេខា ៖</label>
+                  <select
+                    className="form-input"
+                    value={randomShiftPdfSignerTitle}
+                    onChange={(e) => setRandomShiftPdfSignerTitle(e.target.value)}
+                    style={{ fontWeight: '700' }}
+                  >
+                    <option value="អ្នករៀបចំកាលវិភាគប្រចាំការ">អ្នករៀបចំកាលវិភាគ</option>
+                    <option value="ប្រធានការិយាល័យ">ប្រធានការិយាល័យ</option>
+                    <option value="អនុប្រធានការិយាល័យ">អនុប្រធានការិយាល័យ</option>
+                    <option value="ប្រធាននាយកដ្ឋាន">ប្រធាននាយកដ្ឋាន</option>
+                    <option value="អនុប្រធាននាយកដ្ឋាន">អនុប្រធាននាយកដ្ឋាន</option>
+                    <option value="មន្ត្រីជំនាញ SOC">មន្ត្រីជំនាញ SOC</option>
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '700' }}>ឈ្មោះអ្នកចុះហត្ថលេខា (Signer Name) ៖</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={randomShiftPdfSignerName}
+                    onChange={(e) => setRandomShiftPdfSignerName(e.target.value)}
+                    placeholder="e.g. Miller"
+                  />
+                </div>
+              </div>
+
+              {/* Duty Note & Include Stats Checkbox */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'end' }}>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontWeight: '700' }}>ភារកិច្ចប្រចាំការ (Duty Note) ៖</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    value={randomShiftPdfDutyNote}
+                    onChange={(e) => setRandomShiftPdfDutyNote(e.target.value)}
+                    placeholder="ឧ. SOC Incident & System Monitoring"
+                  />
+                </div>
+                <div style={{ paddingBottom: '8px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', color: '#166534' }}>
+                    <input
+                      type="checkbox"
+                      checked={randomShiftPdfIncludeStats}
+                      onChange={(e) => setRandomShiftPdfIncludeStats(e.target.checked)}
+                      style={{ width: '16px', height: '16px' }}
+                    />
+                    បង្ហាញសេចក្តីសង្ខេបចំនួនវេន
+                  </label>
+                </div>
+              </div>
+
+              {/* Signature Canvas */}
+              <div className="form-group" style={{ marginTop: '4px' }}>
+                <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontWeight: '700' }}>
+                  <span>✍️ គូរហត្ថលេខាឌីជីថល (Draw Signature) ៖</span>
+                  <button 
+                    type="button" 
+                    onClick={clearRandomShiftCanvas} 
+                    style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer', padding: 0 }}
+                  >
+                    🧹 សម្អាត (Clear)
+                  </button>
+                </label>
+                <div style={{ border: '2px dashed var(--border-color)', borderRadius: '8px', backgroundColor: '#fff', overflow: 'hidden', height: '130px', position: 'relative' }}>
+                  <canvas
+                    ref={randomShiftCanvasRef}
+                    width={500}
+                    height={130}
+                    style={{ width: '100%', height: '100%', cursor: 'crosshair', display: 'block' }}
+                    onMouseDown={startRandomShiftDrawing}
+                    onMouseMove={drawRandomShift}
+                    onMouseUp={stopRandomShiftDrawing}
+                    onMouseLeave={stopRandomShiftDrawing}
+                    onTouchStart={startRandomShiftDrawing}
+                    onTouchMove={drawRandomShift}
+                    onTouchEnd={stopRandomShiftDrawing}
+                  />
+                </div>
+              </div>
+
+              {/* Upload Signature Image file */}
+              <div className="form-group">
+                <label className="form-label" style={{ fontSize: '12px' }}>ឬបញ្ចូលរូបភាពហត្ថលេខា (Or Upload Signature Image) ៖</label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleRandomShiftSignatureUpload}
+                    style={{ display: 'none' }}
+                    id="random-sig-image-upload"
+                  />
+                  <label 
+                    htmlFor="random-sig-image-upload" 
+                    className="btn btn-secondary"
+                    style={{ 
+                      display: 'inline-flex', 
+                      alignItems: 'center', 
+                      gap: '6px', 
+                      cursor: 'pointer',
+                      padding: '8px 12px',
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      border: '1.5px solid rgba(37, 99, 235, 0.1)',
+                      borderRadius: '6px',
+                      fontWeight: '700',
+                      fontSize: '11px'
+                    }}
+                  >
+                    📁 បញ្ចូលរូបភាពហត្ថលេខា (Select Image)
+                  </label>
+                  {randomShiftPdfCustomSignature && (
+                    <span style={{ fontSize: '11px', color: '#10b981', fontWeight: 'bold' }}>
+                      ✓ មានហត្ថលេខា
+                    </span>
+                  )}
+                </div>
+              </div>
+
+            </div>
+            <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowRandomShiftPdfModal(false)}>បោះបង់ (Cancel)</button>
+              <button 
+                type="button" 
+                className="btn btn-primary"
+                style={{ backgroundColor: '#dc2626', borderColor: '#dc2626', fontWeight: '800' }}
+                onClick={() => {
+                  const canvas = randomShiftCanvasRef.current;
+                  let finalSig = randomShiftPdfCustomSignature;
+                  if (canvas) {
+                    const ctx = canvas.getContext('2d');
+                    const buffer = new Uint32Array(ctx.getImageData(0, 0, canvas.width, canvas.height).data.buffer);
+                    const hasDrawing = buffer.some(color => color !== 0);
+                    if (hasDrawing) {
+                      finalSig = canvas.toDataURL();
+                    }
+                  }
+                  handlePrintRandomShiftPDF(
+                    randomShiftPdfData.schedule,
+                    randomShiftPdfData.stats,
+                    randomShiftPdfData.year,
+                    randomShiftPdfData.month,
+                    {
+                      docTitle: randomShiftPdfDocTitle,
+                      department: randomShiftPdfDepartment,
+                      office: randomShiftPdfOffice,
+                      signerTitle: randomShiftPdfSignerTitle,
+                      signerName: randomShiftPdfSignerName,
+                      signatureImg: finalSig,
+                      includeStats: randomShiftPdfIncludeStats,
+                      dutyNote: randomShiftPdfDutyNote
+                    }
+                  );
+                  setShowRandomShiftPdfModal(false);
+                }}
+              >
+                📕 បោះពុម្ព និងទាញយកជា PDF (Print & Export)
               </button>
             </div>
           </div>
