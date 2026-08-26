@@ -10,7 +10,7 @@ services:
     environment:
       - PORT=8000
       - DATABASE_URL=soc_network.db
-      - TELEGRAM_BOT_TOKEN=8621517870:AAFahP_Ikijfy7v6vlR7iVczKuc-IJ15wxc
+      - TELEGRAM_BOT_TOKEN=8621517870:AAHtpdiVRWM6vS6nv8THFUbA7ICY8WUvBCU
       - TELEGRAM_CHAT_ID=-1002124589536
     volumes:
       - ./soc_network.db:/app/soc_network.db
