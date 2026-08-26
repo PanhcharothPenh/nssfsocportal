@@ -95,11 +95,31 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
     }
   };
 
+  // Internal Users List state to guarantee users are ALWAYS loaded
+  const [internalUsersList, setInternalUsersList] = useState(usersList || []);
+
+  useEffect(() => {
+    if (usersList && usersList.length > 0) {
+      setInternalUsersList(usersList);
+    }
+  }, [usersList]);
+
+  useEffect(() => {
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setInternalUsersList(data);
+        }
+      })
+      .catch(err => console.log('Users fetch error in DirectPdfAutoFiller:', err));
+  }, []);
+
   const handleStaffSelect = (e) => {
     const staffId = e.target.value;
     setSelectedStaffId(staffId);
     if (!staffId) return;
-    const staff = usersList.find(u => String(u.id) === String(staffId) || u.username === staffId);
+    const staff = internalUsersList.find(u => String(u.id) === String(staffId) || u.username === staffId);
     if (staff) {
       setApplicantName(staff.full_name || staff.username || '');
       setPosition(staff.position || 'មន្ត្រី');
@@ -280,9 +300,9 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               style={{ padding: '8px 10px', fontSize: '12.5px', borderRadius: '10px', borderColor: '#0088cc', color: '#0f172a', fontWeight: '700', backgroundColor: '#f0f9ff' }}
             >
               <option value="group">📢 ផ្ញើចូល Telegram Group SOC (Default)</option>
-              {usersList && usersList.map(u => (
-                <option key={u.id} value={u.telegram_chat_id || u.username}>
-                  👤 ផ្ញើជូន ៖ {u.full_name || u.username} ({u.position || 'មន្ត្រី'})
+              {internalUsersList && internalUsersList.map(u => (
+                <option key={u.id || u.username} value={u.telegram_chat_id || u.username}>
+                  👤 ផ្ញើជូន ៖ {u.full_name || u.username} ({u.position || u.department || 'មន្ត្រី'})
                 </option>
               ))}
             </select>
@@ -319,7 +339,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
           style={{ padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: '700', color: '#0f172a', maxWidth: '350px' }}
         >
           <option value="">-- ជ្រើសរើសបុគ្គលិកពីទិន្នន័យ ប.ស.ស. --</option>
-          {usersList.map((u) => (
+          {internalUsersList.map((u) => (
             <option key={u.id || u.username} value={u.id || u.username}>
               {u.full_name || u.username} ({u.position || 'មន្ត្រី'} - {u.department || 'IT'})
             </option>

@@ -73,6 +73,24 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
   // Attached files ("another file too")
   const [attachedFiles, setAttachedFiles] = useState([]);
   const [targetTelegramRecipient, setTargetTelegramRecipient] = useState('group');
+  const [internalUsersList, setInternalUsersList] = useState(usersList || []);
+
+  useEffect(() => {
+    if (usersList && usersList.length > 0) {
+      setInternalUsersList(usersList);
+    }
+  }, [usersList]);
+
+  useEffect(() => {
+    fetch('/api/users')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setInternalUsersList(data);
+        }
+      })
+      .catch(err => console.log('Users fetch error in PdfFormAutoFillHub:', err));
+  }, []);
 
   // Auto-Fill Handler
   const handleAutoFillUser = () => {
@@ -758,9 +776,9 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
             style={{ padding: '8px 10px', fontSize: '12.5px', borderRadius: '10px', borderColor: '#0088cc', color: '#0f172a', fontWeight: '700', backgroundColor: '#f0f9ff' }}
           >
             <option value="group">📢 ផ្ញើចូល Telegram Group SOC (Default)</option>
-            {usersList && usersList.map(u => (
-              <option key={u.id} value={u.telegram_chat_id || u.username}>
-                👤 ផ្ញើជូន ៖ {u.full_name || u.username} ({u.position || 'មន្ត្រី'})
+            {internalUsersList && internalUsersList.map(u => (
+              <option key={u.id || u.username} value={u.telegram_chat_id || u.username}>
+                👤 ផ្ញើជូន ៖ {u.full_name || u.username} ({u.position || u.department || 'មន្ត្រី'})
               </option>
             ))}
           </select>
