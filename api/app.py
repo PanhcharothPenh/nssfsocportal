@@ -2426,7 +2426,12 @@ async def send_pdf_to_telegram(
                 target_chat = cid
 
         file_bytes = await file.read()
-        filename = file.filename or "SOC_Request_Form.pdf"
+        raw_name = file.filename or "NSSF_SOC_Request_Form.pdf"
+        try:
+            raw_name.encode('ascii')
+            filename = raw_name
+        except UnicodeEncodeError:
+            filename = "NSSF_SOC_Request_Form.pdf"
         
         caption_parts = [f"📄 <b>{title or 'ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC'}</b>\n"]
         if applicant_name:

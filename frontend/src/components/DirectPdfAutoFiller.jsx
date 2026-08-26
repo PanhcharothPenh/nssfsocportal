@@ -208,7 +208,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
       const html2pdf = (await import('html2pdf.js')).default;
       const opt = {
         margin:       0,
-        filename:     `NSSF_Request_${applicantName || 'SOC'}.pdf`,
+        filename:     'NSSF_SOC_Request_Form.pdf',
         image:        { type: 'jpeg', quality: 0.98 },
         html2canvas:  { scale: 2, useCORS: true, logging: false },
         jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
@@ -217,7 +217,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
       const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
       
       const formData = new FormData();
-      formData.append('file', pdfBlob, `NSSF_Request_${applicantName || 'SOC'}.pdf`);
+      formData.append('file', pdfBlob, 'NSSF_SOC_Request_Form.pdf');
       formData.append('chat_id', targetTelegramRecipient);
       formData.append('title', docTitle || 'ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC');
       formData.append('applicant_name', applicantName || '');
