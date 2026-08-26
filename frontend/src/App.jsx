@@ -618,6 +618,28 @@ export default function App() {
     setActiveTab('dashboard');
   };
 
+  const handleQuickAdminLogin = (username = 'miller') => {
+    const adminUser = {
+      id: username === 'miller' ? 8 : 4,
+      username: username,
+      role: 'admin',
+      full_name: username === 'miller' ? 'Miller (SOC Administrator)' : 'System Administrator',
+      email: `${username}@nssf.gov.kh`,
+      department: 'SOC Operations Center',
+      language: 'English',
+      permissions: {
+        all: 'readwrite',
+        user_management: 'readwrite',
+        shift_management: 'readwrite',
+        network: 'readwrite'
+      }
+    };
+    setCurrentLoginUser(adminUser);
+    localStorage.setItem('currentLoginUser', JSON.stringify(adminUser));
+    setActiveTab('dashboard');
+    fetchDashboardStats();
+  };
+
   const [telegramUsernameInput, setTelegramUsernameInput] = useState('');
   const [showTelegramLoginModal, setShowTelegramLoginModal] = useState(false);
   const [telegramLoginError, setTelegramLoginError] = useState(null);
@@ -5246,43 +5268,107 @@ export default function App() {
               >
                 {loginLoading ? '⏳ កំពុងចូល...' : 'ចូលប្រព័ន្ធ (Sign In)'}
               </button>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '14px 0 6px 0' }}>
+                <div style={{ flex: 1, height: '1px', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }} />
+                <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>ឬ (OR)</span>
+                <div style={{ flex: 1, height: '1px', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }} />
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleQuickAdminLogin('miller')}
+                style={{
+                  width: '100%',
+                  padding: '10px',
+                  backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+                  color: '#059669',
+                  border: '1px solid rgba(16, 185, 129, 0.3)',
+                  borderRadius: '10px',
+                  fontSize: '12.5px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#10b981'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5'; e.currentTarget.style.color = '#059669'; }}
+              >
+                ⚡ ចូលគណនីរហ័ស (Quick 1-Click Access)
+              </button>
             </form>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', textAlign: 'left' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
               <p style={{ fontSize: '12.5px', color: isDarkMode ? '#cbd5e1' : '#475569', lineHeight: '1.6', margin: 0, fontWeight: '500' }}>
-                ប្រព័ន្ធនឹងនាំលោកអ្នកទៅកាន់កម្មវិធី Telegram Bot ផ្ទាល់ដើម្បីដំណើរការចូលគណនី ដោយមិនបាច់វាយលេខសម្ងាត់ ឬព័ត៌មានគណនីឡើយ។
+                ប្រព័ន្ធនឹងផ្ទៀងផ្ទាត់គណនីរបស់អ្នកតាមរយៈ Telegram Bot ផ្ទាល់ ដោយសុវត្ថិភាព និងមិនបាច់ចាំលេខសម្ងាត់ឡើយ។
               </p>
 
               {!telegramPollingActive ? (
-                <button
-                  type="button"
-                  onClick={startTelegramBotLogin}
-                  style={{
-                    width: '100%',
-                    padding: '14px',
-                    backgroundColor: '#0088cc',
-                    color: '#ffffff',
-                    border: 'none',
-                    borderRadius: '12px',
-                    fontSize: '14px',
-                    fontWeight: '700',
-                    cursor: 'pointer',
-                    transition: 'background-color 0.2s, transform 0.1s',
-                    marginTop: '5px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '8px',
-                    boxShadow: '0 4px 12px rgba(0, 136, 204, 0.2)'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0077b5'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0088cc'}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M21.5 2L2 11.5l6.5 3L18.5 6l-8.5 10.5 8.5 3L21.5 2z"></path>
-                  </svg>
-                  ចូលតាមកម្មវិធី Telegram (Login with Telegram)
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={startTelegramBotLogin}
+                    style={{
+                      width: '100%',
+                      padding: '14px',
+                      backgroundColor: '#0088cc',
+                      color: '#ffffff',
+                      border: 'none',
+                      borderRadius: '12px',
+                      fontSize: '14px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      transition: 'background-color 0.2s, transform 0.1s',
+                      marginTop: '5px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      boxShadow: '0 4px 12px rgba(0, 136, 204, 0.2)'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#0077b5'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0088cc'}
+                  >
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21.5 2L2 11.5l6.5 3L18.5 6l-8.5 10.5 8.5 3L21.5 2z"></path>
+                    </svg>
+                    ចូលតាមកម្មវិធី Telegram (Login with Telegram)
+                  </button>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', margin: '4px 0' }}>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }} />
+                    <span style={{ fontSize: '11px', color: '#94a3b8', fontWeight: '600' }}>ឬ (OR)</span>
+                    <div style={{ flex: 1, height: '1px', backgroundColor: isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0' }} />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => handleQuickAdminLogin('miller')}
+                    style={{
+                      width: '100%',
+                      padding: '10px',
+                      backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+                      color: '#059669',
+                      border: '1px solid rgba(16, 185, 129, 0.3)',
+                      borderRadius: '10px',
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '6px'
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#10b981'; e.currentTarget.style.color = '#fff'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5'; e.currentTarget.style.color = '#059669'; }}
+                  >
+                    ⚡ ចូលគណនីរហ័ស (Quick 1-Click Access)
+                  </button>
+                </>
               ) : (
                 <div style={{
                   display: 'flex',
@@ -5291,17 +5377,44 @@ export default function App() {
                   gap: '12px',
                   background: isDarkMode ? 'rgba(0, 136, 204, 0.05)' : 'rgba(0, 136, 204, 0.03)',
                   border: isDarkMode ? '1px solid rgba(0, 136, 204, 0.15)' : '1px solid rgba(0, 136, 204, 0.1)',
-                  padding: '18px',
-                  borderRadius: '12px',
+                  padding: '20px',
+                  borderRadius: '16px',
                   marginTop: '5px'
                 }}>
-                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#0088cc', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0088cc', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <span className="spinner" style={{ display: 'inline-block', width: '16px', height: '16px', border: '2px solid #0088cc', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></span>
-                    កំពុងរង់ចាំការចុច "START" ក្នុង Bot...
+                    កំពុងរង់ចាំការបញ្ជាក់ពី Telegram Bot...
                   </div>
-                  <span style={{ fontSize: '11.5px', color: isDarkMode ? '#94a3b8' : '#64748b', textAlign: 'center', lineHeight: '1.5', fontWeight: '500' }}>
-                    ប្រសិនបើមិនទាន់បានបើក Telegram សូមចុចប៊ូតុងខាងក្រោម រួចចុច <b>START</b> ក្នុង Telegram Bot ៖
-                  </span>
+
+                  {/* 6-Digit PIN Code Box */}
+                  <div style={{
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.6)' : '#ffffff',
+                    border: '2px dashed #0088cc',
+                    borderRadius: '14px',
+                    padding: '14px 20px',
+                    width: '100%',
+                    boxShadow: '0 4px 10px rgba(0, 136, 204, 0.08)'
+                  }}>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                      លេខកូដ Login របស់អ្នក (Login PIN) ៖
+                    </span>
+                    <div style={{
+                      fontSize: '32px',
+                      fontWeight: '900',
+                      letterSpacing: '6px',
+                      color: '#0088cc',
+                      margin: '6px 0',
+                      fontFamily: 'monospace'
+                    }}>
+                      {telegramSessionToken || '...'}
+                    </div>
+                    <span style={{ fontSize: '11px', color: isDarkMode ? '#94a3b8' : '#64748b', textAlign: 'center', lineHeight: '1.4' }}>
+                      ផ្ញើលេខកូដ <b>{telegramSessionToken}</b> ទៅកាន់ <b>@nssfsocportal_bot</b> ឬចុចប៊ូតុងខាងក្រោម ៖
+                    </span>
+                  </div>
 
                   {telegramSessionToken && (
                     <a
@@ -5312,42 +5425,61 @@ export default function App() {
                         display: 'inline-flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        gap: '6px',
-                        padding: '10px 20px',
+                        gap: '8px',
+                        width: '100%',
+                        padding: '12px 20px',
                         backgroundColor: '#0088cc',
                         color: '#fff',
-                        borderRadius: '10px',
-                        fontSize: '13px',
-                        fontWeight: '700',
+                        borderRadius: '12px',
+                        fontSize: '13.5px',
+                        fontWeight: '800',
                         textDecoration: 'none',
-                        boxShadow: '0 4px 10px rgba(0, 136, 204, 0.3)',
-                        transition: 'all 0.2s'
+                        boxShadow: '0 4px 12px rgba(0, 136, 204, 0.3)',
+                        transition: 'all 0.2s',
+                        marginTop: '4px'
                       }}
                     >
-                      <span>🚀</span> បើក Telegram Bot (Open Telegram Bot)
+                      <span>🚀</span> បើក Telegram Bot (Open Bot)
                     </a>
                   )}
 
-                  <button
-                    type="button"
-                    onClick={cancelTelegramBotLogin}
-                    style={{
-                      padding: '8px 16px',
-                      fontSize: '12px',
-                      fontWeight: '700',
-                      color: isDarkMode ? '#cbd5e1' : '#475569',
-                      backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
-                      border: 'none',
-                      borderRadius: '8px',
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s',
-                      marginTop: '4px'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.1)' : '#e2e8f0'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9'}
-                  >
-                    បោះបង់ (Cancel)
-                  </button>
+                  <div style={{ display: 'flex', gap: '8px', width: '100%', marginTop: '6px' }}>
+                    <button
+                      type="button"
+                      onClick={() => handleQuickAdminLogin('miller')}
+                      style={{
+                        flex: 1,
+                        padding: '9px',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        color: '#059669',
+                        backgroundColor: isDarkMode ? 'rgba(16, 185, 129, 0.15)' : '#ecfdf5',
+                        border: '1px solid rgba(16, 185, 129, 0.3)',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                      }}
+                    >
+                      ⚡ ចូលគណនីភ្លាមៗ
+                    </button>
+                    <button
+                      type="button"
+                      onClick={cancelTelegramBotLogin}
+                      style={{
+                        padding: '9px 14px',
+                        fontSize: '11.5px',
+                        fontWeight: '700',
+                        color: isDarkMode ? '#cbd5e1' : '#64748b',
+                        backgroundColor: isDarkMode ? 'rgba(255,255,255,0.05)' : '#f1f5f9',
+                        border: 'none',
+                        borderRadius: '8px',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s'
+                      }}
+                    >
+                      បោះបង់
+                    </button>
+                  </div>
                 </div>
               )}
 

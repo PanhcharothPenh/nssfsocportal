@@ -2207,8 +2207,8 @@ class TelegramLoginPayload(BaseModel):
 
 @app.post("/api/auth/telegram_session/create")
 def telegram_session_create(request: Request):
-    import uuid
-    token = str(uuid.uuid4())
+    import random
+    token = str(random.randint(100000, 999999))
     
     # Setup webhook dynamically in Vercel/Production environments
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAHtpdiVRWM6vS6nv8THFUbA7ICY8WUvBCU"
@@ -2232,19 +2232,17 @@ def telegram_session_create(request: Request):
             CREATE TABLE IF NOT EXISTS login_sessions (
                 token TEXT PRIMARY KEY,
                 status TEXT,
-                user_id INTEGER,
                 username TEXT,
-                full_name TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         """)
-        cursor.execute("INSERT INTO login_sessions (token, status) VALUES (?, ?)", (token, 'pending'))
+        cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status) VALUES (?, ?)", (token, 'pending'))
         conn.commit()
         conn.close()
     except Exception as e:
         print("Error creating login session in DB:", e)
 
-    return {"status": "success", "token": token}
+    return {"status": "success", "token": token, "code": token}
 
 @app.get("/api/auth/telegram_session/status/{token}")
 def telegram_session_status(token: str, request: Request):

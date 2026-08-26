@@ -1248,11 +1248,16 @@ def process_telegram_incoming_update(update: dict):
 
     t_lower = (text or "").strip().lower()
 
-    # Handle Web Login via Telegram (supports /start <token>, plain /start, /login, or Start button)
-    is_login_start = (t_lower in ["/start", "start", "/login", "login"]) or (text and text.strip().startswith("/start"))
-    if is_login_start:
+    # Handle Web Login via Telegram (supports 6-digit PIN code, /start <token>, plain /start, /login, or Start button)
+    import re
+    digits_match = re.search(r'\b\d{6}\b', (text or "").replace(" ", "").replace("-", ""))
+    is_login_cmd = (t_lower in ["/start", "start", "/login", "login", "ចូលប្រព័ន្ធ", "login soc"]) or (text and text.strip().startswith("/start")) or bool(digits_match)
+
+    if is_login_cmd:
         token = None
-        if text and len(text.strip().split()) > 1:
+        if digits_match:
+            token = digits_match.group(0)
+        elif text and len(text.strip().split()) > 1:
             token = text.strip().split()[1].strip()
             
         try:
@@ -1260,7 +1265,13 @@ def process_telegram_incoming_update(update: dict):
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # If no token passed directly in command, check if there is an active pending web login session!
+            # If token found, check if it exists in login_sessions
+            if token:
+                cursor.execute("SELECT token FROM login_sessions WHERE token = ?", (token,))
+                if not cursor.fetchone():
+                    token = None
+                    
+            # If still no token matched, grab the latest active pending session
             if not token:
                 cursor.execute("SELECT token FROM login_sessions WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1")
                 p_row = cursor.fetchone()
@@ -1300,12 +1311,22 @@ def process_telegram_incoming_update(update: dict):
                     
                     welcome_name = user_dict.get('full_name') or user_dict.get('username') or tg_full_name or "User"
                     msg = (
-                        f"✅ <b>ការចូលគណនីទទួលបានជោគជ័យ (Login Authorized)!</b>\n\n"
+                        f"🎉 <b>ការចូលគណនីទទួលបានជោគជ័យ (Login Authorized)!</b>\n\n"
                         f"សួស្តី <b>{welcome_name}</b> 👋\n\n"
-                        f"លោកអ្នកបានផ្ទៀងផ្ទាត់ និងចូលគណនី NSSF SOC Portal តាមរយៈ Telegram ដោយជោគជ័យ។\n"
-                        f"ផ្ទាំង Browser របស់លោកអ្នកត្រូវបានដោះសោររួចរាល់ហើយ!"
+                        f"កូដចូលប្រព័ន្ធ <code>{token}</code> ត្រូវបានផ្ទៀងផ្ទាត់ដោយជោគជ័យ។\n"
+                        f"ផ្ទាំង Web Browser របស់អ្នកត្រូវបានដោះសោរ និងបើកដំណើរការរួចរាល់ហើយ!"
                     )
-                    send_telegram_message(msg, chat_id=chat_id)
+                    reply_kb = {
+                        "inline_keyboard": [
+                            [
+                                {
+                                    "text": "🌐 បើកវេបសាយ NSSF SOC Portal",
+                                    "url": "https://nssfsocportal.vercel.app"
+                                }
+                            ]
+                        ]
+                    }
+                    send_telegram_message(msg, chat_id=chat_id, reply_markup=reply_kb)
                     return
                 else:
                     conn.close()
