@@ -2802,6 +2802,14 @@ def delete_user(user_id: int):
 
 FIRESTORE_REST_URL = "https://firestore.googleapis.com/v1/projects/shift-dashboard-efda2/databases/(default)/documents/shiftboard/schedule"
 
+def normalize_khmer_name(name: str) -> str:
+    if not name:
+        return ""
+    clean = name.strip()
+    import re
+    clean = re.sub(r'^(លោកស្រី|លោកជំទាវ|ឯកឧត្តម|លោក|កញ្ញា|បង)\s+', '', clean).strip()
+    return clean
+
 def fetch_shift_schedule_from_firestore():
     import requests
     try:
@@ -2812,7 +2820,8 @@ def fetch_shift_schedule_from_firestore():
             data_field = data.get("fields", {}).get("data", {}).get("mapValue", {}).get("fields", {})
             for date_str, date_obj in data_field.items():
                 night_values = date_obj.get("mapValue", {}).get("fields", {}).get("night", {}).get("arrayValue", {}).get("values", [])
-                names = [item.get("stringValue", "").strip() for item in night_values if item.get("stringValue")]
+                names = [normalize_khmer_name(item.get("stringValue", "")) for item in night_values if item.get("stringValue")]
+                names = [n for n in names if n]
                 schedule[date_str] = names
             return schedule
     except Exception as e:
@@ -2843,7 +2852,7 @@ def get_merged_shift_schedule():
                 names = json.loads(names_raw) if names_raw else []
             except Exception:
                 names = [n.strip() for n in names_raw.split(',') if n.strip()]
-            schedule[d_str] = names
+            schedule[d_str] = [normalize_khmer_name(n) for n in names if n]
     except Exception as e:
         print("SQLite shift schedule merge warning:", e)
         

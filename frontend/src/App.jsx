@@ -308,20 +308,33 @@ export default function App() {
   const [generatedShiftPreview, setGeneratedShiftPreview] = useState(null);
   const [isSavingGeneratedShift, setIsSavingGeneratedShift] = useState(false);
 
+  const normalizeKhmerName = (rawName) => {
+    if (!rawName || typeof rawName !== 'string') return '';
+    let clean = rawName.trim();
+    // Strip honorific prefixes: លោក, លោកស្រី, កញ្ញា, បង, លោកជំទាវ, ឯកឧត្តម
+    const honorificRegex = /^(លោកស្រី|លោកជំទាវ|ឯកឧត្តម|លោក|កញ្ញា|បង)\s+/i;
+    while (honorificRegex.test(clean)) {
+      clean = clean.replace(honorificRegex, '').trim();
+    }
+    return clean;
+  };
+
   const getStaffPoolFromShiftSchedule = () => {
     const namesSet = new Set();
     Object.values(shiftSchedule || {}).forEach(namesList => {
       if (Array.isArray(namesList)) {
         namesList.forEach(n => {
-          if (n && typeof n === 'string' && n.trim()) {
-            namesSet.add(n.trim());
+          const clean = normalizeKhmerName(n);
+          if (clean) {
+            namesSet.add(clean);
           }
         });
       }
     });
     let pool = Array.from(namesSet);
     if (!pool.length && usersList && usersList.length > 0) {
-      pool = usersList.map(u => u.full_name || u.username).filter(Boolean);
+      pool = usersList.map(u => normalizeKhmerName(u.full_name || u.username)).filter(Boolean);
+      pool = Array.from(new Set(pool));
     }
     if (!pool.length) {
       pool = ['អ៊ុក សុធារ៉ារិទ្ធ', 'ពេញ បញ្ញារតន៍', 'ហ៊ាង ចាន់ថន', 'ហន សុភ័ក្រ', 'ចាន់ រដ្ឋា', 'សោម ចាន់ឌី', 'លី ម៉េង', 'គីម សៀង', 'កែវ វិបុល', 'ជា សុខា'];
@@ -3406,7 +3419,9 @@ export default function App() {
     monthDates.forEach(dateKey => {
       const names = shiftSchedule[dateKey] || [];
       const dayNum = dateKey.split('-')[2];
-      names.forEach(name => {
+      names.forEach(rawName => {
+        const name = normalizeKhmerName(rawName);
+        if (!name) return;
         totalSlotsAssigned += 1;
         if (!staffStatsMap[name]) {
           staffStatsMap[name] = { count: 0, dates: [] };
