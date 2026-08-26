@@ -400,20 +400,53 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
         {/* Right Side: Live Pixel-Perfect Official A4 Document Paper */}
         <div style={{ display: 'flex', justifyContent: 'center' }}>
+          <style>{`
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            @media print {
+              html, body {
+                margin: 0 !important;
+                padding: 0 !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                overflow: hidden !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+              }
+              .printable-a4-document {
+                width: 210mm !important;
+                max-width: 210mm !important;
+                height: 297mm !important;
+                max-height: 297mm !important;
+                padding: 8mm 12mm !important;
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 auto !important;
+                overflow: hidden !important;
+                page-break-after: avoid !important;
+                page-break-before: avoid !important;
+                page-break-inside: avoid !important;
+              }
+            }
+          `}</style>
           <div className="printable-a4-document" style={{
             backgroundColor: '#ffffff',
             width: '100%',
             maxWidth: '210mm',
-            minHeight: '297mm',
-            padding: '12mm 15mm',
+            height: '297mm',
+            maxHeight: '297mm',
+            padding: '8mm 12mm',
             borderRadius: '8px',
             border: '1px solid #cbd5e1',
             boxShadow: '0 8px 30px rgba(0,0,0,0.1)',
             boxSizing: 'border-box',
             fontFamily: "'Khmer OS Siemreap', 'Siemreap', sans-serif",
             fontSize: '12px',
-            lineHeight: '1.6',
-            color: '#000'
+            lineHeight: '1.5',
+            color: '#000',
+            overflow: 'hidden'
           }}>
             
             {/* Document Header */}
@@ -573,7 +606,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
               </thead>
               <tbody>
                 <tr>
-                  <td style={{ border: '1px solid #000', height: '95px' }}></td>
+                  <td style={{ border: '1px solid #000', height: '75px' }}></td>
                   <td style={{ border: '1px solid #000' }}></td>
                   <td style={{ border: '1px solid #000' }}></td>
                   <td style={{ border: '1px solid #000' }}></td>
