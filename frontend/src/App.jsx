@@ -158,9 +158,9 @@ export default function App() {
   // Random Shift PDF Customization states
   const [showRandomShiftPdfModal, setShowRandomShiftPdfModal] = useState(false);
   const [randomShiftPdfData, setRandomShiftPdfData] = useState({ schedule: {}, stats: {}, year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
-  const [randomShiftPdfDocTitle, setRandomShiftPdfDocTitle] = useState('តារាងកាលវិភាគមន្ត្រីប្រចាំការយប់ (Standby Roster)');
+  const [randomShiftPdfDocTitle, setRandomShiftPdfDocTitle] = useState('តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់ (Standby Roster)');
   const [randomShiftPdfDepartment, setRandomShiftPdfDepartment] = useState('នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន');
-  const [randomShiftPdfOffice, setRandomShiftPdfOffice] = useState('ការិយាល័យមជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខសាយប័រ (SOC)');
+  const [randomShiftPdfOffice, setRandomShiftPdfOffice] = useState('ការិយាល័យ ស.ប.ព');
   const [randomShiftPdfSignerTitle, setRandomShiftPdfSignerTitle] = useState('អ្នករៀបចំកាលវិភាគប្រចាំការ');
   const [randomShiftPdfSignerName, setRandomShiftPdfSignerName] = useState('Miller');
   const [randomShiftPdfIncludeStats, setRandomShiftPdfIncludeStats] = useState(true);
@@ -189,7 +189,7 @@ export default function App() {
 
   // User management states (Admin only)
   const [usersList, setUsersList] = useState([]);
-  const [userForm, setUserForm] = useState({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {} });
+  const [userForm, setUserForm] = useState({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'បុគ្គលិក', permissions: {} });
   const [editingUser, setEditingUser] = useState(null); // { id, username, role, full_name }
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userFormError, setUserFormError] = useState(null);
@@ -3199,10 +3199,10 @@ export default function App() {
     const targetYearText = toKhmerDigits(year);
 
     // Custom options destructured with safe defaults
-    const docTitle = options.docTitle || 'តារាងកាលវិភាគមន្ត្រីប្រចាំការយប់ (Standby Roster)';
+    const docTitle = options.docTitle || 'តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់ (Standby Roster)';
     const docSubtitle = options.docSubtitle || `ប្រចាំខែ${targetMonthText} ឆ្នាំ${targetYearText} (SOC Operation Monitoring)`;
     const department = options.department || 'នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន';
-    const office = options.office || 'ការិយាល័យមជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខសាយប័រ (SOC)';
+    const office = options.office || 'ការិយាល័យ ស.ប.ព';
     const targetSignerTitle = options.signerTitle || 'អ្នករៀបចំកាលវិភាគប្រចាំការ';
     const targetSignerName = options.signerName || ((currentLoginUser && currentLoginUser.full_name) ? currentLoginUser.full_name : 'Miller');
     const signatureImg = options.signatureImg !== undefined ? options.signatureImg : signatureImage;
@@ -3254,14 +3254,14 @@ export default function App() {
     const statsTableHtml = includeStats && staffSummaryList.length > 0 ? `
       <div style="margin-bottom: 16px;">
         <div style="font-size: 11px; font-weight: 800; color: #0b45b5; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
-          <span>📊 ១. តារាងសង្ខេបចំនួនវេនប្រចាំការក្នុង ១ខែ របស់មន្ត្រីម្នាក់ៗ (Staff Duty Breakdown) ៖</span>
-          <span style="font-size: 10px; color: #475569; font-weight: 700;">សរុបមន្ត្រី ៖ ${toKhmerDigits(staffSummaryList.length)} នាក់</span>
+          <span>📊 ១. តារាងសង្ខេបចំនួនវេនប្រចាំការក្នុង ១ខែ របស់បុគ្គលិកម្នាក់ៗ (Staff Duty Breakdown) ៖</span>
+          <span style="font-size: 10px; color: #475569; font-weight: 700;">សរុបបុគ្គលិក ៖ ${toKhmerDigits(staffSummaryList.length)} នាក់</span>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-top: 2px; margin-bottom: 8px;">
           <thead>
             <tr style="background-color: #0b45b5; color: #fff;">
               <th style="width: 35px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">ល.រ</th>
-              <th style="width: 130px; font-weight: 800; padding: 6px 8px; font-size: 10px;">ឈ្មោះមន្ត្រីប្រចាំការ</th>
+              <th style="width: 130px; font-weight: 800; padding: 6px 8px; font-size: 10px;">ឈ្មោះបុគ្គលិកប្រចាំការ</th>
               <th style="width: 85px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">ចំនួនវេន / ខែ</th>
               <th style="font-weight: 800; padding: 6px 8px; font-size: 10px;">កាលបរិច្ឆេទ / ថ្ងៃប្រចាំការក្នុងខែ (Days)</th>
               <th style="width: 105px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">វេនប្រចាំការ</th>
@@ -3523,7 +3523,7 @@ export default function App() {
                 <th style="width: 35px; text-align: center; font-weight: 800;">ល.រ</th>
                 <th style="width: 120px; font-weight: 800;">ថ្ងៃ / កាលបរិច្ឆេទ</th>
                 <th style="width: 80px; font-weight: 800;">Date</th>
-                <th style="font-weight: 800;">មន្ត្រីប្រចាំការ (Standby Officers)</th>
+                <th style="font-weight: 800;">បុគ្គលិកប្រចាំការ (Standby Staff)</th>
                 <th style="width: 120px; text-align: center; font-weight: 800;">វេនប្រចាំការ</th>
                 <th style="width: 105px; font-weight: 800;">ភារកិច្ច</th>
               </tr>
@@ -4149,7 +4149,7 @@ export default function App() {
               <span>🎲</span> ប្រព័ន្ធរៀបចំ និង Random កាលវិភាគប្រចាំការសម្រាប់ខែថ្មី
             </h2>
             <div style={{ fontSize: '13px', color: '#e9d5ff', marginTop: '6px' }}>
-              បង្កើតកាលវិភាគប្រចាំការដោយ Random ស្មើភាពគ្នា គណនាចំនួនវេនក្នុង១ខែមន្ត្រីម្នាក់ៗ និងរក្សាទុកទិន្នន័យ
+              បង្កើតកាលវិភាគប្រចាំការដោយ Random ស្មើភាពគ្នា គណនាចំនួនវេនក្នុង១ខែបុគ្គលិកម្នាក់ៗ និងរក្សាទុកទិន្នន័យ
             </div>
           </div>
 
@@ -4369,7 +4369,7 @@ export default function App() {
                   </select>
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontWeight: '700', fontSize: '13px' }}>ចំនួនមន្ត្រីក្នុង ១យប់ (Officers per Night) ៖</label>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '13px' }}>ចំនួនបុគ្គលិកក្នុង ១យប់ (Staff per Night) ៖</label>
                   <input type="number" min="1" max="5" className="form-input" value={randomOfficersPerNight} onChange={(e) => setRandomOfficersPerNight(e.target.value)} style={{ padding: '8px 12px', fontSize: '13px' }} />
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', paddingTop: '24px' }}>
@@ -4601,7 +4601,7 @@ export default function App() {
                       <thead>
                         <tr style={{ borderBottom: '1px solid #e2e8f0', color: '#64748b', textAlign: 'left' }}>
                           <th style={{ padding: '6px 10px' }}>កាលបរិច្ឆេទ</th>
-                          <th style={{ padding: '6px 10px' }}>មន្ត្រីប្រចាំការ</th>
+                          <th style={{ padding: '6px 10px' }}>បុគ្គលិកប្រចាំការ</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -10745,8 +10745,8 @@ export default function App() {
                       style={{ padding: '10px 12px', borderRadius: '8px', border: '1.5px solid #cbd5e1' }}
                     />
                     <datalist id="positions-list">
+                      <option value="ថ្នាក់ដឹកនាំ" />
                       <option value="បុគ្គលិក" />
-                      <option value="មន្ត្រី" />
                       <option value="បុគ្គលិកបច្ចេកទេស" />
                       <option value="អនុប្រធានការិយាល័យ" />
                       <option value="ប្រធានការិយាល័យ" />
@@ -12056,7 +12056,7 @@ export default function App() {
                   <select
                     className="form-input"
                     style={{ width: '40%', fontWeight: '700' }}
-                    value={['អ្នករៀបចំ', 'ប្រធានការិយាល័យ', 'អនុប្រធានការិយាល័យ', 'ប្រធាននាយកដ្ឋាន', 'មន្ត្រីបច្ចេកវិទ្យាព័ត៌មាន', 'បុគ្គលិក'].includes(signerTitle) ? signerTitle : 'custom'}
+                    value={['អ្នករៀបចំ', 'ប្រធានការិយាល័យ', 'អនុប្រធានការិយាល័យ', 'ប្រធាននាយកដ្ឋាន', 'ថ្នាក់ដឹកនាំ', 'បុគ្គលិក'].includes(signerTitle) ? signerTitle : 'custom'}
                     onChange={(e) => {
                       if (e.target.value !== 'custom') {
                         setSignerTitle(e.target.value);
@@ -12064,10 +12064,10 @@ export default function App() {
                     }}
                   >
                     <option value="អ្នករៀបចំ">អ្នករៀបចំ</option>
+                    <option value="ថ្នាក់ដឹកនាំ">ថ្នាក់ដឹកនាំ</option>
                     <option value="ប្រធានការិយាល័យ">ប្រធានការិយាល័យ</option>
                     <option value="អនុប្រធានការិយាល័យ">អនុប្រធានការិយាល័យ</option>
                     <option value="ប្រធាននាយកដ្ឋាន">ប្រធាននាយកដ្ឋាន</option>
-                    <option value="មន្ត្រីបច្ចេកវិទ្យាព័ត៌មាន">មន្ត្រីបច្ចេកវិទ្យាព័ត៌មាន</option>
                     <option value="បុគ្គលិក">បុគ្គលិក</option>
                     <option value="custom">ផ្សេងៗ (Custom)...</option>
                   </select>
@@ -12199,7 +12199,7 @@ export default function App() {
                   className="form-input"
                   value={randomShiftPdfDocTitle}
                   onChange={(e) => setRandomShiftPdfDocTitle(e.target.value)}
-                  placeholder="ឧ. តារាងកាលវិភាគមន្ត្រីប្រចាំការយប់ (Standby Roster)"
+                  placeholder="ឧ. តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់ (Standby Roster)"
                 />
               </div>
 
@@ -12236,11 +12236,12 @@ export default function App() {
                     style={{ fontWeight: '700' }}
                   >
                     <option value="អ្នករៀបចំកាលវិភាគប្រចាំការ">អ្នករៀបចំកាលវិភាគ</option>
+                    <option value="ថ្នាក់ដឹកនាំ">ថ្នាក់ដឹកនាំ</option>
                     <option value="ប្រធានការិយាល័យ">ប្រធានការិយាល័យ</option>
                     <option value="អនុប្រធានការិយាល័យ">អនុប្រធានការិយាល័យ</option>
                     <option value="ប្រធាននាយកដ្ឋាន">ប្រធាននាយកដ្ឋាន</option>
                     <option value="អនុប្រធាននាយកដ្ឋាន">អនុប្រធាននាយកដ្ឋាន</option>
-                    <option value="មន្ត្រីជំនាញ SOC">មន្ត្រីជំនាញ SOC</option>
+                    <option value="បុគ្គលិក">បុគ្គលិក</option>
                   </select>
                 </div>
                 <div className="form-group">
