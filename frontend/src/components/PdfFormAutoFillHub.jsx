@@ -296,9 +296,9 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
                   const parts = reason.split('\n');
                   line1 = parts[0] || '';
                   line2 = parts[1] || '';
-                } else if (reason.length > 95) {
-                  let spaceIdx = reason.lastIndexOf(' ', 95);
-                  if (spaceIdx < 40) spaceIdx = 95;
+                } else if (reason.length > 145) {
+                  let spaceIdx = reason.lastIndexOf(' ', 145);
+                  if (spaceIdx < 90) spaceIdx = 145;
                   line1 = reason.substring(0, spaceIdx).trim();
                   line2 = reason.substring(spaceIdx).trim();
                 }
