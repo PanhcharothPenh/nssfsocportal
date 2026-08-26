@@ -2166,20 +2166,44 @@ export default function App() {
         setDashboardStats(data);
       } else {
         setDashboardStats({
-          total_branches: 25,
-          total_ip_assigned: 1540,
-          total_vpn_users: 85,
-          total_public_ips: 42,
+          counts: {
+            branches: 25,
+            hq_departments: 12,
+            vpn_users: 85,
+            s2s_vpns: 18,
+            bank_vpns: 8,
+            public_ips: 42,
+            switches: 30,
+            storage_files: 15
+          },
+          allocations: {
+            active_vpn_users: 85,
+            active_s2s_tunnels: 18,
+            ip_branch_assigned: 1540,
+            ip_hq_assigned: 620
+          },
           recent_activity: []
         });
       }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
       setDashboardStats({
-        total_branches: 25,
-        total_ip_assigned: 1540,
-        total_vpn_users: 85,
-        total_public_ips: 42,
+        counts: {
+          branches: 25,
+          hq_departments: 12,
+          vpn_users: 85,
+          s2s_vpns: 18,
+          bank_vpns: 8,
+          public_ips: 42,
+          switches: 30,
+          storage_files: 15
+        },
+        allocations: {
+          active_vpn_users: 85,
+          active_s2s_tunnels: 18,
+          ip_branch_assigned: 1540,
+          ip_hq_assigned: 620
+        },
         recent_activity: []
       });
     }
@@ -7257,7 +7281,7 @@ export default function App() {
                     🏢
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e3a8a' }}>{dashboardStats.counts.branches}</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e3a8a' }}>{dashboardStats?.counts?.branches ?? 0}</span>
                     <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Branches</span>
                   </div>
                 </div>
@@ -7277,7 +7301,7 @@ export default function App() {
                     🏢
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#5b21b6' }}>{dashboardStats.counts.hq_departments}</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#5b21b6' }}>{dashboardStats?.counts?.hq_departments ?? 0}</span>
                     <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HQ Departments</span>
                   </div>
                 </div>
@@ -7297,7 +7321,7 @@ export default function App() {
                     🔑
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#065f46' }}>{dashboardStats.allocations.active_vpn_users} / {dashboardStats.counts.vpn_users}</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#065f46' }}>{dashboardStats?.allocations?.active_vpn_users ?? 0} / {dashboardStats?.counts?.vpn_users ?? 0}</span>
                     <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active VPN Users</span>
                   </div>
                 </div>
@@ -7317,7 +7341,7 @@ export default function App() {
                     🛡️
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#92400e' }}>{dashboardStats.allocations.active_s2s_tunnels} / {dashboardStats.counts.s2s_vpns}</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#92400e' }}>{dashboardStats?.allocations?.active_s2s_tunnels ?? 0} / {dashboardStats?.counts?.s2s_vpns ?? 0}</span>
                     <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active S2S VPNs</span>
                   </div>
                 </div>
