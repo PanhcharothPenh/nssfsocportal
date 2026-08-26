@@ -1248,24 +1248,26 @@ def process_telegram_incoming_update(update: dict):
 
     t_lower = (text or "").strip().lower()
 
-    if text and text.strip().startswith("/start ") and len(text.strip().split()) > 1:
-        token = text.strip().split()[1].strip()
-        if token:
-            try:
-                from database import get_db_connection
-                conn = get_db_connection()
-                cursor = conn.cursor()
-                cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS login_sessions (
-                        token TEXT PRIMARY KEY,
-                        status TEXT,
-                        user_id INTEGER,
-                        username TEXT,
-                        full_name TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-                    )
-                """)
-                
+    # Handle Web Login via Telegram (supports /start <token>, plain /start, /login, or Start button)
+    is_login_start = (t_lower in ["/start", "start", "/login", "login"]) or (text and text.strip().startswith("/start"))
+    if is_login_start:
+        token = None
+        if text and len(text.strip().split()) > 1:
+            token = text.strip().split()[1].strip()
+            
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # If no token passed directly in command, check if there is an active pending web login session!
+            if not token:
+                cursor.execute("SELECT token FROM login_sessions WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1")
+                p_row = cursor.fetchone()
+                if p_row:
+                    token = p_row['token']
+
+            if token:
                 tg_username = from_user.get("username") or ""
                 first_name = from_user.get("first_name") or ""
                 last_name = from_user.get("last_name") or ""
@@ -1300,15 +1302,17 @@ def process_telegram_incoming_update(update: dict):
                     msg = (
                         f"✅ <b>ការចូលគណនីទទួលបានជោគជ័យ (Login Authorized)!</b>\n\n"
                         f"សួស្តី <b>{welcome_name}</b> 👋\n\n"
-                        f"លោកអ្នកបានធ្វើការផ្ទៀងផ្ទាត់ និងចូលគណនី NSSF SOC Portal តាមរយៈ Telegram ដោយជោគជ័យ។\n"
+                        f"លោកអ្នកបានផ្ទៀងផ្ទាត់ និងចូលគណនី NSSF SOC Portal តាមរយៈ Telegram ដោយជោគជ័យ។\n"
                         f"ផ្ទាំង Browser របស់លោកអ្នកត្រូវបានដោះសោររួចរាល់ហើយ!"
                     )
                     send_telegram_message(msg, chat_id=chat_id)
                     return
                 else:
                     conn.close()
-            except Exception as e_tg_auth:
-                print("Error in Telegram Webhook token authorization:", e_tg_auth)
+            else:
+                conn.close()
+        except Exception as e_tg_auth:
+            print("Error in Telegram Webhook token authorization:", e_tg_auth)
 
     if t_lower in ["/start", "/help", "/menu", "start", "help", "menu"]:
         reply_msg = (
