@@ -2195,7 +2195,7 @@ def telegram_session_create(request: Request):
     token = str(uuid.uuid4())
     
     # Setup webhook dynamically in Vercel/Production environments
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAFahP_Ikijfy7v6vlR7iVczKuc-IJ15wxc"
     if bot_token:
         host = request.url.netloc
         if "localhost" not in host and "127.0.0.1" not in host:
@@ -2209,11 +2209,25 @@ def telegram_session_create(request: Request):
             except Exception as e:
                 print(f"Failed to set Telegram webhook: {e}")
 
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO login_sessions (token, status) VALUES (?, ?)", (token, 'pending'))
-    conn.commit()
-    conn.close()
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS login_sessions (
+                token TEXT PRIMARY KEY,
+                status TEXT,
+                user_id INTEGER,
+                username TEXT,
+                full_name TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute("INSERT INTO login_sessions (token, status) VALUES (?, ?)", (token, 'pending'))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("Error creating login session in DB:", e)
+
     return {"status": "success", "token": token}
 
 @app.get("/api/auth/telegram_session/status/{token}")
