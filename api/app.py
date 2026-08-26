@@ -3,7 +3,7 @@ import os
 import sqlite3
 import time
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Request, Body, BackgroundTasks
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Request, Body, BackgroundTasks, Form
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
@@ -2386,6 +2386,52 @@ def send_user_telegram_notification(user_id: int):
             return {"status": "success", "message": "Test message sent to Telegram successfully"}
         else:
             raise HTTPException(status_code=400, detail=f"Telegram bot API error: {res.text}")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/send-pdf-to-telegram")
+async def send_pdf_to_telegram(
+    file: UploadFile = File(...),
+    chat_id: Optional[str] = Form(None),
+    title: Optional[str] = Form(None),
+    applicant_name: Optional[str] = Form(None),
+    department: Optional[str] = Form(None),
+    reason: Optional[str] = Form(None)
+):
+    try:
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAFahP_Ikijfy7v6vlR7iVczKuc-IJ15wxc"
+        target_chat = chat_id or os.getenv("TELEGRAM_CHAT_ID") or "-1002124589536"
+        
+        file_bytes = await file.read()
+        filename = file.filename or "SOC_Request_Form.pdf"
+        
+        caption_parts = [f"📄 <b>{title or 'ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC'}</b>\n"]
+        if applicant_name:
+            caption_parts.append(f"• <b>សាម៉ីខ្លួនស្នើសុំ ៖</b> <b>{applicant_name}</b>")
+        if department:
+            caption_parts.append(f"• <b>អង្គភាព/នាយកដ្ឋាន ៖</b> {department}")
+        if reason:
+            caption_parts.append(f"• <b>មូលហេតុ ៖</b> {reason}")
+        caption_parts.append("\n✅ <i>លិខិតផ្លូវការជា PDF ត្រូវបានបង្កើត និងផ្ញើចេញពី NSSF SOC Portal!</i>")
+        
+        caption_text = "\n".join(caption_parts)
+        
+        url = f"https://api.telegram.org/bot{bot_token}/sendDocument"
+        files = {
+            "document": (filename, file_bytes, "application/pdf")
+        }
+        data = {
+            "chat_id": target_chat,
+            "caption": caption_text,
+            "parse_mode": "HTML"
+        }
+        
+        res = requests.post(url, data=data, files=files, timeout=30)
+        if res.status_code == 200:
+            return {"status": "success", "message": "បានផ្ញើលិខិតជា PDF ទៅកាន់ Telegram រួចរាល់!"}
+        else:
+            raise HTTPException(status_code=400, detail=f"Telegram API Error: {res.text}")
+            
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

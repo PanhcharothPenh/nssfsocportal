@@ -162,12 +162,62 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
     setSignatureImage('');
   };
 
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false);
+
   // Direct In-Page Print Handler (Bypasses Popup Blockers 100%)
   const handleDirectPrint = () => {
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(() => window.print());
     } else {
       window.print();
+    }
+  };
+
+  // Send PDF directly to Telegram Group / Channel
+  const handleSendPdfToTelegram = async () => {
+    try {
+      setIsSendingTelegram(true);
+      const element = document.querySelector('.printable-a4-document');
+      if (!element) {
+        alert('រកមិនឃើញទម្រង់លិខិត A4!');
+        setIsSendingTelegram(false);
+        return;
+      }
+      
+      const html2pdf = (await import('html2pdf.js')).default;
+      const opt = {
+        margin:       0,
+        filename:     `NSSF_Request_${applicantName || 'SOC'}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      
+      const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+      
+      const formData = new FormData();
+      formData.append('file', pdfBlob, `NSSF_Request_${applicantName || 'SOC'}.pdf`);
+      formData.append('title', docTitle || 'ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC');
+      formData.append('applicant_name', applicantName || '');
+      formData.append('department', department || '');
+      formData.append('reason', reason || '');
+      
+      const response = await fetch('/api/send-pdf-to-telegram', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const resData = await response.json();
+      if (response.ok) {
+        alert('✅ បានផ្ញើលិខិតជា PDF ទៅកាន់ Telegram Bot/Group រួចរាល់ហើយ!');
+      } else {
+        alert(`❌ ការផ្ញើបរាជ័យ ៖ ${resData.detail || 'សូមព្យាយាមម្តងទៀត'}`);
+      }
+    } catch (err) {
+      console.error("Telegram PDF upload error:", err);
+      alert(`❌ មិនអាចផ្ញើ PDF ទៅកាន់ Telegram ៖ ${err.message}`);
+    } finally {
+      setIsSendingTelegram(false);
     }
   };
 
@@ -210,7 +260,7 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
           <button
             type="button"
             className="btn btn-secondary"
@@ -222,11 +272,21 @@ export default function DirectPdfAutoFiller({ currentUser, usersList = [] }) {
 
           <button
             type="button"
+            className="btn btn-info"
+            onClick={handleSendPdfToTelegram}
+            disabled={isSendingTelegram}
+            style={{ borderRadius: '10px', padding: '10px 18px', fontWeight: '800', fontSize: '13.5px', backgroundColor: '#0088cc', color: '#fff', borderColor: '#0088cc', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0,136,204,0.3)' }}
+          >
+            {isSendingTelegram ? '⏳ កំពុងផ្ញើ...' : '📲 ផ្ញើជា PDF ទៅ Telegram'}
+          </button>
+
+          <button
+            type="button"
             className="btn btn-primary"
             onClick={handleDirectPrint}
             style={{ borderRadius: '10px', padding: '10px 24px', fontWeight: '800', fontSize: '14px', backgroundColor: '#10b981', borderColor: '#10b981', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}
           >
-            🖨️ បោះពុម្ព / នាំចេញ PDF ជាផ្លូវការ
+            🖨️ បោះពុម្ព / នាំចេញ PDF
           </button>
         </div>
       </div>

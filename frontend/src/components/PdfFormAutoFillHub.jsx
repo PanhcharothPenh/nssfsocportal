@@ -169,6 +169,58 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
     setSignatureImage('');
   };
 
+  const [isSendingTelegram, setIsSendingTelegram] = useState(false);
+
+  const handleSendPdfToTelegram = async () => {
+    try {
+      setIsSendingTelegram(true);
+      const htmlContent = getPrintableHtml();
+      
+      const tempDiv = document.createElement('div');
+      tempDiv.style.position = 'absolute';
+      tempDiv.style.left = '-9999px';
+      tempDiv.style.top = '-9999px';
+      tempDiv.innerHTML = htmlContent;
+      document.body.appendChild(tempDiv);
+      
+      const html2pdf = (await import('html2pdf.js')).default;
+      const opt = {
+        margin:       0,
+        filename:     `NSSF_Request_${applicantName || 'SOC'}.pdf`,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, logging: false },
+        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      };
+      
+      const pdfBlob = await html2pdf().set(opt).from(tempDiv).output('blob');
+      document.body.removeChild(tempDiv);
+      
+      const formData = new FormData();
+      formData.append('file', pdfBlob, `NSSF_Request_${applicantName || 'SOC'}.pdf`);
+      formData.append('title', docTitle || 'ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC');
+      formData.append('applicant_name', applicantName || '');
+      formData.append('department', department || '');
+      formData.append('reason', reason || '');
+      
+      const response = await fetch('/api/send-pdf-to-telegram', {
+        method: 'POST',
+        body: formData
+      });
+      
+      const resData = await response.json();
+      if (response.ok) {
+        alert('✅ បានផ្ញើលិខិតជា PDF ទៅកាន់ Telegram Bot/Group រួចរាល់ហើយ!');
+      } else {
+        alert(`❌ ការផ្ញើបរាជ័យ ៖ ${resData.detail || 'សូមព្យាយាមម្តងទៀត'}`);
+      }
+    } catch (err) {
+      console.error("Telegram PDF upload error:", err);
+      alert(`❌ មិនអាចផ្ញើ PDF ទៅកាន់ Telegram ៖ ${err.message}`);
+    } finally {
+      setIsSendingTelegram(false);
+    }
+  };
+
   const handleFileUpload = (e) => {
     const files = Array.from(e.target.files);
     const fileObjects = files.map(file => ({
@@ -687,7 +739,17 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
       </div>
 
       {/* Action Bar */}
-      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', borderTop: '1px solid #e2e8f0', paddingTop: '16px', flexWrap: 'wrap' }}>
+        <button
+          type="button"
+          className="btn btn-info"
+          onClick={handleSendPdfToTelegram}
+          disabled={isSendingTelegram}
+          style={{ borderRadius: '10px', padding: '10px 20px', fontWeight: '800', backgroundColor: '#0088cc', borderColor: '#0088cc', color: '#fff', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(0,136,204,0.3)' }}
+        >
+          {isSendingTelegram ? '⏳ កំពុងផ្ញើ...' : '📲 ផ្ញើជា PDF ទៅ Telegram'}
+        </button>
+
         <button type="button" className="btn btn-primary" onClick={handlePrintPDF} style={{ borderRadius: '10px', padding: '10px 24px', fontWeight: '800', backgroundColor: '#10b981', borderColor: '#10b981' }}>
           🖨️ បោះពុម្ព / នាំចេញ PDF (ទម្រង់ដើម ១០០%)
         </button>
