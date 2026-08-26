@@ -2826,11 +2826,13 @@ def fetch_shift_schedule_from_firestore():
                 night_values = date_obj.get("mapValue", {}).get("fields", {}).get("night", {}).get("arrayValue", {}).get("values", [])
                 names = [normalize_khmer_name(item.get("stringValue", "")) for item in night_values if item.get("stringValue")]
                 names = [n for n in names if n]
-                schedule[date_str] = names
-            return schedule
+                if names:
+                    schedule[date_str] = names
+            if schedule:
+                return schedule
     except Exception as e:
         print("Error fetching Firestore shift schedule:", e)
-    return {}
+    return fetch_custom_shift_schedule_from_sqlite()
 
 def fetch_custom_shift_schedule_from_sqlite():
     schedule = {}

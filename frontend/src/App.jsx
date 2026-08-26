@@ -3479,13 +3479,14 @@ export default function App() {
   };
 
   const renderShiftGeneratorTab = () => {
-    // Calculate Monthly Shift Statistics per Staff for selectedShiftMonth
-    const monthDates = Object.keys(shiftSchedule).filter(d => d.startsWith(selectedShiftMonth));
+    // Merge custom generated shift schedule over baseline shift schedule
+    const activeDisplaySchedule = { ...shiftSchedule, ...customShiftSchedule };
+    const monthDates = Object.keys(activeDisplaySchedule).filter(d => d.startsWith(selectedShiftMonth));
     const staffStatsMap = {};
     let totalSlotsAssigned = 0;
 
     monthDates.forEach(dateKey => {
-      const names = shiftSchedule[dateKey] || [];
+      const names = activeDisplaySchedule[dateKey] || [];
       const dayNum = dateKey.split('-')[2];
       names.forEach(rawName => {
         const name = normalizeKhmerName(rawName);
@@ -3513,7 +3514,7 @@ export default function App() {
         const query = (subnetSearch || '').toLowerCase().trim();
         if (!query) return true;
         if (dateKey.includes(query)) return true;
-        const names = shiftSchedule[dateKey] || [];
+        const names = activeDisplaySchedule[dateKey] || [];
         return names.some(n => n.toLowerCase().includes(query));
       });
 
@@ -3626,7 +3627,7 @@ export default function App() {
               <tbody>
                 {filteredDates.length > 0 ? (
                   filteredDates.map((dateKey) => {
-                    const names = shiftSchedule[dateKey] || [];
+                    const names = activeDisplaySchedule[dateKey] || [];
                     return (
                       <tr key={dateKey} style={{ borderBottom: '1px solid #e2e8f0' }}>
                         <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '700', color: '#0f172a' }}>
