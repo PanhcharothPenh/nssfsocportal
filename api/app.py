@@ -2893,6 +2893,9 @@ class ShiftGeneratePayload(BaseModel):
     officers_per_night: Optional[int] = 2
     avoid_consecutive: Optional[bool] = True
     constraints: Optional[List[ShiftConstraint]] = []
+    staff_weights: Optional[Dict[str, float]] = {}
+    staff_quotas: Optional[Dict[str, int]] = {}
+    balance_fairly: Optional[bool] = True
 
 @app.post("/api/shift/generate")
 def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
@@ -2903,22 +2906,70 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
     year = payload.year
     month = payload.month
     staff_list = [normalize_khmer_name(s) for s in payload.staff_list if s and s.strip()]
-    staff_list = [s for s in staff_list if s]
+    seen = set()
+    staff_list = [s for s in staff_list if s and not (s in seen or seen.add(s))]
     officers_per_night = max(1, payload.officers_per_night or 2)
     
     if not staff_list:
         raise HTTPException(status_code=400, detail="សូមជ្រើសរើសបញ្ជីបុគ្គលិកយ៉ាងតិច ១នាក់!")
         
     num_days = calendar.monthrange(year, month)[1]
-    staff_counts = {s: 0 for s in staff_list}
-    generated_schedule = {}
-    prev_assigned = set()
+    total_slots = num_days * officers_per_night
+    num_staff = len(staff_list)
+
+    # 1. Parse weights and quotas
+    weights = {}
+    quotas = {}
+    for s in staff_list:
+        w = 1.0
+        if payload.staff_weights and s in payload.staff_weights:
+            try:
+                w = float(payload.staff_weights[s])
+                if w <= 0: w = 1.0
+            except:
+                w = 1.0
+        weights[s] = w
+
+        if payload.staff_quotas and s in payload.staff_quotas:
+            try:
+                q = int(payload.staff_quotas[s])
+                if q > 0:
+                    quotas[s] = min(q, num_days)
+            except:
+                pass
+
+    # 2. Compute exact target quotas for every staff
+    fixed_slots = sum(quotas.values())
+    rem_slots = max(0, total_slots - fixed_slots)
+    rem_staff = [s for s in staff_list if s not in quotas]
     
+    target_counts = {}
+    for s, q in quotas.items():
+        target_counts[s] = q
+
+    if rem_staff:
+        total_weight = sum(weights[s] for s in rem_staff)
+        allocated = 0
+        remainders = []
+        for s in rem_staff:
+            exact = (weights[s] / total_weight) * rem_slots
+            base = int(exact)
+            target_counts[s] = base
+            allocated += base
+            remainders.append((exact - base, s))
+        
+        leftover = rem_slots - allocated
+        remainders.sort(key=lambda x: (-x[0], random.random()))
+        for i in range(leftover):
+            s = remainders[i % len(remainders)][1]
+            target_counts[s] += 1
+    
+    # 3. Setup constraints
     constraints_map = {}
     if payload.constraints:
         for c in payload.constraints:
             off_name = normalize_khmer_name(c.officer_name)
-            if off_name in staff_counts:
+            if off_name in staff_list:
                 if off_name not in constraints_map:
                     constraints_map[off_name] = []
                 constraints_map[off_name].append({
@@ -2969,55 +3020,125 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
                     
         return is_allowed, is_priority
 
-    for d in range(1, num_days + 1):
-        date_str = f"{year:04d}-{month:02d}-{d:02d}"
-        dt = date(year, month, d)
-        day_name = DAYS_MAP[dt.weekday()]
-        
-        candidates = []
-        priority_candidates = []
-        
-        for s in staff_list:
-            if payload.avoid_consecutive and s in prev_assigned:
-                continue
-            is_allowed, is_priority = check_officer_allowed_on_day(s, day_name)
-            if is_allowed:
-                candidates.append(s)
-                if is_priority:
-                    priority_candidates.append(s)
-                    
-        if len(candidates) < officers_per_night:
-            for s in staff_list:
-                is_allowed, is_priority = check_officer_allowed_on_day(s, day_name)
-                if is_allowed and s not in candidates:
-                    candidates.append(s)
-                    
-        if len(candidates) < officers_per_night:
-            candidates = [s for s in staff_list if check_officer_allowed_on_day(s, day_name)[0]]
-            if not candidates:
-                candidates = list(staff_list)
-                
-        candidates.sort(key=lambda s: (
-            0 if s in priority_candidates else 1,
-            staff_counts[s],
-            random.random()
-        ))
-        
-        assigned_today = candidates[:officers_per_night]
-        for s in assigned_today:
-            staff_counts[s] += 1
+    best_schedule = None
+    best_stats = None
+    best_score = float('inf')
+
+    for attempt in range(50):
+        staff_counts = {s: 0 for s in staff_list}
+        weekend_counts = {s: 0 for s in staff_list}
+        generated_schedule = {}
+        prev_assigned = set()
+        penalty = 0
+
+        for d in range(1, num_days + 1):
+            date_str = f"{year:04d}-{month:02d}-{d:02d}"
+            dt = date(year, month, d)
+            day_name = DAYS_MAP[dt.weekday()]
+            is_weekend = day_name in ["Saturday", "Sunday"]
             
-        generated_schedule[date_str] = assigned_today
-        prev_assigned = set(assigned_today)
+            eligible = []
+            priority_candidates = []
+            
+            for s in staff_list:
+                if payload.avoid_consecutive and s in prev_assigned:
+                    continue
+                is_allowed, is_priority = check_officer_allowed_on_day(s, day_name)
+                if is_allowed:
+                    eligible.append(s)
+                    if is_priority:
+                        priority_candidates.append(s)
+            
+            if len(eligible) < officers_per_night:
+                for s in staff_list:
+                    if s not in eligible:
+                        is_allowed, _ = check_officer_allowed_on_day(s, day_name)
+                        if is_allowed:
+                            eligible.append(s)
+                            penalty += 50
+                            
+            if len(eligible) < officers_per_night:
+                for s in staff_list:
+                    if s not in eligible:
+                        eligible.append(s)
+                        penalty += 100
+
+            def candidate_score(s):
+                deficit = target_counts[s] - staff_counts[s]
+                p_bonus = 25 if s in priority_candidates else 0
+                w_penalty = (weekend_counts[s] * 4) if is_weekend else 0
+                over_penalty = 60 if staff_counts[s] >= target_counts[s] else 0
+                return - (deficit * 12 + p_bonus) + w_penalty + over_penalty + (random.random() * 2)
+
+            eligible.sort(key=candidate_score)
+            assigned_today = eligible[:officers_per_night]
+            
+            for s in assigned_today:
+                staff_counts[s] += 1
+                if is_weekend:
+                    weekend_counts[s] += 1
+                    
+            generated_schedule[date_str] = assigned_today
+            prev_assigned = set(assigned_today)
+
+        quota_diff_sq = sum((staff_counts[s] - target_counts[s])**2 for s in staff_list)
+        weekend_var = max(weekend_counts.values()) - min(weekend_counts.values()) if weekend_counts else 0
+        total_eval = quota_diff_sq * 10 + weekend_var * 2 + penalty
+
+        if total_eval < best_score:
+            best_score = total_eval
+            best_schedule = generated_schedule
+            best_stats = staff_counts
+            if total_eval == 0:
+                break
+
+    # 4. Balancing Refinement Swapper
+    for _ in range(120):
+        over = [s for s in staff_list if best_stats[s] > target_counts[s]]
+        under = [s for s in staff_list if best_stats[s] < target_counts[s]]
+        if not over or not under:
+            break
         
+        swapped = False
+        for o in over:
+            if swapped: break
+            for u in under:
+                if swapped: break
+                for d in range(1, num_days + 1):
+                    date_str = f"{year:04d}-{month:02d}-{d:02d}"
+                    day_officers = best_schedule.get(date_str, [])
+                    if o in day_officers and u not in day_officers:
+                        dt = date(year, month, d)
+                        day_name = DAYS_MAP[dt.weekday()]
+                        u_allowed, _ = check_officer_allowed_on_day(u, day_name)
+                        if not u_allowed:
+                            continue
+                        
+                        prev_day_str = f"{year:04d}-{month:02d}-{d-1:02d}" if d > 1 else None
+                        next_day_str = f"{year:04d}-{month:02d}-{d+1:02d}" if d < num_days else None
+                        
+                        if payload.avoid_consecutive:
+                            if prev_day_str and u in best_schedule.get(prev_day_str, []):
+                                continue
+                            if next_day_str and u in best_schedule.get(next_day_str, []):
+                                continue
+                        
+                        new_day_officers = [u if x == o else x for x in day_officers]
+                        best_schedule[date_str] = new_day_officers
+                        best_stats[o] -= 1
+                        best_stats[u] += 1
+                        swapped = True
+                        break
+
     return {
         "status": "success",
         "year": year,
         "month": month,
         "days_count": num_days,
         "officers_per_night": officers_per_night,
-        "generated_schedule": generated_schedule,
-        "staff_statistics": staff_counts
+        "target_quotas": target_counts,
+        "generated_schedule": best_schedule,
+        "staff_statistics": best_stats
     }
 
 class ShiftSavePayload(BaseModel):

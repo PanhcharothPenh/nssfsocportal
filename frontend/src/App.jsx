@@ -332,6 +332,27 @@ export default function App() {
   const [newConstraintOfficer, setNewConstraintOfficer] = useState('');
   const [newConstraintRuleType, setNewConstraintRuleType] = useState('only_on');
   const [newConstraintDayTarget, setNewConstraintDayTarget] = useState('Sunday');
+  const [randomStaffWeights, setRandomStaffWeights] = useState({});
+  const [randomStaffQuotas, setRandomStaffQuotas] = useState({});
+
+  const handleStaffWeightChange = (staffName, weightVal) => {
+    setRandomStaffWeights(prev => ({
+      ...prev,
+      [staffName]: weightVal
+    }));
+  };
+
+  const handleStaffQuotaChange = (staffName, quotaVal) => {
+    setRandomStaffQuotas(prev => {
+      const updated = { ...prev };
+      if (quotaVal === '' || quotaVal === null || isNaN(quotaVal)) {
+        delete updated[staffName];
+      } else {
+        updated[staffName] = quotaVal;
+      }
+      return updated;
+    });
+  };
 
   const handleAddConstraint = () => {
     if (!newConstraintOfficer) {
@@ -431,7 +452,10 @@ export default function App() {
           staff_list: randomSelectedStaff,
           officers_per_night: parseInt(randomOfficersPerNight),
           avoid_consecutive: randomAvoidConsecutive,
-          constraints: randomStaffConstraints
+          constraints: randomStaffConstraints,
+          staff_weights: randomStaffWeights,
+          staff_quotas: randomStaffQuotas,
+          balance_fairly: true
         })
       });
       const data = await res.json();
@@ -4378,6 +4402,71 @@ export default function App() {
                   })}
                 </div>
               </div>
+
+              {/* Staff Shift Rights & Priority / Weight Panel */}
+              {randomSelectedStaff.length > 0 && (
+                <div style={{ marginBottom: '20px', backgroundColor: '#f0fdfa', padding: '16px', borderRadius: '12px', border: '1px solid #ccfbf1' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', flexWrap: 'wrap', gap: '6px' }}>
+                    <label style={{ fontWeight: '800', fontSize: '13.5px', color: '#0f766e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span>⚖️</span> កំណត់សិទ្ធិ/អាទិភាពវេនប្រចាំការក្នុង ១ខែ (Shift Priority & Rights) ៖
+                    </label>
+                    <span style={{ fontSize: '11px', color: '#115e59', fontWeight: '700' }}>
+                      ✨ បែងចែកស្មើភាពគ្នាជាចម្បង + អាចកំណត់វេនច្រើនជាងដល់បុគ្គលិកជាក់លាក់
+                    </span>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '8px', maxHeight: '190px', overflowY: 'auto', paddingRight: '4px' }}>
+                    {randomSelectedStaff.map((name, idx) => {
+                      const currentWeight = randomStaffWeights[name] !== undefined ? randomStaffWeights[name] : 1.0;
+                      const currentQuota = randomStaffQuotas[name] !== undefined ? randomStaffQuotas[name] : '';
+                      return (
+                        <div key={idx} style={{ padding: '8px 12px', borderRadius: '8px', backgroundColor: '#fff', border: '1px solid #99f6e4', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                          <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#134e4a', minWidth: '95px' }}>
+                            👤 {name}
+                          </span>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <select
+                              className="form-input"
+                              value={currentQuota !== '' ? 'custom_quota' : String(currentWeight)}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'custom_quota') {
+                                  handleStaffQuotaChange(name, 6);
+                                } else {
+                                  handleStaffQuotaChange(name, '');
+                                  handleStaffWeightChange(name, parseFloat(val));
+                                }
+                              }}
+                              style={{ padding: '4px 8px', fontSize: '11.5px', fontWeight: '700', borderRadius: '6px', borderColor: '#2dd4bf', color: '#0f766e', backgroundColor: '#f0fdfa' }}
+                            >
+                              <option value="1">⚖️ ធម្មតា / ស្មើគ្នា (1x)</option>
+                              <option value="1.5">🔥 វេនច្រើនជាង (1.5x)</option>
+                              <option value="2">⚡ វេនច្រើនទ្វេដង (2x)</option>
+                              <option value="0.5">🔻 វេនតិចជាង (0.5x)</option>
+                              <option value="custom_quota">🎯 កំណត់ចំនួនវេន...</option>
+                            </select>
+
+                            {currentQuota !== '' && (
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '2px' }}>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  max="31"
+                                  value={currentQuota}
+                                  onChange={(e) => handleStaffQuotaChange(name, parseInt(e.target.value) || 1)}
+                                  style={{ width: '45px', padding: '3px 4px', fontSize: '11px', fontWeight: '800', textAlign: 'center', borderRadius: '4px', border: '1.5px solid #0d9488' }}
+                                />
+                                <span style={{ fontSize: '10.5px', fontWeight: '700', color: '#0f766e' }}>វេន</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               {/* Custom Constraints Rules Panel */}
               <div style={{ marginBottom: '20px', backgroundColor: '#fefce8', padding: '16px', borderRadius: '12px', border: '1px solid #fef08a' }}>
