@@ -286,7 +286,7 @@ def auto_sync_loop():
 def telegram_polling_loop():
     import requests
     
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAHtpdiVRWM6vS6nv8THFUbA7ICY8WUvBCU"
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not bot_token:
         print("Telegram Bot Token not set, background bot polling disabled.")
         return
@@ -407,7 +407,7 @@ async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
         if not payload:
             return {"status": "skipped"}
             
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAHtpdiVRWM6vS6nv8THFUbA7ICY8WUvBCU"
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
             
         from api.telegram import process_telegram_incoming_update
         background_tasks.add_task(process_telegram_incoming_update, payload)
@@ -2195,7 +2195,7 @@ def telegram_session_create(request: Request):
     token = str(random.randint(100000, 999999))
     
     # Setup webhook dynamically in Vercel/Production environments
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAHtpdiVRWM6vS6nv8THFUbA7ICY8WUvBCU"
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if bot_token:
         host = request.url.netloc
         if "localhost" not in host and "127.0.0.1" not in host:
@@ -2414,7 +2414,7 @@ async def send_pdf_to_telegram(
     reason: Optional[str] = Form(None)
 ):
     try:
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN") or "8621517870:AAHtpdiVRWM6vS6nv8THFUbA7ICY8WUvBCU"
+        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
         default_group = os.getenv("TELEGRAM_CHAT_ID") or "-1002124589536"
         
         target_chat = default_group

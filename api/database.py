@@ -132,10 +132,10 @@ class PostgresConnectionWrapper:
     def close(self):
         self.pg_conn.close()
 
-DEFAULT_SUPABASE_URL = "postgresql://postgres.utedcugeclfjhviuthmk:Roth%40017986356@aws-0-ap-northeast-1.pooler.supabase.com:6543/postgres?pgbouncer=true"
+DEFAULT_SUPABASE_URL = os.getenv("SUPABASE_DB_URL", "")
 
 def get_db_connection():
-    # Connect to Supabase PostgreSQL Database
+    # Connect to Supabase PostgreSQL Database or local SQLite
     url = os.getenv("SUPABASE_DB_URL") or os.getenv("DATABASE_URL") or DEFAULT_SUPABASE_URL
     if url:
         if not psgres_available:
