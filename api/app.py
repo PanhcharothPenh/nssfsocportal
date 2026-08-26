@@ -2816,8 +2816,8 @@ def fetch_shift_schedule_from_firestore():
         print("Error fetching Firestore shift schedule:", e)
     return {}
 
-def get_merged_shift_schedule():
-    schedule = fetch_shift_schedule_from_firestore() or {}
+def fetch_custom_shift_schedule_from_sqlite():
+    schedule = {}
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
@@ -2842,14 +2842,13 @@ def get_merged_shift_schedule():
                 names = [n.strip() for n in names_raw.split(',') if n.strip()]
             schedule[d_str] = [normalize_khmer_name(n) for n in names if n]
     except Exception as e:
-        print("SQLite shift schedule merge warning:", e)
-        
+        print("SQLite custom shift schedule fetch warning:", e)
     return schedule
 
 @app.get("/api/shift/today")
 def get_today_shift():
     from datetime import datetime
-    schedule = get_merged_shift_schedule()
+    schedule = fetch_shift_schedule_from_firestore()
     today_str = datetime.now().strftime("%Y-%m-%d")
     today_names = schedule.get(today_str, [])
     return {
@@ -2860,7 +2859,12 @@ def get_today_shift():
 
 @app.get("/api/shift/schedule")
 def get_full_shift_schedule():
-    schedule = get_merged_shift_schedule()
+    schedule = fetch_shift_schedule_from_firestore()
+    return {"schedule": schedule}
+
+@app.get("/api/shift/custom-schedule")
+def get_custom_shift_schedule():
+    schedule = fetch_custom_shift_schedule_from_sqlite()
     return {"schedule": schedule}
 
 class ShiftConstraint(BaseModel):

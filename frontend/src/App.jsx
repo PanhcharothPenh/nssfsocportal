@@ -287,6 +287,7 @@ export default function App() {
   
   // Shift Schedule states
   const [shiftSchedule, setShiftSchedule] = useState({});
+  const [customShiftSchedule, setCustomShiftSchedule] = useState({});
   const [isShiftLoading, setIsShiftLoading] = useState(false);
   const [isNotifyingShift, setIsNotifyingShift] = useState(false);
   const [shiftNotifyResult, setShiftNotifyResult] = useState(null);
@@ -354,15 +355,17 @@ export default function App() {
 
   const getStaffPoolFromShiftSchedule = () => {
     const namesSet = new Set();
-    Object.values(shiftSchedule || {}).forEach(namesList => {
-      if (Array.isArray(namesList)) {
-        namesList.forEach(n => {
-          const clean = normalizeKhmerName(n);
-          if (clean) {
-            namesSet.add(clean);
-          }
-        });
-      }
+    [shiftSchedule, customShiftSchedule].forEach(sched => {
+      Object.values(sched || {}).forEach(namesList => {
+        if (Array.isArray(namesList)) {
+          namesList.forEach(n => {
+            const clean = normalizeKhmerName(n);
+            if (clean) {
+              namesSet.add(clean);
+            }
+          });
+        }
+      });
     });
     let pool = Array.from(namesSet);
     if (!pool.length && usersList && usersList.length > 0) {
@@ -439,7 +442,7 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         alert("✅ បានរក្សាទុកកាលវិភាគប្រចាំការថ្មីរួចរាល់!");
-        setShiftSchedule(prev => ({
+        setCustomShiftSchedule(prev => ({
           ...prev,
           ...generatedShiftPreview.generated_schedule
         }));
@@ -2186,8 +2189,11 @@ export default function App() {
       fetchDriveFiles();
     } else if (activeTab === 'users' && hasPermission('user_management', 'read')) {
       fetchUsersList();
-    } else if (activeTab === 'shift' || activeTab === 'shift_generator') {
+    } else if (activeTab === 'shift') {
       fetchShiftSchedule();
+    } else if (activeTab === 'shift_generator') {
+      fetchShiftSchedule();
+      fetchCustomShiftSchedule();
     }
     // reset inner filters
     setSubnetSearch('');
@@ -2213,6 +2219,26 @@ export default function App() {
       console.error('Error fetching shift schedule:', err);
     } finally {
       setIsShiftLoading(false);
+    }
+  };
+
+  const fetchCustomShiftSchedule = async () => {
+    try {
+      const res = await fetch(`${API_BASE}/shift/custom-schedule`);
+      if (res.ok) {
+        const data = await res.json();
+        const rawSchedule = data.schedule || {};
+        const cleanedSchedule = {};
+        Object.keys(rawSchedule).forEach(dateKey => {
+          const names = rawSchedule[dateKey] || [];
+          cleanedSchedule[dateKey] = names
+            .map(n => normalizeKhmerName(n))
+            .filter(Boolean);
+        });
+        setCustomShiftSchedule(cleanedSchedule);
+      }
+    } catch (err) {
+      console.error('Error fetching custom shift schedule:', err);
     }
   };
 
