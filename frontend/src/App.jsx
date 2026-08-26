@@ -665,6 +665,8 @@ export default function App() {
                 } else {
                   setSignatureImage('');
                 }
+                setActiveTab('dashboard');
+                fetchDashboardStats();
               } else if (statusData.status === 'rejected') {
                 clearInterval(telegramLoginPollInterval.current);
                 telegramLoginPollInterval.current = null;
