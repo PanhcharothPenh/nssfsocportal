@@ -2414,6 +2414,7 @@ async def send_pdf_to_telegram(
     title: Optional[str] = Form(None),
     applicant_name: Optional[str] = Form(None),
     department: Optional[str] = Form(None),
+    details: Optional[str] = Form(None),
     reason: Optional[str] = Form(None)
 ):
     try:
@@ -2454,6 +2455,8 @@ async def send_pdf_to_telegram(
             caption_parts.append(f"• <b>សាម៉ីខ្លួនស្នើសុំ ៖</b> <b>{applicant_name}</b>")
         if department:
             caption_parts.append(f"• <b>អង្គភាព/នាយកដ្ឋាន ៖</b> <b>{department}</b>")
+        if details:
+            caption_parts.append(f"• <b>គោលបំណង ៖</b> {details}")
         if reason:
             caption_parts.append(f"• <b>មូលហេតុ ៖</b> {reason}")
         if recipient_note:

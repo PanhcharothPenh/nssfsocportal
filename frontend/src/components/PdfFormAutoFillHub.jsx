@@ -227,6 +227,7 @@ export default function PdfFormAutoFillHub({ currentUser, usersList = [] }) {
       formData.append('title', docTitle || 'ទម្រង់ស្នើសុំកែប្រែប្រព័ន្ធ SOC');
       formData.append('applicant_name', applicantName || '');
       formData.append('department', department || '');
+      formData.append('details', details || '');
       formData.append('reason', reason || '');
       
       if (attachedFiles && attachedFiles.length > 0) {
