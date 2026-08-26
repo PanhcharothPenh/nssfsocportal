@@ -2863,21 +2863,29 @@ def get_full_shift_schedule():
     schedule = get_merged_shift_schedule()
     return {"schedule": schedule}
 
+class ShiftConstraint(BaseModel):
+    officer_name: str
+    rule_type: str  # "only_on" or "never_on"
+    day_target: str # "Sunday", "Saturday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Weekends", "Weekdays"
+
 class ShiftGeneratePayload(BaseModel):
     year: int
     month: int
     staff_list: List[str]
     officers_per_night: Optional[int] = 2
     avoid_consecutive: Optional[bool] = True
+    constraints: Optional[List[ShiftConstraint]] = []
 
 @app.post("/api/shift/generate")
 def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
     import calendar
     import random
+    from datetime import date
     
     year = payload.year
     month = payload.month
-    staff_list = [s.strip() for s in payload.staff_list if s and s.strip()]
+    staff_list = [normalize_khmer_name(s) for s in payload.staff_list if s and s.strip()]
+    staff_list = [s for s in staff_list if s]
     officers_per_night = max(1, payload.officers_per_night or 2)
     
     if not staff_list:
@@ -2888,13 +2896,95 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
     generated_schedule = {}
     prev_assigned = set()
     
+    constraints_map = {}
+    if payload.constraints:
+        for c in payload.constraints:
+            off_name = normalize_khmer_name(c.officer_name)
+            if off_name in staff_counts:
+                if off_name not in constraints_map:
+                    constraints_map[off_name] = []
+                constraints_map[off_name].append({
+                    "rule_type": c.rule_type,
+                    "day_target": c.day_target
+                })
+    
+    DAYS_MAP = {
+        0: "Monday",
+        1: "Tuesday",
+        2: "Wednesday",
+        3: "Thursday",
+        4: "Friday",
+        5: "Saturday",
+        6: "Sunday"
+    }
+
+    def check_officer_allowed_on_day(officer, day_name):
+        rules = constraints_map.get(officer, [])
+        if not rules:
+            return True, False
+            
+        is_allowed = True
+        is_priority = False
+        is_weekend = day_name in ["Saturday", "Sunday"]
+        is_weekday = not is_weekend
+        
+        for r in rules:
+            rtype = r["rule_type"]
+            target = r["day_target"]
+            
+            matches_target = False
+            if target == day_name:
+                matches_target = True
+            elif target == "Weekends" and is_weekend:
+                matches_target = True
+            elif target == "Weekdays" and is_weekday:
+                matches_target = True
+                
+            if rtype == "only_on":
+                if not matches_target:
+                    is_allowed = False
+                else:
+                    is_priority = True
+            elif rtype == "never_on":
+                if matches_target:
+                    is_allowed = False
+                    
+        return is_allowed, is_priority
+
     for d in range(1, num_days + 1):
         date_str = f"{year:04d}-{month:02d}-{d:02d}"
-        candidates = [s for s in staff_list if not (payload.avoid_consecutive and s in prev_assigned)]
+        dt = date(year, month, d)
+        day_name = DAYS_MAP[dt.weekday()]
+        
+        candidates = []
+        priority_candidates = []
+        
+        for s in staff_list:
+            if payload.avoid_consecutive and s in prev_assigned:
+                continue
+            is_allowed, is_priority = check_officer_allowed_on_day(s, day_name)
+            if is_allowed:
+                candidates.append(s)
+                if is_priority:
+                    priority_candidates.append(s)
+                    
         if len(candidates) < officers_per_night:
-            candidates = list(staff_list)
-            
-        candidates.sort(key=lambda s: (staff_counts[s], random.random()))
+            for s in staff_list:
+                is_allowed, is_priority = check_officer_allowed_on_day(s, day_name)
+                if is_allowed and s not in candidates:
+                    candidates.append(s)
+                    
+        if len(candidates) < officers_per_night:
+            candidates = [s for s in staff_list if check_officer_allowed_on_day(s, day_name)[0]]
+            if not candidates:
+                candidates = list(staff_list)
+                
+        candidates.sort(key=lambda s: (
+            0 if s in priority_candidates else 1,
+            staff_counts[s],
+            random.random()
+        ))
+        
         assigned_today = candidates[:officers_per_night]
         for s in assigned_today:
             staff_counts[s] += 1
@@ -2910,6 +3000,7 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
         "officers_per_night": officers_per_night,
         "generated_schedule": generated_schedule,
         "staff_statistics": staff_counts
+    }
     }
 
 class ShiftSavePayload(BaseModel):

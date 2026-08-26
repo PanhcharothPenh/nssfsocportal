@@ -307,6 +307,37 @@ export default function App() {
   const [isGeneratingShift, setIsGeneratingShift] = useState(false);
   const [generatedShiftPreview, setGeneratedShiftPreview] = useState(null);
   const [isSavingGeneratedShift, setIsSavingGeneratedShift] = useState(false);
+  const [randomStaffConstraints, setRandomStaffConstraints] = useState([]);
+  const [newConstraintOfficer, setNewConstraintOfficer] = useState('');
+  const [newConstraintRuleType, setNewConstraintRuleType] = useState('only_on');
+  const [newConstraintDayTarget, setNewConstraintDayTarget] = useState('Sunday');
+
+  const handleAddConstraint = () => {
+    if (!newConstraintOfficer) {
+      alert("សូមជ្រើសរើសឈ្មោះបុគ្គលិកជាមុនសិន!");
+      return;
+    }
+    const exists = randomStaffConstraints.some(c => 
+      c.officer_name === newConstraintOfficer && c.day_target === newConstraintDayTarget
+    );
+    if (exists) {
+      alert("លក្ខខណ្ឌនេះមានរួចរាល់ហើយ!");
+      return;
+    }
+    setRandomStaffConstraints(prev => [
+      ...prev,
+      {
+        officer_name: newConstraintOfficer,
+        rule_type: newConstraintRuleType,
+        day_target: newConstraintDayTarget
+      }
+    ]);
+    setNewConstraintOfficer('');
+  };
+
+  const handleRemoveConstraint = (indexToRemove) => {
+    setRandomStaffConstraints(prev => prev.filter((_, idx) => idx !== indexToRemove));
+  };
 
   const normalizeKhmerName = (rawName) => {
     if (!rawName || typeof rawName !== 'string') return '';
@@ -376,7 +407,8 @@ export default function App() {
           month: parseInt(randomShiftMonth),
           staff_list: randomSelectedStaff,
           officers_per_night: parseInt(randomOfficersPerNight),
-          avoid_consecutive: randomAvoidConsecutive
+          avoid_consecutive: randomAvoidConsecutive,
+          constraints: randomStaffConstraints
         })
       });
       const data = await res.json();
@@ -3677,6 +3709,101 @@ export default function App() {
                       </label>
                     );
                   })}
+                </div>
+              </div>
+
+              {/* Custom Constraints Rules Panel */}
+              <div style={{ marginBottom: '20px', backgroundColor: '#fefce8', padding: '16px', borderRadius: '12px', border: '1px solid #fef08a' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                  <label style={{ fontWeight: '800', fontSize: '13.5px', color: '#854d0e', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span>⚙️</span> កំណត់លក្ខខណ្ឌថ្ងៃប្រចាំការពិសេស (ឧ. ស្រី សំបូរ ធ្វើតែថ្ងៃអាទិត្យ) ៖
+                  </label>
+                  <span style={{ fontSize: '11.5px', color: '#a16207', fontWeight: '700' }}>({randomStaffConstraints.length} លក្ខខណ្ឌ)</span>
+                </div>
+
+                {/* Active Constraints List */}
+                {randomStaffConstraints.length > 0 && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '14px' }}>
+                    {randomStaffConstraints.map((c, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: '8px', backgroundColor: '#fff', border: '1px solid #fef08a', fontSize: '12.5px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <span style={{ fontWeight: '800', color: '#1e3a8a' }}>👤 {c.officer_name}</span>
+                          <span style={{ padding: '2px 8px', borderRadius: '12px', backgroundColor: c.rule_type === 'only_on' ? '#dcfce7' : '#fee2e2', color: c.rule_type === 'only_on' ? '#166534' : '#991b1b', fontSize: '11px', fontWeight: '800' }}>
+                            {c.rule_type === 'only_on' ? '📌 ធ្វើតែថ្ងៃ' : '🚫 មិនធ្វើថ្ងៃ'}
+                          </span>
+                          <span style={{ fontWeight: '700', color: '#854d0e' }}>
+                            {c.day_target === 'Sunday' ? 'ថ្ងៃអាទិត្យ' :
+                             c.day_target === 'Saturday' ? 'ថ្ងៃសៅរ៍' :
+                             c.day_target === 'Weekends' ? 'ចុងសប្តាហ៍ (សៅរ៍-អាទិត្យ)' :
+                             c.day_target === 'Weekdays' ? 'ថ្ងៃធ្វើការ (ចន្ទ-សុក្រ)' :
+                             c.day_target === 'Monday' ? 'ថ្ងៃចន្ទ' :
+                             c.day_target === 'Tuesday' ? 'ថ្ងៃអង្គារ' :
+                             c.day_target === 'Wednesday' ? 'ថ្ងៃពុធ' :
+                             c.day_target === 'Thursday' ? 'ថ្ងៃព្រហស្បតិ៍' : 'ថ្ងៃសុក្រ'}
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveConstraint(idx)}
+                          style={{ background: 'none', border: 'none', color: '#ef4444', cursor: 'pointer', fontWeight: '800', fontSize: '14px' }}
+                          title="លុបលក្ខខណ្ឌ"
+                        >
+                          🗑️
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Form to Add New Constraint */}
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                  <select
+                    className="form-input"
+                    value={newConstraintOfficer}
+                    onChange={(e) => setNewConstraintOfficer(e.target.value)}
+                    style={{ padding: '6px 10px', fontSize: '12px', flex: '1', minWidth: '140px' }}
+                  >
+                    <option value="">-- ជ្រើសរើសបុគ្គលិក --</option>
+                    {getStaffPoolFromShiftSchedule().map((name, i) => (
+                      <option key={i} value={name}>{name}</option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="form-input"
+                    value={newConstraintRuleType}
+                    onChange={(e) => setNewConstraintRuleType(e.target.value)}
+                    style={{ padding: '6px 10px', fontSize: '12px', width: '130px' }}
+                  >
+                    <option value="only_on">📌 ធ្វើតែថ្ងៃ</option>
+                    <option value="never_on">🚫 មិនធ្វើថ្ងៃ</option>
+                  </select>
+
+                  <select
+                    className="form-input"
+                    value={newConstraintDayTarget}
+                    onChange={(e) => setNewConstraintDayTarget(e.target.value)}
+                    style={{ padding: '6px 10px', fontSize: '12px', flex: '1', minWidth: '150px' }}
+                  >
+                    <option value="Sunday">ថ្ងៃអាទិត្យ (Sunday)</option>
+                    <option value="Saturday">ថ្ងៃសៅរ៍ (Saturday)</option>
+                    <option value="Weekends">ចុងសប្តាហ៍ (Weekends)</option>
+                    <option value="Weekdays">ថ្ងៃធ្វើការ (Weekdays)</option>
+                    <option value="Monday">ថ្ងៃចន្ទ (Monday)</option>
+                    <option value="Tuesday">ថ្ងៃអង្គារ (Tuesday)</option>
+                    <option value="Wednesday">ថ្ងៃពុធ (Wednesday)</option>
+                    <option value="Thursday">ថ្ងៃព្រហស្បតិ៍ (Thursday)</option>
+                    <option value="Friday">ថ្ងៃសុក្រ (Friday)</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleAddConstraint}
+                    style={{ padding: '6px 14px', fontSize: '12px', fontWeight: '800', backgroundColor: '#eab308', borderColor: '#eab308', borderRadius: '8px', color: '#1e293b' }}
+                  >
+                    ➕ បន្ថែមលក្ខខណ្ឌ
+                  </button>
                 </div>
               </div>
 
