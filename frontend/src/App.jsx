@@ -3193,13 +3193,80 @@ export default function App() {
 
     const scheduleEntries = Object.entries(scheduleData || {}).sort((a, b) => a[0].localeCompare(b[0]));
     
-    // Stats Summary Badges
-    const statsHtml = includeStats ? Object.entries(staffStats || {}).map(([name, count]) => `
-      <div style="display: inline-flex; align-items: center; justify-content: space-between; padding: 6px 12px; background-color: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 8px; margin: 4px; min-width: 170px;">
-        <span style="font-size: 11px; font-weight: 700; color: #166534;">👤 ${name}</span>
-        <span style="padding: 2px 8px; border-radius: 10px; background-color: #16a34a; color: #fff; font-size: 10.5px; font-weight: 800; margin-left: 8px;">${toKhmerDigits(count)} វេន</span>
+    // Build accurate monthly staff duty distribution with counts and assigned dates
+    const staffDetailMap = {};
+    scheduleEntries.forEach(([dStr, offList]) => {
+      const dayNum = parseInt(dStr.split('-')[2] || '1');
+      const list = Array.isArray(offList) ? offList : [offList];
+      list.forEach(name => {
+        if (!name) return;
+        if (!staffDetailMap[name]) {
+          staffDetailMap[name] = { count: 0, days: [] };
+        }
+        staffDetailMap[name].count += 1;
+        staffDetailMap[name].days.push(dayNum);
+      });
+    });
+
+    if (staffStats) {
+      Object.entries(staffStats).forEach(([name, val]) => {
+        if (!staffDetailMap[name]) {
+          const cnt = typeof val === 'object' ? (val.count || 0) : val;
+          const dys = typeof val === 'object' && val.dates ? val.dates.map(d => parseInt(d)) : [];
+          staffDetailMap[name] = { count: cnt, days: dys };
+        }
+      });
+    }
+
+    const staffSummaryList = Object.entries(staffDetailMap)
+      .map(([name, data]) => ({
+        name,
+        count: data.count,
+        days: data.days.sort((a, b) => a - b)
+      }))
+      .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
+
+    // Stats Table Html (Person in 1 month with times and dates)
+    const statsTableHtml = includeStats && staffSummaryList.length > 0 ? `
+      <div style="margin-bottom: 22px; page-break-inside: avoid;">
+        <div style="font-size: 12px; font-weight: 800; color: #0b45b5; margin-bottom: 6px; display: flex; align-items: center; justify-content: space-between;">
+          <span>📊 ១. តារាងសង្ខេបចំនួនវេនប្រចាំការក្នុង ១ខែ របស់មន្ត្រីម្នាក់ៗ (Staff Monthly Duty Breakdown) ៖</span>
+          <span style="font-size: 10.5px; color: #475569; font-weight: 700;">សរុបមន្ត្រី ៖ ${toKhmerDigits(staffSummaryList.length)} នាក់</span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; margin-top: 4px; margin-bottom: 15px;">
+          <thead>
+            <tr style="background-color: #1e3a8a; color: #fff;">
+              <th style="width: 40px; text-align: center; font-weight: 800; padding: 7px 5px; font-size: 10.5px;">ល.រ</th>
+              <th style="width: 150px; font-weight: 800; padding: 7px 8px; font-size: 10.5px;">ឈ្មោះមន្ត្រីប្រចាំការ</th>
+              <th style="width: 100px; text-align: center; font-weight: 800; padding: 7px 5px; font-size: 10.5px;">ចំនួនវេន / ខែ</th>
+              <th style="font-weight: 800; padding: 7px 8px; font-size: 10.5px;">កាលបរិច្ឆេទ / ថ្ងៃប្រចាំការក្នុងខែ</th>
+              <th style="width: 110px; text-align: center; font-weight: 800; padding: 7px 5px; font-size: 10.5px;">វេនប្រចាំការ</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${staffSummaryList.map((st, idx) => `
+              <tr>
+                <td style="text-align: center; font-weight: 800; color: #0b45b5; padding: 6px 4px; font-size: 10.5px;">${toKhmerDigits(idx + 1)}</td>
+                <td style="font-weight: 800; color: #0f172a; padding: 6px 8px; font-size: 10.5px;">👤 ${st.name}</td>
+                <td style="text-align: center; padding: 6px 4px;">
+                  <span style="display: inline-block; padding: 2px 8px; border-radius: 10px; background-color: #dbeafe; color: #1e40af; font-weight: 800; font-size: 10.5px; border: 1px solid #bfdbfe;">
+                    ${toKhmerDigits(st.count)} វេន
+                  </span>
+                </td>
+                <td style="padding: 6px 8px; font-size: 10px;">
+                  ${st.days.map(d => `
+                    <span style="display: inline-block; padding: 2px 6px; margin: 1px 2px; border-radius: 4px; background-color: #f1f5f9; color: #334155; font-size: 10px; font-weight: 700; border: 1px solid #cbd5e1;">
+                      ថ្ងៃទី${toKhmerDigits(d)}
+                    </span>
+                  `).join('')}
+                </td>
+                <td style="text-align: center; font-size: 10px; color: #475569; font-weight: 600; padding: 6px 4px;">🌙 យប់ (១៧:០០ - ០៨:០០)</td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
       </div>
-    `).join('') : '';
+    ` : '';
 
     const rowsHtml = scheduleEntries.map(([dateStr, officers], index) => {
       let dateKhmerLabel = dateStr;
@@ -3334,13 +3401,13 @@ export default function App() {
             table {
               width: 100%;
               border-collapse: collapse;
-              margin-top: 10px;
+              margin-top: 6px;
             }
             
             th {
               background-color: #0b45b5;
               border: 1px solid #cbd5e1;
-              padding: 10px 8px;
+              padding: 9px 8px;
               font-weight: 800;
               font-size: 11px;
               text-align: left;
@@ -3349,7 +3416,7 @@ export default function App() {
             
             td {
               border: 1px solid #cbd5e1;
-              padding: 10px 8px;
+              padding: 9px 8px;
               font-size: 11px;
               color: #1e293b;
               vertical-align: middle;
@@ -3405,15 +3472,12 @@ export default function App() {
           
           <div style="width: 100%; height: 3px; background-color: #0b45b5; margin-bottom: 15px; margin-top: 5px;"></div>
 
-          ${statsHtml ? `
-            <div style="margin-bottom: 15px; padding: 10px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px;">
-              <div style="font-weight: 800; color: #1e3a8a; font-size: 11.5px; margin-bottom: 6px;">📊 សេចក្តីសង្ខេបចំនួនវេនក្នុង ១នាក់ ៖</div>
-              <div style="display: flex; flex-wrap: wrap;">
-                ${statsHtml}
-              </div>
-            </div>
-          ` : ''}
+          ${statsTableHtml}
           
+          <div style="font-size: 12px; font-weight: 800; color: #0b45b5; margin-top: 10px; margin-bottom: 6px;">
+            📅 ២. តារាងកាលវិភាគប្រចាំការលម្អិតប្រចាំថ្ងៃ (Daily Standby Roster Schedule) ៖
+          </div>
+
           <table>
             <thead>
               <tr>
