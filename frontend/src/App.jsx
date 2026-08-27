@@ -158,13 +158,13 @@ export default function App() {
   // Random Shift PDF Customization states
   const [showRandomShiftPdfModal, setShowRandomShiftPdfModal] = useState(false);
   const [randomShiftPdfData, setRandomShiftPdfData] = useState({ schedule: {}, stats: {}, year: new Date().getFullYear(), month: new Date().getMonth() + 1 });
-  const [randomShiftPdfDocTitle, setRandomShiftPdfDocTitle] = useState('តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់ (Standby Roster)');
+  const [randomShiftPdfDocTitle, setRandomShiftPdfDocTitle] = useState('តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់');
   const [randomShiftPdfDepartment, setRandomShiftPdfDepartment] = useState('នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន');
   const [randomShiftPdfOffice, setRandomShiftPdfOffice] = useState('ការិយាល័យ ស.ប.ព');
   const [randomShiftPdfSignerTitle, setRandomShiftPdfSignerTitle] = useState('អ្នករៀបចំកាលវិភាគប្រចាំការ');
   const [randomShiftPdfSignerName, setRandomShiftPdfSignerName] = useState('Miller');
   const [randomShiftPdfIncludeStats, setRandomShiftPdfIncludeStats] = useState(true);
-  const [randomShiftPdfDutyNote, setRandomShiftPdfDutyNote] = useState('SOC Incident & System Monitoring');
+  const [randomShiftPdfDutyNote, setRandomShiftPdfDutyNote] = useState('តាមដាន និងត្រួតពិនិត្យប្រព័ន្ធ SOC');
   const [randomShiftPdfCustomSignature, setRandomShiftPdfCustomSignature] = useState('');
   const randomShiftCanvasRef = useRef(null);
   const [isRandomShiftDrawing, setIsRandomShiftDrawing] = useState(false);
@@ -3199,15 +3199,15 @@ export default function App() {
     const targetYearText = toKhmerDigits(year);
 
     // Custom options destructured with safe defaults
-    const docTitle = options.docTitle || 'តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់ (Standby Roster)';
-    const docSubtitle = options.docSubtitle || `ប្រចាំខែ${targetMonthText} ឆ្នាំ${targetYearText} (SOC Operation Monitoring)`;
+    const docTitle = options.docTitle || 'តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់';
+    const docSubtitle = options.docSubtitle || `ប្រចាំខែ${targetMonthText} ឆ្នាំ${targetYearText}`;
     const department = options.department || 'នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន';
     const office = options.office || 'ការិយាល័យ ស.ប.ព';
     const targetSignerTitle = options.signerTitle || 'អ្នករៀបចំកាលវិភាគប្រចាំការ';
     const targetSignerName = options.signerName || ((currentLoginUser && currentLoginUser.full_name) ? currentLoginUser.full_name : 'Miller');
     const signatureImg = options.signatureImg !== undefined ? options.signatureImg : signatureImage;
     const includeStats = options.includeStats !== undefined ? options.includeStats : true;
-    const dutyNote = options.dutyNote || 'SOC Monitoring';
+    const dutyNote = options.dutyNote || 'តាមដាន និងត្រួតពិនិត្យប្រព័ន្ធ SOC';
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -3254,40 +3254,39 @@ export default function App() {
     const statsTableHtml = includeStats && staffSummaryList.length > 0 ? `
       <div style="margin-bottom: 16px;">
         <div style="font-size: 11px; font-weight: 800; color: #0b45b5; margin-bottom: 5px; display: flex; align-items: center; justify-content: space-between;">
-          <span>📊 ១. តារាងសង្ខេបចំនួនវេនប្រចាំការក្នុង ១ខែ របស់បុគ្គលិកម្នាក់ៗ (Staff Duty Breakdown) ៖</span>
+          <span>១. តារាងសង្ខេបចំនួនវេនប្រចាំការក្នុង ១ខែ របស់បុគ្គលិកម្នាក់ៗ ៖</span>
           <span style="font-size: 10px; color: #475569; font-weight: 700;">សរុបបុគ្គលិក ៖ ${toKhmerDigits(staffSummaryList.length)} នាក់</span>
         </div>
         <table style="width: 100%; border-collapse: collapse; margin-top: 2px; margin-bottom: 8px;">
           <thead>
             <tr style="background-color: #0b45b5; color: #fff;">
               <th style="width: 35px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">ល.រ</th>
-              <th style="width: 130px; font-weight: 800; padding: 6px 8px; font-size: 10px;">ឈ្មោះបុគ្គលិកប្រចាំការ</th>
+              <th style="width: 140px; font-weight: 800; padding: 6px 8px; font-size: 10px;">ឈ្មោះបុគ្គលិកប្រចាំការ</th>
               <th style="width: 85px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">ចំនួនវេន / ខែ</th>
-              <th style="font-weight: 800; padding: 6px 8px; font-size: 10px;">កាលបរិច្ឆេទ / ថ្ងៃប្រចាំការក្នុងខែ (Days)</th>
-              <th style="width: 105px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">វេនប្រចាំការ</th>
+              <th style="font-weight: 800; padding: 6px 8px; font-size: 10px;">កាលបរិច្ឆេទ / ថ្ងៃប្រចាំការក្នុងខែ</th>
+              <th style="width: 115px; text-align: center; font-weight: 800; padding: 6px 4px; font-size: 10px;">វេនប្រចាំការ</th>
             </tr>
           </thead>
           <tbody>
             ${staffSummaryList.map((st, idx) => `
               <tr style="page-break-inside: avoid; background-color: ${idx % 2 === 1 ? '#f8fafc' : '#ffffff'};">
                 <td style="text-align: center; font-weight: 800; color: #0b45b5; padding: 5px 4px; font-size: 10px; border: 1px solid #cbd5e1;">${toKhmerDigits(idx + 1)}</td>
-                <td style="font-weight: 800; color: #0f172a; padding: 5px 8px; font-size: 10px; border: 1px solid #cbd5e1; white-space: nowrap;">👤 ${st.name}</td>
+                <td style="font-weight: 700; color: #0f172a; padding: 5px 8px; font-size: 10px; border: 1px solid #cbd5e1; white-space: nowrap;">${st.name}</td>
                 <td style="text-align: center; padding: 5px 4px; border: 1px solid #cbd5e1;">
-                  <span style="display: inline-block; padding: 1.5px 7px; border-radius: 8px; background-color: #dbeafe; color: #1e40af; font-weight: 800; font-size: 10px; border: 1px solid #bfdbfe;">
+                  <span style="display: inline-block; padding: 1.5px 7px; border-radius: 6px; background-color: #dbeafe; color: #1e40af; font-weight: 700; font-size: 10px; border: 1px solid #bfdbfe;">
                     ${toKhmerDigits(st.count)} វេន
                   </span>
                 </td>
                 <td style="padding: 4px 6px; font-size: 9.5px; border: 1px solid #cbd5e1;">
                   <div style="display: flex; flex-wrap: wrap; gap: 3px; align-items: center;">
-                    <span style="color: #64748b; font-size: 9px; font-weight: 700; margin-right: 2px;">ថ្ងៃទី៖</span>
                     ${st.days.map(d => `
-                      <span style="display: inline-block; padding: 1px 5px; border-radius: 3px; background-color: #f1f5f9; color: #1e293b; font-size: 9.5px; font-weight: 700; border: 1px solid #e2e8f0;">
+                      <span style="display: inline-block; padding: 1px 5px; border-radius: 3px; background-color: #f1f5f9; color: #1e293b; font-size: 9.5px; font-weight: 600; border: 1px solid #e2e8f0;">
                         ${toKhmerDigits(d)}
                       </span>
                     `).join('')}
                   </div>
                 </td>
-                <td style="text-align: center; font-size: 9.5px; color: #475569; font-weight: 600; padding: 5px 4px; border: 1px solid #cbd5e1; white-space: nowrap;">🌙 យប់ (១៧:០០-០៨:០០)</td>
+                <td style="text-align: center; font-size: 9.5px; color: #475569; font-weight: 600; padding: 5px 4px; border: 1px solid #cbd5e1; white-space: nowrap;">យប់ (១៧:០០ - ០៨:០០)</td>
               </tr>
             `).join('')}
           </tbody>
@@ -3306,18 +3305,11 @@ export default function App() {
         }
       } catch (e) {}
 
-      const userIconSvg = `
-        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#003bb3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 3px; display: inline-block; vertical-align: middle;">
-          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
-          <circle cx="12" cy="7" r="4"></circle>
-        </svg>
-      `;
-
-      const officersBadges = (Array.isArray(officers) ? officers : [officers]).map(name => `
-        <span style="display: inline-flex; align-items: center; padding: 2px 7px; margin: 1px 2px; border-radius: 4px; background-color: #eff6ff; color: #1e3a8a; border: 1px solid #bfdbfe; font-size: 10px; font-weight: 700;">
-          ${userIconSvg} ${name}
+      const officersListHtml = (Array.isArray(officers) ? officers : [officers]).map(name => `
+        <span style="display: inline-block; padding: 2px 4px; font-size: 10px; font-weight: 700; color: #0f172a;">
+          ${name}
         </span>
-      `).join('');
+      `).join(' , ');
 
       const indexBadgeHtml = `<div style="display: inline-flex; align-items: center; justify-content: center; width: 19px; height: 19px; background-color: #0b45b5; color: white; border-radius: 4px; font-weight: 800; font-size: 10px; margin: 0 auto;">${toKhmerDigits(index + 1)}</div>`;
 
@@ -3326,8 +3318,8 @@ export default function App() {
           <td style="text-align: center; vertical-align: middle; padding: 5px 4px; border: 1px solid #cbd5e1;">${indexBadgeHtml}</td>
           <td style="font-weight: 700; color: #0b45b5; white-space: nowrap; padding: 5px 6px; border: 1px solid #cbd5e1; font-size: 10px;">${dateKhmerLabel}</td>
           <td style="color: #475569; font-size: 9.5px; font-weight: 600; white-space: nowrap; padding: 5px 4px; border: 1px solid #cbd5e1;">${dateStr}</td>
-          <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${officersBadges}</td>
-          <td style="font-size: 9.5px; color: #334155; font-weight: 600; text-align: center; padding: 5px 4px; border: 1px solid #cbd5e1; white-space: nowrap;">🌙 យប់ (១៧:០០-០៨:០០)</td>
+          <td style="padding: 4px 6px; border: 1px solid #cbd5e1;">${officersListHtml}</td>
+          <td style="font-size: 9.5px; color: #334155; font-weight: 600; text-align: center; padding: 5px 4px; border: 1px solid #cbd5e1; white-space: nowrap;">យប់ (១៧:០០ - ០៨:០០)</td>
           <td style="font-size: 9.5px; color: #64748b; padding: 5px 6px; border: 1px solid #cbd5e1;">${dutyNote}</td>
         </tr>
       `;
@@ -3514,7 +3506,7 @@ export default function App() {
           ${statsTableHtml}
           
           <div style="font-size: 11px; font-weight: 800; color: #0b45b5; margin-top: 8px; margin-bottom: 4px;">
-            📅 ២. តារាងកាលវិភាគប្រចាំការលម្អិតប្រចាំថ្ងៃ (Daily Standby Roster Schedule) ៖
+            ២. តារាងកាលវិភាគប្រចាំការលម្អិតប្រចាំថ្ងៃ ៖
           </div>
 
           <table>
@@ -3523,9 +3515,9 @@ export default function App() {
                 <th style="width: 35px; text-align: center; font-weight: 800;">ល.រ</th>
                 <th style="width: 120px; font-weight: 800;">ថ្ងៃ / កាលបរិច្ឆេទ</th>
                 <th style="width: 80px; font-weight: 800;">Date</th>
-                <th style="font-weight: 800;">បុគ្គលិកប្រចាំការ (Standby Staff)</th>
+                <th style="font-weight: 800;">បុគ្គលិកប្រចាំការ</th>
                 <th style="width: 120px; text-align: center; font-weight: 800;">វេនប្រចាំការ</th>
-                <th style="width: 105px; font-weight: 800;">ភារកិច្ច</th>
+                <th style="width: 115px; font-weight: 800;">ភារកិច្ច</th>
               </tr>
             </thead>
             <tbody>
@@ -12199,7 +12191,7 @@ export default function App() {
                   className="form-input"
                   value={randomShiftPdfDocTitle}
                   onChange={(e) => setRandomShiftPdfDocTitle(e.target.value)}
-                  placeholder="ឧ. តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់ (Standby Roster)"
+                  placeholder="ឧ. តារាងកាលវិភាគបុគ្គលិកប្រចាំការយប់"
                 />
               </div>
 
@@ -12265,7 +12257,7 @@ export default function App() {
                     className="form-input"
                     value={randomShiftPdfDutyNote}
                     onChange={(e) => setRandomShiftPdfDutyNote(e.target.value)}
-                    placeholder="ឧ. SOC Incident & System Monitoring"
+                    placeholder="ឧ. តាមដាន និងត្រួតពិនិត្យប្រព័ន្ធ SOC"
                   />
                 </div>
                 <div style={{ paddingBottom: '8px' }}>
