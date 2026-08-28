@@ -2933,7 +2933,11 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
     total_slots = num_days * officers_per_night
     num_staff = len(staff_list)
 
-    # 1. Parse weights and quotas
+    # 1. Month-by-month rotation starting offset (មួយខែម្នាក់)
+    month_offset = (year * 12 + month) % num_staff
+    rotated_staff = staff_list[month_offset:] + staff_list[:month_offset]
+
+    # 2. Parse weights and quotas
     weights = {}
     quotas = {}
     for s in staff_list:
@@ -2954,10 +2958,10 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
             except:
                 pass
 
-    # 2. Compute exact target quotas for every staff
+    # 3. Compute exact target quotas for every staff
     fixed_slots = sum(quotas.values())
     rem_slots = max(0, total_slots - fixed_slots)
-    rem_staff = [s for s in staff_list if s not in quotas]
+    rem_staff = [s for s in rotated_staff if s not in quotas]
     
     target_counts = {}
     for s, q in quotas.items():
@@ -2975,12 +2979,12 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
             remainders.append((exact - base, s))
         
         leftover = rem_slots - allocated
-        remainders.sort(key=lambda x: (-x[0], random.random()))
+        remainders.sort(key=lambda x: -x[0])
         for i in range(leftover):
             s = remainders[i % len(remainders)][1]
             target_counts[s] += 1
     
-    # 3. Setup constraints
+    # 4. Setup constraints
     constraints_map = {}
     if payload.constraints:
         for c in payload.constraints:
@@ -3036,13 +3040,16 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
                     
         return is_allowed, is_priority
 
+    # Simulation to find the best fair & reciprocal schedule
     best_schedule = None
     best_stats = None
     best_score = float('inf')
 
-    for attempt in range(50):
+    for attempt in range(80):
         staff_counts = {s: 0 for s in staff_list}
         weekend_counts = {s: 0 for s in staff_list}
+        last_assigned_day = {s: -99 for s in staff_list}
+        pair_counts = {}
         generated_schedule = {}
         prev_assigned = set()
         penalty = 0
@@ -3056,7 +3063,7 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
             eligible = []
             priority_candidates = []
             
-            for s in staff_list:
+            for s in rotated_staff:
                 if payload.avoid_consecutive and s in prev_assigned:
                     continue
                 is_allowed, is_priority = check_officer_allowed_on_day(s, day_name)
@@ -3066,7 +3073,7 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
                         priority_candidates.append(s)
             
             if len(eligible) < officers_per_night:
-                for s in staff_list:
+                for s in rotated_staff:
                     if s not in eligible:
                         is_allowed, _ = check_officer_allowed_on_day(s, day_name)
                         if is_allowed:
@@ -3074,32 +3081,60 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
                             penalty += 50
                             
             if len(eligible) < officers_per_night:
-                for s in staff_list:
+                for s in rotated_staff:
                     if s not in eligible:
                         eligible.append(s)
                         penalty += 100
 
             def candidate_score(s):
                 deficit = target_counts[s] - staff_counts[s]
-                p_bonus = 25 if s in priority_candidates else 0
-                w_penalty = (weekend_counts[s] * 4) if is_weekend else 0
-                over_penalty = 60 if staff_counts[s] >= target_counts[s] else 0
-                return - (deficit * 12 + p_bonus) + w_penalty + over_penalty + (random.random() * 2)
+                p_bonus = 30 if s in priority_candidates else 0
+                w_penalty = (weekend_counts[s] * 6) if is_weekend else 0
+                gap = d - last_assigned_day[s]
+                gap_bonus = min(gap, 6) * 3
+                over_penalty = 80 if staff_counts[s] >= target_counts[s] else 0
+                jitter = random.random() * 1.5
+                return - (deficit * 15 + p_bonus + gap_bonus) + w_penalty + over_penalty + jitter
 
             eligible.sort(key=candidate_score)
-            assigned_today = eligible[:officers_per_night]
+            
+            assigned_today = []
+            if eligible:
+                first_pick = eligible[0]
+                assigned_today.append(first_pick)
+                
+                remaining_candidates = eligible[1:]
+                if remaining_candidates and len(assigned_today) < officers_per_night:
+                    def partner_score(cand):
+                        pair_key = tuple(sorted([first_pick, cand]))
+                        pairs_done = pair_counts.get(pair_key, 0)
+                        return (pairs_done * 10) + candidate_score(cand)
+                        
+                    remaining_candidates.sort(key=partner_score)
+                    for cand in remaining_candidates:
+                        if len(assigned_today) >= officers_per_night:
+                            break
+                        assigned_today.append(cand)
             
             for s in assigned_today:
                 staff_counts[s] += 1
+                last_assigned_day[s] = d
                 if is_weekend:
                     weekend_counts[s] += 1
                     
+            if len(assigned_today) >= 2:
+                for i in range(len(assigned_today)):
+                    for j in range(i + 1, len(assigned_today)):
+                        pair_key = tuple(sorted([assigned_today[i], assigned_today[j]]))
+                        pair_counts[pair_key] = pair_counts.get(pair_key, 0) + 1
+                        
             generated_schedule[date_str] = assigned_today
             prev_assigned = set(assigned_today)
 
         quota_diff_sq = sum((staff_counts[s] - target_counts[s])**2 for s in staff_list)
         weekend_var = max(weekend_counts.values()) - min(weekend_counts.values()) if weekend_counts else 0
-        total_eval = quota_diff_sq * 10 + weekend_var * 2 + penalty
+        pair_var = max(pair_counts.values()) - min(pair_counts.values()) if pair_counts else 0
+        total_eval = quota_diff_sq * 20 + weekend_var * 3 + pair_var * 2 + penalty
 
         if total_eval < best_score:
             best_score = total_eval
@@ -3108,8 +3143,8 @@ def generate_monthly_shift_schedule(payload: ShiftGeneratePayload):
             if total_eval == 0:
                 break
 
-    # 4. Balancing Refinement Swapper
-    for _ in range(120):
+    # 5. Balancing Refinement Swapper
+    for _ in range(150):
         over = [s for s in staff_list if best_stats[s] > target_counts[s]]
         under = [s for s in staff_list if best_stats[s] < target_counts[s]]
         if not over or not under:

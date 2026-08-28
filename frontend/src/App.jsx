@@ -334,6 +334,12 @@ export default function App() {
   const [newConstraintDayTarget, setNewConstraintDayTarget] = useState('Sunday');
   const [randomStaffWeights, setRandomStaffWeights] = useState({});
   const [randomStaffQuotas, setRandomStaffQuotas] = useState({});
+  const [showShiftSwapModal, setShowShiftSwapModal] = useState(false);
+  const [swapTargetDate, setSwapTargetDate] = useState('');
+  const [swapOriginalStaff, setSwapOriginalStaff] = useState('');
+  const [swapTargetStaff, setSwapTargetStaff] = useState('');
+  const [swapMode, setSwapMode] = useState('swap');
+  const [swapScope, setSwapScope] = useState('active');
 
   const handleStaffWeightChange = (staffName, weightVal) => {
     setRandomStaffWeights(prev => ({
@@ -352,6 +358,106 @@ export default function App() {
       }
       return updated;
     });
+  };
+
+  const openShiftSwapModal = (dateStr = '', staffName = '', scope = 'active') => {
+    setSwapTargetDate(dateStr);
+    setSwapOriginalStaff(staffName);
+    setSwapTargetStaff('');
+    setSwapMode('swap');
+    setSwapScope(scope);
+    setShowShiftSwapModal(true);
+  };
+
+  const handleExecuteShiftSwap = async () => {
+    if (!swapTargetDate || !swapOriginalStaff || !swapTargetStaff) {
+      alert("សូមជ្រើសរើសកាលបរិច្ឆេទ បុគ្គលិកត្រូវប្តូរ និងបុគ្គលិកជំនួស!");
+      return;
+    }
+    if (swapOriginalStaff === swapTargetStaff) {
+      alert("បុគ្គលិកទាំងពីរមិនអាចដូចគ្នាបានទេ!");
+      return;
+    }
+
+    if (swapScope === 'preview' && generatedShiftPreview) {
+      const sched = { ...generatedShiftPreview.generated_schedule };
+      const targetDayOfficers = sched[swapTargetDate] || [];
+      if (!targetDayOfficers.includes(swapOriginalStaff)) {
+        alert(`បុគ្គលិក ${swapOriginalStaff} មិនមានវេននៅថ្ងៃ ${swapTargetDate} ឡើយ!`);
+        return;
+      }
+
+      if (swapMode === 'replace') {
+        sched[swapTargetDate] = targetDayOfficers.map(s => s === swapOriginalStaff ? swapTargetStaff : s);
+      } else {
+        const targetStaffDays = Object.keys(sched).filter(d => (sched[d] || []).includes(swapTargetStaff) && d !== swapTargetDate);
+        if (targetStaffDays.length === 0) {
+          sched[swapTargetDate] = targetDayOfficers.map(s => s === swapOriginalStaff ? swapTargetStaff : s);
+        } else {
+          const swapDate2 = targetStaffDays[0];
+          sched[swapTargetDate] = targetDayOfficers.map(s => s === swapOriginalStaff ? swapTargetStaff : s);
+          sched[swapDate2] = (sched[swapDate2] || []).map(s => s === swapTargetStaff ? swapOriginalStaff : s);
+        }
+      }
+
+      const newStats = {};
+      Object.values(sched).forEach(list => {
+        list.forEach(name => {
+          newStats[name] = (newStats[name] || 0) + 1;
+        });
+      });
+
+      setGeneratedShiftPreview(prev => ({
+        ...prev,
+        generated_schedule: sched,
+        staff_statistics: newStats
+      }));
+      setShowShiftSwapModal(false);
+      alert("✅ បានប្តូរ/ជំនួសវេនគ្នាទៅមករួចរាល់!");
+      return;
+    }
+
+    // Active Schedule Scope
+    const activeSched = { ...shiftSchedule, ...customShiftSchedule };
+    const targetDayOfficers = activeSched[swapTargetDate] || [];
+    if (!targetDayOfficers.includes(swapOriginalStaff)) {
+      alert(`បុគ្គលិក ${swapOriginalStaff} មិនមានវេននៅថ្ងៃ ${swapTargetDate} ឡើយ!`);
+      return;
+    }
+
+    const updatedSchedule = { ...activeSched };
+    if (swapMode === 'replace') {
+      updatedSchedule[swapTargetDate] = targetDayOfficers.map(s => s === swapOriginalStaff ? swapTargetStaff : s);
+    } else {
+      const [ym] = swapTargetDate.split('-').slice(0, 2);
+      const ymPrefix = `${ym}`;
+      const targetStaffDays = Object.keys(updatedSchedule).filter(d => d.startsWith(ymPrefix) && (updatedSchedule[d] || []).includes(swapTargetStaff) && d !== swapTargetDate);
+      if (targetStaffDays.length === 0) {
+        updatedSchedule[swapTargetDate] = targetDayOfficers.map(s => s === swapOriginalStaff ? swapTargetStaff : s);
+      } else {
+        const swapDate2 = targetStaffDays[0];
+        updatedSchedule[swapTargetDate] = targetDayOfficers.map(s => s === swapOriginalStaff ? swapTargetStaff : s);
+        updatedSchedule[swapDate2] = (updatedSchedule[swapDate2] || []).map(s => s === swapTargetStaff ? swapOriginalStaff : s);
+      }
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/shift/save`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ schedule: updatedSchedule })
+      });
+      if (res.ok) {
+        setCustomShiftSchedule(updatedSchedule);
+        setShowShiftSwapModal(false);
+        alert("✅ បានប្តូរ/ជំនួសវេនគ្នាទៅមករួចរាល់ និងរក្សាទុកក្នុងប្រព័ន្ធ!");
+      } else {
+        alert("❌ មិនអាចរក្សាទុកការប្តូរវេនបានទេ!");
+      }
+    } catch (err) {
+      console.error("Swap error:", err);
+      alert(`❌ Error: ${err.message}`);
+    }
   };
 
   const handleAddConstraint = () => {
@@ -4218,6 +4324,28 @@ export default function App() {
               >
                 📕 ទាញយកជា PDF
               </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => openShiftSwapModal('', '', 'active')}
+                style={{
+                  padding: '7px 14px',
+                  borderRadius: '8px',
+                  fontWeight: '800',
+                  fontSize: '12.5px',
+                  backgroundColor: '#0284c7',
+                  color: '#fff',
+                  borderColor: '#0284c7',
+                  boxShadow: '0 4px 10px rgba(2,132,199,0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                🔄 ប្តូរ/ជំនួសវេនគ្នាទៅមក
+              </button>
             </div>
           </div>
 
@@ -4278,6 +4406,7 @@ export default function App() {
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>កាលបរិច្ឆេទ (Date)</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>ឈ្មោះអ្នកប្រចាំការ (Standby Officers)</th>
                   <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>វេន (Shift Type)</th>
+                  <th style={{ padding: '12px 16px', textAlign: 'center', fontSize: '12.5px', fontWeight: '800', color: '#475569', width: '100px' }}>សកម្មភាព</th>
                 </tr>
               </thead>
               <tbody>
@@ -4293,24 +4422,41 @@ export default function App() {
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                             {names.map((name, idx) => (
                               <span 
-                                key={idx} 
+                                key={idx}
+                                onClick={() => openShiftSwapModal(dateKey, name, 'active')}
+                                title="ចុចដើម្បីប្តូរ ឬជំនួសវេនបុគ្គលិកនេះ"
                                 style={{ 
                                   padding: '4px 10px', 
                                   borderRadius: '6px', 
                                   fontSize: '12px', 
                                   fontWeight: '700',
-                                  backgroundColor: '#f1f5f9',
-                                  color: '#334155',
-                                  border: '1px solid #cbd5e1'
+                                  backgroundColor: '#eff6ff',
+                                  color: '#1e40af',
+                                  border: '1px solid #bfdbfe',
+                                  cursor: 'pointer',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
                                 }}
                               >
-                                👤 {name}
+                                👤 {name} <span style={{ fontSize: '10px', color: '#3b82f6' }}>🔄</span>
                               </span>
                             ))}
                           </div>
                         </td>
                         <td style={{ padding: '14px 16px', fontSize: '12.5px', color: '#64748b' }}>
                           🌙 Night Standby (១៧:០០ - ០៨:០០)
+                        </td>
+                        <td style={{ padding: '14px 16px', textAlign: 'center' }}>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={() => openShiftSwapModal(dateKey, names[0] || '', 'active')}
+                            style={{ padding: '4px 8px', fontSize: '11px', fontWeight: '700', borderRadius: '6px' }}
+                            title="ប្តូរវេនកាលបរិច្ឆេទនេះ"
+                          >
+                            🔄 ប្តូរវេន
+                          </button>
                         </td>
                       </tr>
                     );
@@ -4602,7 +4748,26 @@ export default function App() {
                             <td style={{ padding: '6px 10px', fontWeight: '700', color: '#1e293b' }}>{dStr}</td>
                             <td style={{ padding: '6px 10px', color: '#334155' }}>
                               {names.map((n, i) => (
-                                <span key={i} style={{ marginRight: '8px', padding: '2px 8px', borderRadius: '4px', backgroundColor: '#f1f5f9', fontSize: '11.5px', fontWeight: '700' }}>👤 {n}</span>
+                                <span 
+                                  key={i} 
+                                  onClick={() => openShiftSwapModal(dStr, n, 'preview')}
+                                  title="ចុចដើម្បីប្តូរ ឬជំនួសវេនបុគ្គលិកនេះក្នុង Preview"
+                                  style={{ 
+                                    marginRight: '8px', 
+                                    padding: '2px 8px', 
+                                    borderRadius: '4px', 
+                                    backgroundColor: '#f1f5f9', 
+                                    fontSize: '11.5px', 
+                                    fontWeight: '700',
+                                    cursor: 'pointer',
+                                    border: '1px solid #cbd5e1',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '4px'
+                                  }}
+                                >
+                                  👤 {n} <span style={{ fontSize: '9px', color: '#3b82f6' }}>🔄</span>
+                                </span>
                               ))}
                             </td>
                           </tr>
@@ -12380,6 +12545,130 @@ export default function App() {
                 📕 បោះពុម្ព និងទាញយកជា PDF (Print & Export)
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Mutual Shift Swap & Substitution Modal (ជំនួសគ្នាទៅមក / ប្តូរវេន) */}
+      {showShiftSwapModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15, 23, 42, 0.65)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100000, padding: '20px' }}>
+          <div className="modal-content" style={{ backgroundColor: '#fff', borderRadius: '16px', width: '100%', maxWidth: '520px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', padding: '24px' }}>
+            
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '14px', marginBottom: '18px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#e0f2fe', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                  🔄
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>ប្តូរវេន ឬជំនួសវេនគ្នាទៅមក</h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>Mutual Shift Swap & Standby Substitution</span>
+                </div>
+              </div>
+              <button type="button" onClick={() => setShowShiftSwapModal(false)} style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+            </div>
+
+            {/* Form Body */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '12.5px', color: '#334155' }}>📅 កាលបរិច្ឆេទប្រចាំការ (Shift Date) ៖</label>
+                <input
+                  type="date"
+                  className="form-input"
+                  value={swapTargetDate}
+                  onChange={(e) => setSwapTargetDate(e.target.value)}
+                  style={{ padding: '8px 12px', fontSize: '13px' }}
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '12.5px', color: '#dc2626' }}>👤 បុគ្គលិកត្រូវប្តូរចេញ ៖</label>
+                  <select
+                    className="form-input"
+                    value={swapOriginalStaff}
+                    onChange={(e) => setSwapOriginalStaff(e.target.value)}
+                    style={{ padding: '8px 12px', fontSize: '12.5px', fontWeight: '700', borderColor: '#fca5a5' }}
+                  >
+                    <option value="">-- ជ្រើសរើសបុគ្គលិក --</option>
+                    {getStaffPoolFromShiftSchedule().map((name, i) => (
+                      <option key={i} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontWeight: '700', fontSize: '12.5px', color: '#16a34a' }}>🔄 បុគ្គលិកជំនួស / ប្តូរចូល ៖</label>
+                  <select
+                    className="form-input"
+                    value={swapTargetStaff}
+                    onChange={(e) => setSwapTargetStaff(e.target.value)}
+                    style={{ padding: '8px 12px', fontSize: '12.5px', fontWeight: '700', borderColor: '#86efac' }}
+                  >
+                    <option value="">-- ជ្រើសរើសបុគ្គលិក --</option>
+                    {getStaffPoolFromShiftSchedule().map((name, i) => (
+                      <option key={i} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontWeight: '700', fontSize: '12.5px', color: '#334155' }}>⚙️ របៀបប្តូរវេន (Swap Mode) ៖</label>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px', border: `1.5px solid ${swapMode === 'swap' ? '#0284c7' : '#cbd5e1'}`, backgroundColor: swapMode === 'swap' ? '#f0f9ff' : '#fff', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700', color: swapMode === 'swap' ? '#0369a1' : '#475569' }}>
+                    <input
+                      type="radio"
+                      name="swapMode"
+                      value="swap"
+                      checked={swapMode === 'swap'}
+                      onChange={(e) => setSwapMode(e.target.value)}
+                    />
+                    <span>🔄 ប្តូរវេនគ្នាទៅមក (Mutual Swap)</span>
+                  </label>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 12px', borderRadius: '10px', border: `1.5px solid ${swapMode === 'replace' ? '#16a34a' : '#cbd5e1'}`, backgroundColor: swapMode === 'replace' ? '#f0fdf4' : '#fff', cursor: 'pointer', fontSize: '12.5px', fontWeight: '700', color: swapMode === 'replace' ? '#15803d' : '#475569' }}>
+                    <input
+                      type="radio"
+                      name="swapMode"
+                      value="replace"
+                      checked={swapMode === 'replace'}
+                      onChange={(e) => setSwapMode(e.target.value)}
+                    />
+                    <span>👤 ជំនួសវេន (Direct Replace)</span>
+                  </label>
+                </div>
+              </div>
+
+              <div style={{ padding: '10px 12px', borderRadius: '8px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', fontSize: '12px', color: '#64748b' }}>
+                {swapMode === 'swap' ? (
+                  <span>💡 <b>ប្តូរវេនគ្នាទៅមក (Mutual Swap)</b> ៖ បុគ្គលិកទាំងពីរនឹងផ្លាស់ប្តូរកាលបរិច្ឆេទប្រចាំការគ្នាទៅវិញទៅមក ដោយរក្សាចំនួនវេនសរុបស្មើភាពដដែល។</span>
+                ) : (
+                  <span>💡 <b>ជំនួសវេន (Direct Replace)</b> ៖ បុគ្គលិកថ្មីនឹងទទួលយកវេននៅថ្ងៃដែលបានជ្រើសរើសនេះផ្ទាល់។</span>
+                )}
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '20px', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setShowShiftSwapModal(false)}
+                style={{ borderRadius: '8px', padding: '8px 16px', fontWeight: '700', fontSize: '13px' }}
+              >
+                បោះបង់
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleExecuteShiftSwap}
+                style={{ borderRadius: '8px', padding: '8px 20px', fontWeight: '800', fontSize: '13px', backgroundColor: '#0284c7', borderColor: '#0284c7', display: 'flex', alignItems: 'center', gap: '6px' }}
+              >
+                <span>🔄</span> អនុវត្តការប្តូរ/ជំនួសវេន
+              </button>
+            </div>
+
           </div>
         </div>
       )}
