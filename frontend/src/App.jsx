@@ -179,6 +179,7 @@ export default function App() {
   const [randomShiftPdfCustomSignature, setRandomShiftPdfCustomSignature] = useState('');
   const randomShiftCanvasRef = useRef(null);
   const [isRandomShiftDrawing, setIsRandomShiftDrawing] = useState(false);
+  const [shiftCardStyle, setShiftCardStyle] = useState(() => localStorage.getItem('nssf_shift_card_style') || 'gradient');
   const [currentLoginUser, setCurrentLoginUser] = useState(() => {
     try {
       const saved = localStorage.getItem('currentLoginUser');
@@ -4094,9 +4095,280 @@ export default function App() {
       return officerGradients[Math.abs(hash + index) % officerGradients.length];
     };
 
+    const isGradient = shiftCardStyle === 'gradient';
+    const isCyber = shiftCardStyle === 'cyber';
+
+    // Theme Configs for Card 1 (Today)
+    const theme1 = isGradient ? {
+      cardBg: 'linear-gradient(145deg, #0284c7 0%, #0369a1 55%, #0f172a 100%)',
+      cardBorder: '1px solid rgba(56, 189, 248, 0.4)',
+      cardShadow: '0 12px 32px -4px rgba(2, 132, 199, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15)',
+      topBar: 'linear-gradient(90deg, #38bdf8 0%, #ffffff 100%)',
+      glowBg: 'rgba(56, 189, 248, 0.25)',
+      iconBg: 'rgba(255, 255, 255, 0.18)',
+      iconBorder: '1px solid rgba(255, 255, 255, 0.3)',
+      iconShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      titleColor: '#ffffff',
+      dateColor: '#bae6fd',
+      badgeBg: 'rgba(255, 255, 255, 0.2)',
+      badgeBorder: '1px solid rgba(255, 255, 255, 0.35)',
+      badgeColor: '#ffffff',
+      badgeDot: '#34d399',
+      rowBg: 'rgba(255, 255, 255, 0.13)',
+      rowBorder: '1px solid rgba(255, 255, 255, 0.2)',
+      avatarBg: '#ffffff',
+      avatarColor: '#0284c7',
+      nameColor: '#ffffff',
+      roleColor: '#bae6fd',
+      tagBg: 'rgba(255, 255, 255, 0.2)',
+      tagBorder: '1px solid rgba(255, 255, 255, 0.3)',
+      tagColor: '#ffffff',
+      timeBg: 'rgba(0, 0, 0, 0.22)',
+      timeBorder: '1px solid rgba(255, 255, 255, 0.15)',
+      timeColor: '#e0f2fe',
+      timeValColor: '#ffffff',
+      linkBg: 'rgba(255, 255, 255, 0.18)',
+      linkBorder: '1px solid rgba(255, 255, 255, 0.3)',
+      linkColor: '#ffffff',
+      emptyBg: 'rgba(0, 0, 0, 0.22)',
+      emptyBorder: '1px solid rgba(255, 255, 255, 0.2)',
+      emptyColor: '#bae6fd'
+    } : isCyber ? {
+      cardBg: 'radial-gradient(circle at top left, #0f172a 0%, #060913 100%)',
+      cardBorder: '1px solid rgba(56, 189, 248, 0.35)',
+      cardShadow: '0 12px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(56, 189, 248, 0.25)',
+      topBar: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)',
+      glowBg: 'rgba(56, 189, 248, 0.15)',
+      iconBg: 'rgba(56, 189, 248, 0.15)',
+      iconBorder: '1px solid rgba(56, 189, 248, 0.3)',
+      iconShadow: '0 0 15px rgba(56, 189, 248, 0.2)',
+      titleColor: '#38bdf8',
+      dateColor: '#94a3b8',
+      badgeBg: 'rgba(56, 189, 248, 0.12)',
+      badgeBorder: '1px solid rgba(56, 189, 248, 0.4)',
+      badgeColor: '#38bdf8',
+      badgeDot: '#38bdf8',
+      rowBg: '#111827',
+      rowBorder: '1px solid #1f2937',
+      avatarBg: 'linear-gradient(135deg, #0284c7 0%, #38bdf8 100%)',
+      avatarColor: '#0f172a',
+      nameColor: '#f8fafc',
+      roleColor: '#64748b',
+      tagBg: 'rgba(56, 189, 248, 0.1)',
+      tagBorder: '1px solid rgba(56, 189, 248, 0.25)',
+      tagColor: '#38bdf8',
+      timeBg: '#111827',
+      timeBorder: '1px solid #1f2937',
+      timeColor: '#94a3b8',
+      timeValColor: '#f8fafc',
+      linkBg: 'rgba(56, 189, 248, 0.1)',
+      linkBorder: '1px solid rgba(56, 189, 248, 0.3)',
+      linkColor: '#38bdf8',
+      emptyBg: 'rgba(56, 189, 248, 0.08)',
+      emptyBorder: '1px solid rgba(56, 189, 248, 0.2)',
+      emptyColor: '#38bdf8'
+    } : {
+      cardBg: '#ffffff',
+      cardBorder: '1px solid #e2e8f0',
+      cardShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
+      topBar: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)',
+      glowBg: 'rgba(56, 189, 248, 0.08)',
+      iconBg: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)',
+      iconBorder: '1px solid rgba(56, 189, 248, 0.3)',
+      iconShadow: '0 4px 10px rgba(2, 132, 199, 0.12)',
+      titleColor: '#0f172a',
+      dateColor: '#64748b',
+      badgeBg: '#ecfdf5',
+      badgeBorder: '1px solid #a7f3d0',
+      badgeColor: '#059669',
+      badgeDot: '#10b981',
+      rowBg: '#f8fafc',
+      rowBorder: '1px solid #edf2f7',
+      avatarBg: null,
+      avatarColor: '#ffffff',
+      nameColor: '#0f172a',
+      roleColor: '#64748b',
+      tagBg: 'rgba(2, 132, 199, 0.08)',
+      tagBorder: '1px solid rgba(2, 132, 199, 0.15)',
+      tagColor: '#0284c7',
+      timeBg: '#f1f5f9',
+      timeBorder: '1px solid #e2e8f0',
+      timeColor: '#475569',
+      timeValColor: '#0f172a',
+      linkBg: 'rgba(2, 132, 199, 0.06)',
+      linkBorder: '1px solid rgba(2, 132, 199, 0.15)',
+      linkColor: '#0284c7',
+      emptyBg: 'rgba(245, 158, 11, 0.06)',
+      emptyBorder: '1px solid rgba(245, 158, 11, 0.2)',
+      emptyColor: '#b45309'
+    };
+
+    // Theme Configs for Card 2 (Tomorrow)
+    const theme2 = isGradient ? {
+      cardBg: 'linear-gradient(145deg, #7c3aed 0%, #5b21b6 55%, #1e1b4b 100%)',
+      cardBorder: '1px solid rgba(192, 132, 252, 0.4)',
+      cardShadow: '0 12px 32px -4px rgba(124, 58, 237, 0.35), 0 4px 12px rgba(0, 0, 0, 0.15)',
+      topBar: 'linear-gradient(90deg, #c084fc 0%, #ffffff 100%)',
+      glowBg: 'rgba(192, 132, 252, 0.25)',
+      iconBg: 'rgba(255, 255, 255, 0.18)',
+      iconBorder: '1px solid rgba(255, 255, 255, 0.3)',
+      iconShadow: '0 4px 12px rgba(0, 0, 0, 0.15)',
+      titleColor: '#ffffff',
+      dateColor: '#e9d5ff',
+      badgeBg: 'rgba(255, 255, 255, 0.2)',
+      badgeBorder: '1px solid rgba(255, 255, 255, 0.35)',
+      badgeColor: '#ffffff',
+      badgeDot: '#c084fc',
+      rowBg: 'rgba(255, 255, 255, 0.13)',
+      rowBorder: '1px solid rgba(255, 255, 255, 0.2)',
+      avatarBg: '#ffffff',
+      avatarColor: '#7c3aed',
+      nameColor: '#ffffff',
+      roleColor: '#e9d5ff',
+      tagBg: 'rgba(255, 255, 255, 0.2)',
+      tagBorder: '1px solid rgba(255, 255, 255, 0.3)',
+      tagColor: '#ffffff',
+      timeBg: 'rgba(0, 0, 0, 0.22)',
+      timeBorder: '1px solid rgba(255, 255, 255, 0.15)',
+      timeColor: '#f3e8ff',
+      timeValColor: '#ffffff',
+      linkBg: 'rgba(255, 255, 255, 0.18)',
+      linkBorder: '1px solid rgba(255, 255, 255, 0.3)',
+      linkColor: '#ffffff',
+      emptyBg: 'rgba(0, 0, 0, 0.22)',
+      emptyBorder: '1px solid rgba(255, 255, 255, 0.2)',
+      emptyColor: '#e9d5ff'
+    } : isCyber ? {
+      cardBg: 'radial-gradient(circle at top left, #140d24 0%, #060913 100%)',
+      cardBorder: '1px solid rgba(192, 132, 252, 0.35)',
+      cardShadow: '0 12px 28px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(192, 132, 252, 0.25)',
+      topBar: 'linear-gradient(90deg, #7c3aed 0%, #c084fc 100%)',
+      glowBg: 'rgba(168, 85, 247, 0.15)',
+      iconBg: 'rgba(168, 85, 247, 0.15)',
+      iconBorder: '1px solid rgba(168, 85, 247, 0.3)',
+      iconShadow: '0 0 15px rgba(168, 85, 247, 0.2)',
+      titleColor: '#c084fc',
+      dateColor: '#94a3b8',
+      badgeBg: 'rgba(192, 132, 252, 0.12)',
+      badgeBorder: '1px solid rgba(192, 132, 252, 0.4)',
+      badgeColor: '#c084fc',
+      badgeDot: '#c084fc',
+      rowBg: '#111827',
+      rowBorder: '1px solid #1f2937',
+      avatarBg: 'linear-gradient(135deg, #7c3aed 0%, #c084fc 100%)',
+      avatarColor: '#0f172a',
+      nameColor: '#f8fafc',
+      roleColor: '#64748b',
+      tagBg: 'rgba(192, 132, 252, 0.1)',
+      tagBorder: '1px solid rgba(192, 132, 252, 0.25)',
+      tagColor: '#c084fc',
+      timeBg: '#111827',
+      timeBorder: '1px solid #1f2937',
+      timeColor: '#94a3b8',
+      timeValColor: '#f8fafc',
+      linkBg: 'rgba(192, 132, 252, 0.1)',
+      linkBorder: '1px solid rgba(192, 132, 252, 0.3)',
+      linkColor: '#c084fc',
+      emptyBg: 'rgba(168, 85, 247, 0.08)',
+      emptyBorder: '1px solid rgba(168, 85, 247, 0.2)',
+      emptyColor: '#c084fc'
+    } : {
+      cardBg: '#ffffff',
+      cardBorder: '1px solid #e2e8f0',
+      cardShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
+      topBar: 'linear-gradient(90deg, #7c3aed 0%, #c084fc 100%)',
+      glowBg: 'rgba(168, 85, 247, 0.08)',
+      iconBg: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)',
+      iconBorder: '1px solid rgba(168, 85, 247, 0.3)',
+      iconShadow: '0 4px 10px rgba(124, 58, 237, 0.12)',
+      titleColor: '#0f172a',
+      dateColor: '#64748b',
+      badgeBg: '#f5f3ff',
+      badgeBorder: '1px solid #ddd6fe',
+      badgeColor: '#7c3aed',
+      badgeDot: '#8b5cf6',
+      rowBg: '#f8fafc',
+      rowBorder: '1px solid #edf2f7',
+      avatarBg: null,
+      avatarColor: '#ffffff',
+      nameColor: '#0f172a',
+      roleColor: '#64748b',
+      tagBg: 'rgba(124, 58, 237, 0.08)',
+      tagBorder: '1px solid rgba(124, 58, 237, 0.15)',
+      tagColor: '#7c3aed',
+      timeBg: '#f1f5f9',
+      timeBorder: '1px solid #e2e8f0',
+      timeColor: '#475569',
+      timeValColor: '#0f172a',
+      linkBg: 'rgba(124, 58, 237, 0.06)',
+      linkBorder: '1px solid rgba(124, 58, 237, 0.15)',
+      linkColor: '#7c3aed',
+      emptyBg: 'rgba(124, 58, 237, 0.06)',
+      emptyBorder: '1px solid rgba(124, 58, 237, 0.2)',
+      emptyColor: '#6d28d9'
+    };
+
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
         
+        {/* Style Selector Bar */}
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          justifyContent: 'space-between', 
+          flexWrap: 'wrap', 
+          gap: '10px',
+          padding: '2px 0',
+          marginBottom: '-4px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#475569', display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <span>🎨</span>
+              <span>ម៉ូដកាត (Card Style) ៖</span>
+            </span>
+          </div>
+          
+          <div style={{ 
+            display: 'inline-flex', 
+            backgroundColor: '#f1f5f9', 
+            border: '1px solid #e2e8f0',
+            padding: '3px', 
+            borderRadius: '12px', 
+            gap: '4px' 
+          }}>
+            {[
+              { id: 'gradient', label: '🌈 Vibrant Glow' },
+              { id: 'cyber', label: '🌌 Cyber Dark' },
+              { id: 'clean', label: '☀️ Clean Light' }
+            ].map(s => {
+              const active = shiftCardStyle === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => {
+                    setShiftCardStyle(s.id);
+                    localStorage.setItem('nssf_shift_card_style', s.id);
+                  }}
+                  style={{
+                    padding: '5px 12px',
+                    borderRadius: '9px',
+                    border: 'none',
+                    fontSize: '11.5px',
+                    fontWeight: active ? '800' : '600',
+                    backgroundColor: active ? '#ffffff' : 'transparent',
+                    color: active ? '#0f172a' : '#64748b',
+                    boxShadow: active ? '0 2px 6px rgba(0, 0, 0, 0.08)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Top Cards Section: Today, Tomorrow, and Telegram Alerts */}
         <div className="shift-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
           
@@ -4104,15 +4376,15 @@ export default function App() {
           <div className="card shift-card-compact" style={{ 
             padding: '22px 20px', 
             borderRadius: '18px', 
-            backgroundColor: '#ffffff', 
-            color: '#0f172a', 
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
+            background: theme1.cardBg, 
+            border: theme1.cardBorder,
+            boxShadow: theme1.cardShadow,
             display: 'flex',
             flexDirection: 'column',
             gap: '14px',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            transition: 'all 0.3s ease'
           }}>
             {/* Top Accent Gradient Bar */}
             <div style={{
@@ -4121,7 +4393,7 @@ export default function App() {
               left: 0,
               right: 0,
               height: '4px',
-              background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)'
+              background: theme1.topBar
             }} />
 
             {/* Subtle Ambient Glow */}
@@ -4129,10 +4401,10 @@ export default function App() {
               position: 'absolute', 
               top: '-30px', 
               right: '-30px', 
-              width: '120px', 
-              height: '120px', 
+              width: '130px', 
+              height: '130px', 
               borderRadius: '50%', 
-              backgroundColor: 'rgba(56, 189, 248, 0.08)', 
+              backgroundColor: theme1.glowBg, 
               filter: 'blur(25px)',
               pointerEvents: 'none'
             }} />
@@ -4144,9 +4416,9 @@ export default function App() {
                   width: '44px', 
                   height: '44px', 
                   borderRadius: '12px', 
-                  background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', 
-                  border: '1px solid rgba(56, 189, 248, 0.3)',
-                  boxShadow: '0 4px 10px rgba(2, 132, 199, 0.12)',
+                  background: theme1.iconBg, 
+                  border: theme1.iconBorder,
+                  boxShadow: theme1.iconShadow,
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center', 
@@ -4156,10 +4428,10 @@ export default function App() {
                   🌙
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.01em' }}>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: theme1.titleColor, letterSpacing: '-0.01em' }}>
                     អ្នកប្រចាំការយប់នេះ (Today)
                   </h3>
-                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ fontSize: '12px', color: theme1.dateColor, fontWeight: '600', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span>📅</span>
                     <span>{formatKhmerFullDate(todayStr) || `ថ្ងៃទី ${todayStr}`}</span>
                   </div>
@@ -4168,25 +4440,25 @@ export default function App() {
               <span style={{ 
                 padding: '4px 10px', 
                 borderRadius: '20px', 
-                backgroundColor: '#ecfdf5', 
-                color: '#059669', 
+                backgroundColor: theme1.badgeBg, 
+                color: theme1.badgeColor, 
                 fontSize: '11px', 
                 fontWeight: '800', 
-                border: '1px solid #a7f3d0',
+                border: theme1.badgeBorder,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
                 flexShrink: 0
               }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: theme1.badgeDot, boxShadow: `0 0 6px ${theme1.badgeDot}` }} />
                 យប់នេះ
               </span>
             </div>
 
             {/* Officer List Section */}
-            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+            <div style={{ borderTop: isGradient || isCyber ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #f1f5f9', paddingTop: '12px' }}>
               {isShiftLoading ? (
-                <div style={{ fontSize: '13px', color: '#64748b', padding: '12px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', color: theme1.dateColor, padding: '12px 0', textAlign: 'center' }}>
                   ⏳ កំពុងទាញយកទិន្នន័យ...
                 </div>
               ) : todayNames.length > 0 ? (
@@ -4198,8 +4470,8 @@ export default function App() {
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'space-between',
-                        backgroundColor: '#f8fafc', 
-                        border: '1px solid #edf2f7',
+                        backgroundColor: theme1.rowBg, 
+                        border: theme1.rowBorder,
                         padding: '9px 12px', 
                         borderRadius: '12px',
                         transition: 'all 0.2s ease'
@@ -4210,23 +4482,23 @@ export default function App() {
                           width: '34px', 
                           height: '34px', 
                           borderRadius: '50%', 
-                          background: getOfficerGradient(name, i),
-                          color: '#ffffff',
+                          background: theme1.avatarBg || getOfficerGradient(name, i),
+                          color: theme1.avatarColor,
                           fontWeight: '800',
                           fontSize: '12.5px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
-                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)'
+                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)'
                         }}>
                           {getOfficerInitials(name)}
                         </div>
                         <div>
-                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>
+                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: theme1.nameColor }}>
                             {name}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                          <div style={{ fontSize: '11px', color: theme1.roleColor, fontWeight: '600' }}>
                             🛡️ មន្ត្រីប្រចាំការ #{i + 1}
                           </div>
                         </div>
@@ -4235,11 +4507,11 @@ export default function App() {
                       <span style={{ 
                         fontSize: '11px', 
                         fontWeight: '700', 
-                        color: '#0284c7', 
-                        backgroundColor: 'rgba(2, 132, 199, 0.08)', 
+                        color: theme1.tagColor, 
+                        backgroundColor: theme1.tagBg, 
                         padding: '3px 8px', 
                         borderRadius: '6px',
-                        border: '1px solid rgba(2, 132, 199, 0.15)'
+                        border: theme1.tagBorder
                       }}>
                         ● សកម្ម
                       </span>
@@ -4250,25 +4522,25 @@ export default function App() {
                     marginTop: '4px',
                     padding: '8px 12px', 
                     borderRadius: '10px', 
-                    backgroundColor: '#f1f5f9', 
-                    border: '1px solid #e2e8f0',
+                    backgroundColor: theme1.timeBg, 
+                    border: theme1.timeBorder,
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'space-between',
                     fontSize: '11.5px', 
-                    color: '#475569' 
+                    color: theme1.timeColor 
                   }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <span>⏰</span>
                       <b>ម៉ោងប្រចាំការ ៖</b>
                     </span>
-                    <span style={{ fontWeight: '800', color: '#0f172a' }}>
+                    <span style={{ fontWeight: '800', color: theme1.timeValColor }}>
                       ១៧:០០ - ០៨:០០ ព្រឹក
                     </span>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '14px', backgroundColor: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '12px', color: '#b45309', fontSize: '12.5px', textAlign: 'center' }}>
+                <div style={{ padding: '14px', backgroundColor: theme1.emptyBg, border: theme1.emptyBorder, borderRadius: '12px', color: theme1.emptyColor, fontSize: '12.5px', textAlign: 'center' }}>
                   ℹ️ មិនទាន់មានកាលវិភាគប្រចាំការសម្រាប់យប់នេះឡើយ។
                 </div>
               )}
@@ -4281,7 +4553,7 @@ export default function App() {
               rel="noopener noreferrer" 
               style={{ 
                 fontSize: '12px', 
-                color: '#0284c7', 
+                color: theme1.linkColor, 
                 textDecoration: 'none', 
                 fontWeight: '800', 
                 marginTop: 'auto', 
@@ -4291,8 +4563,8 @@ export default function App() {
                 gap: '6px',
                 padding: '8px 12px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(2, 132, 199, 0.06)',
-                border: '1px solid rgba(2, 132, 199, 0.15)',
+                backgroundColor: theme1.linkBg,
+                border: theme1.linkBorder,
                 transition: 'all 0.2s ease'
               }}
             >
@@ -4305,15 +4577,15 @@ export default function App() {
           <div className="card shift-card-compact" style={{ 
             padding: '22px 20px', 
             borderRadius: '18px', 
-            backgroundColor: '#ffffff', 
-            color: '#0f172a', 
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
+            background: theme2.cardBg, 
+            border: theme2.cardBorder,
+            boxShadow: theme2.cardShadow,
             display: 'flex',
             flexDirection: 'column',
             gap: '14px',
             position: 'relative',
-            overflow: 'hidden'
+            overflow: 'hidden',
+            transition: 'all 0.3s ease'
           }}>
             {/* Top Accent Gradient Bar */}
             <div style={{
@@ -4322,7 +4594,7 @@ export default function App() {
               left: 0,
               right: 0,
               height: '4px',
-              background: 'linear-gradient(90deg, #7c3aed 0%, #c084fc 100%)'
+              background: theme2.topBar
             }} />
 
             {/* Subtle Ambient Glow */}
@@ -4330,10 +4602,10 @@ export default function App() {
               position: 'absolute', 
               top: '-30px', 
               right: '-30px', 
-              width: '120px', 
-              height: '120px', 
+              width: '130px', 
+              height: '130px', 
               borderRadius: '50%', 
-              backgroundColor: 'rgba(168, 85, 247, 0.08)', 
+              backgroundColor: theme2.glowBg, 
               filter: 'blur(25px)',
               pointerEvents: 'none'
             }} />
@@ -4345,9 +4617,9 @@ export default function App() {
                   width: '44px', 
                   height: '44px', 
                   borderRadius: '12px', 
-                  background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)', 
-                  border: '1px solid rgba(168, 85, 247, 0.3)',
-                  boxShadow: '0 4px 10px rgba(124, 58, 237, 0.12)',
+                  background: theme2.iconBg, 
+                  border: theme2.iconBorder,
+                  boxShadow: theme2.iconShadow,
                   display: 'flex', 
                   alignItems: 'center', 
                   justifyContent: 'center', 
@@ -4357,10 +4629,10 @@ export default function App() {
                   🌅
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.01em' }}>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: theme2.titleColor, letterSpacing: '-0.01em' }}>
                     អ្នកប្រចាំការថ្ងៃស្អែក (Tomorrow)
                   </h3>
-                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ fontSize: '12px', color: theme2.dateColor, fontWeight: '600', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span>📅</span>
                     <span>{formatKhmerFullDate(tmrStr) || `ថ្ងៃទី ${tmrStr}`}</span>
                   </div>
@@ -4369,25 +4641,25 @@ export default function App() {
               <span style={{ 
                 padding: '4px 10px', 
                 borderRadius: '20px', 
-                backgroundColor: '#f5f3ff', 
-                color: '#7c3aed', 
+                backgroundColor: theme2.badgeBg, 
+                color: theme2.badgeColor, 
                 fontSize: '11px', 
                 fontWeight: '800', 
-                border: '1px solid #ddd6fe',
+                border: theme2.badgeBorder,
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '5px',
                 flexShrink: 0
               }}>
-                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#8b5cf6', boxShadow: '0 0 6px #8b5cf6' }} />
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: theme2.badgeDot, boxShadow: `0 0 6px ${theme2.badgeDot}` }} />
                 ស្អែក
               </span>
             </div>
 
             {/* Officer List Section */}
-            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
+            <div style={{ borderTop: isGradient || isCyber ? '1px solid rgba(255, 255, 255, 0.12)' : '1px solid #f1f5f9', paddingTop: '12px' }}>
               {isShiftLoading ? (
-                <div style={{ fontSize: '13px', color: '#64748b', padding: '12px 0', textAlign: 'center' }}>
+                <div style={{ fontSize: '13px', color: theme2.dateColor, padding: '12px 0', textAlign: 'center' }}>
                   ⏳ កំពុងទាញយកទិន្នន័យ...
                 </div>
               ) : tmrNames.length > 0 ? (
@@ -4399,8 +4671,8 @@ export default function App() {
                         display: 'flex', 
                         alignItems: 'center', 
                         justifyContent: 'space-between',
-                        backgroundColor: '#f8fafc', 
-                        border: '1px solid #edf2f7',
+                        backgroundColor: theme2.rowBg, 
+                        border: theme2.rowBorder,
                         padding: '9px 12px', 
                         borderRadius: '12px',
                         transition: 'all 0.2s ease'
@@ -4411,23 +4683,23 @@ export default function App() {
                           width: '34px', 
                           height: '34px', 
                           borderRadius: '50%', 
-                          background: getOfficerGradient(name, i + 3),
-                          color: '#ffffff',
+                          background: theme2.avatarBg || getOfficerGradient(name, i + 3),
+                          color: theme2.avatarColor,
                           fontWeight: '800',
                           fontSize: '12.5px',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexShrink: 0,
-                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)'
+                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.15)'
                         }}>
                           {getOfficerInitials(name)}
                         </div>
                         <div>
-                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>
+                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: theme2.nameColor }}>
                             {name}
                           </div>
-                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                          <div style={{ fontSize: '11px', color: theme2.roleColor, fontWeight: '600' }}>
                             🛡️ មន្ត្រីប្រចាំការ #{i + 1}
                           </div>
                         </div>
@@ -4436,11 +4708,11 @@ export default function App() {
                       <span style={{ 
                         fontSize: '11px', 
                         fontWeight: '700', 
-                        color: '#7c3aed', 
-                        backgroundColor: 'rgba(124, 58, 237, 0.08)', 
+                        color: theme2.tagColor, 
+                        backgroundColor: theme2.tagBg, 
                         padding: '3px 8px', 
                         borderRadius: '6px',
-                        border: '1px solid rgba(124, 58, 237, 0.15)'
+                        border: theme2.tagBorder
                       }}>
                         ● វេនបន្ទាប់
                       </span>
@@ -4451,25 +4723,25 @@ export default function App() {
                     marginTop: '4px',
                     padding: '8px 12px', 
                     borderRadius: '10px', 
-                    backgroundColor: '#f1f5f9', 
-                    border: '1px solid #e2e8f0',
+                    backgroundColor: theme2.timeBg, 
+                    border: theme2.timeBorder,
                     display: 'flex', 
                     alignItems: 'center', 
                     justifyContent: 'space-between',
                     fontSize: '11.5px', 
-                    color: '#475569' 
+                    color: theme2.timeColor 
                   }}>
                     <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
                       <span>⏰</span>
                       <b>ម៉ោងប្រចាំការ ៖</b>
                     </span>
-                    <span style={{ fontWeight: '800', color: '#0f172a' }}>
+                    <span style={{ fontWeight: '800', color: theme2.timeValColor }}>
                       ១៧:០០ - ០៨:០០ ព្រឹក
                     </span>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '14px', backgroundColor: 'rgba(124, 58, 237, 0.06)', border: '1px solid rgba(124, 58, 237, 0.2)', borderRadius: '12px', color: '#6d28d9', fontSize: '12.5px', textAlign: 'center' }}>
+                <div style={{ padding: '14px', backgroundColor: theme2.emptyBg, border: theme2.emptyBorder, borderRadius: '12px', color: theme2.emptyColor, fontSize: '12.5px', textAlign: 'center' }}>
                   ℹ️ មិនទាន់មានកាលវិភាគប្រចាំការសម្រាប់ថ្ងៃស្អែកឡើយ។
                 </div>
               )}
@@ -4482,7 +4754,7 @@ export default function App() {
               rel="noopener noreferrer" 
               style={{ 
                 fontSize: '12px', 
-                color: '#7c3aed', 
+                color: theme2.linkColor, 
                 textDecoration: 'none', 
                 fontWeight: '800', 
                 marginTop: 'auto', 
@@ -4492,8 +4764,8 @@ export default function App() {
                 gap: '6px',
                 padding: '8px 12px',
                 borderRadius: '10px',
-                backgroundColor: 'rgba(124, 58, 237, 0.06)',
-                border: '1px solid rgba(124, 58, 237, 0.15)',
+                backgroundColor: theme2.linkBg,
+                border: theme2.linkBorder,
                 transition: 'all 0.2s ease'
               }}
             >
