@@ -2898,14 +2898,20 @@ def fetch_custom_shift_schedule_from_sqlite():
 
 @app.get("/api/shift/today")
 def get_today_shift():
-    from datetime import datetime
+    from datetime import datetime, timedelta
     schedule = fetch_shift_schedule_from_firestore()
-    today_str = datetime.now().strftime("%Y-%m-%d")
+    now = datetime.now()
+    today_str = now.strftime("%Y-%m-%d")
+    tmr_str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
     today_names = schedule.get(today_str, [])
+    tmr_names = schedule.get(tmr_str, [])
     return {
         "date": today_str,
         "on_duty_names": today_names,
-        "count": len(today_names)
+        "count": len(today_names),
+        "tomorrow_date": tmr_str,
+        "tomorrow_on_duty_names": tmr_names,
+        "tomorrow_count": len(tmr_names)
     }
 
 @app.get("/api/shift/schedule")
@@ -3244,16 +3250,28 @@ def save_shift_schedule(payload: ShiftSavePayload):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.api_route("/api/shift/notify-today", methods=["GET", "POST"])
-def notify_today_shift_staff():
-    from datetime import datetime
+@app.api_route("/api/shift/notify-tomorrow", methods=["GET", "POST"])
+def notify_today_shift_staff(request: Request, day: str = Query("today")):
+    from datetime import datetime, timedelta
     import requests
     
+    is_tomorrow = "tomorrow" in request.url.path or day.lower() == "tomorrow"
+    now = datetime.now()
+    if is_tomorrow:
+        target_date = now + timedelta(days=1)
+        day_label_kh = "ថ្ងៃស្អែក"
+        day_tag = "tomorrow"
+    else:
+        target_date = now
+        day_label_kh = "ថ្ងៃនេះ"
+        day_tag = "today"
+        
+    target_str = target_date.strftime("%Y-%m-%d")
     schedule = fetch_shift_schedule_from_firestore()
-    today_str = datetime.now().strftime("%Y-%m-%d")
-    today_names = schedule.get(today_str, [])
+    target_names = schedule.get(target_str, [])
     
-    if not today_names:
-        return {"status": "no_shift_today", "message": f"No shift roster found for today ({today_str})"}
+    if not target_names:
+        return {"status": f"no_shift_{day_tag}", "message": f"No shift roster found for {day_label_kh} ({target_str})"}
 
     conn = get_db_connection()
     cursor = conn.cursor()
@@ -3261,22 +3279,17 @@ def notify_today_shift_staff():
     all_users = cursor.fetchall()
     conn.close()
 
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not bot_token:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
-        row = cursor.fetchone()
-        conn.close()
-        if row and row['value']:
-            bot_token = row['value']
+    try:
+        from backend.telegram import get_telegram_config
+    except ImportError:
+        from api.telegram import get_telegram_config
+    bot_token, _ = get_telegram_config()
 
     notified_users = []
     failed_users = []
+    co_workers_str = ", ".join(target_names)
 
-    co_workers_str = ", ".join(today_names)
-
-    for name_in_shift in today_names:
+    for name_in_shift in target_names:
         clean_shift_name = name_in_shift.replace("លោក", "").replace("លោកស្រី", "").replace("អ្នកនាង", "").strip().lower()
         matched_user = None
         for u in all_users:
@@ -3300,9 +3313,9 @@ def notify_today_shift_staff():
                     alert_text = (
                         f"🔔 <b>[ការរំលឹកវេនប្រចាំការ NSSF SOC Portal]</b>\n\n"
                         f"👋 <b>ជម្រាបសួរ លោក/លោកស្រី {user_disp_name}!</b>\n\n"
-                        f"📅 <b>ថ្ងៃនេះ ({today_str}) ដល់វេនលោក/លោកស្រីត្រូវប្រចាំការយប់ហើយ (Night Shift Standby Duty)!</b>\n"
+                        f"📅 <b>{day_label_kh} ({target_str}) ដល់វេនលោក/លោកស្រីត្រូវប្រចាំការយប់ហើយ (Night Shift Standby Duty)!</b>\n"
                         f"⏰ <b>ម៉ោងប្រចាំការ ៖</b> ១៧:០០ - ០៨:០០ ព្រឹក\n"
-                        f"👥 <b>ក្រុមការងារប្រចាំការរួមគ្នាយប់នេះ ៖</b> {co_workers_str}\n\n"
+                        f"👥 <b>ក្រុមការងារប្រចាំការរួមគ្នា ៖</b> {co_workers_str}\n\n"
                         f"សូមរៀបចំខ្លួន និងចូលរួមប្រចាំការតាមកាលវិភាគកំណត់!\n"
                         f"សូមអរគុណ! 🙏"
                     )
@@ -3313,7 +3326,7 @@ def notify_today_shift_staff():
                         res = requests.post(
                             f"https://api.telegram.org/bot{bot_token}/sendMessage",
                             json={"chat_id": clean_target, "text": alert_text, "parse_mode": "HTML"},
-                            timeout=5
+                            timeout=6
                         )
                         if res.ok:
                             notified_users.append(user_disp_name)
@@ -3330,8 +3343,9 @@ def notify_today_shift_staff():
 
     return {
         "status": "success",
-        "date": today_str,
-        "shift_names": today_names,
+        "day": day_tag,
+        "date": target_str,
+        "shift_names": target_names,
         "notified_users": notified_users,
         "failed_users": failed_users
     }

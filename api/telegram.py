@@ -1309,9 +1309,11 @@ def process_telegram_incoming_update(update: dict):
         return
     elif "status" in t_lower or "ស្ថានភាព" in t_lower:
         reply_msg = get_system_status_direct_telegram()
-    elif text in ["📅 វេនប្រចាំការយប់នេះ", "/shift", "shift", "វេនប្រចាំការ"]:
-        from datetime import datetime
-        today_str = datetime.now().strftime("%Y-%m-%d")
+    elif text in ["📅 វេនប្រចាំការយប់នេះ", "📅 វេនប្រចាំការ", "📅 វេនប្រចាំការ (Today & Tmr)", "/shift", "shift", "វេនប្រចាំការ", "វេនស្អែក", "វេនថ្ងៃនេះ"]:
+        from datetime import datetime, timedelta
+        now = datetime.now()
+        today_str = now.strftime("%Y-%m-%d")
+        tmr_str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
             res = requests.get("https://firestore.googleapis.com/v1/projects/shift-dashboard-efda2/databases/(default)/documents/shiftboard/schedule", timeout=5)
             schedule = {}
@@ -1322,16 +1324,24 @@ def process_telegram_incoming_update(update: dict):
                     names = [item.get("stringValue", "").strip() for item in night_values if item.get("stringValue")]
                     schedule[date_str] = names
             today_names = schedule.get(today_str, [])
+            tmr_names = schedule.get(tmr_str, [])
+            
+            lines = [f"📅 <b>កាលវិភាគវេនប្រចាំការ (Night Shift Standby) ៖</b>\n"]
             if today_names:
-                names_str = "\n".join([f"• 👤 {name}" for name in today_names])
-                reply_msg = (
-                    f"📅 <b>កាលវិភាគវេនប្រចាំការយប់នេះ ({today_str}) ៖</b>\n\n"
-                    f"{names_str}\n\n"
-                    f"⏰ <b>ម៉ោងប្រចាំការ ៖</b> ១៧:០០ - ០៨:០០ ព្រឹក\n"
-                    f"🔗 <b>មើលកាលវិភាគពេញ ៖</b> https://shift-dashboard-efda2.web.app"
-                )
+                today_names_str = "\n".join([f"  • 👤 <b>{name}</b>" for name in today_names])
+                lines.append(f"🌙 <b>យប់នេះ (Today - {today_str}) ៖</b>\n{today_names_str}")
             else:
-                reply_msg = f"ℹ️ មិនទាន់មានកាលវិភាគវេនប្រចាំការសម្រាប់ថ្ងៃនេះ ({today_str}) ឡើយ។\n🔗 https://shift-dashboard-efda2.web.app"
+                lines.append(f"🌙 <b>យប់នេះ ({today_str}) ៖</b> ℹ️ មិនទាន់មានកាលវិភាគ")
+                
+            if tmr_names:
+                tmr_names_str = "\n".join([f"  • 👤 <b>{name}</b>" for name in tmr_names])
+                lines.append(f"\n🌅 <b>យប់ស្អែក (Tomorrow - {tmr_str}) ៖</b>\n{tmr_names_str}")
+            else:
+                lines.append(f"\n🌅 <b>យប់ស្អែក ({tmr_str}) ៖</b> ℹ️ មិនទាន់មានកាលវិភាគ")
+                
+            lines.append(f"\n⏰ <b>ម៉ោងប្រចាំការ ៖</b> ១៧:០០ - ០៨:០០ ព្រឹក")
+            lines.append(f"🔗 <b>មើលកាលវិភាគពេញ ៖</b> https://shift-dashboard-efda2.web.app")
+            reply_msg = "\n".join(lines)
         except Exception as ex:
             reply_msg = f"⚠️ មិនអាចទាញយកទិន្នន័យវេនប្រចាំការបាន ៖ {ex}"
     elif text in ["📝 សុំច្បាប់ / ចេញក្រៅ", "/leave"]:

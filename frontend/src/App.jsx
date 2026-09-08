@@ -2524,17 +2524,19 @@ export default function App() {
     }
   };
 
-  const handleNotifyShiftToday = async () => {
-    setIsNotifyingShift(true);
+  const handleNotifyShift = async (targetDay = 'today') => {
+    setIsNotifyingShift(targetDay);
     setShiftNotifyResult(null);
     try {
-      const res = await fetch(`${API_BASE}/shift/notify-today`, { method: 'POST' });
+      const endpoint = targetDay === 'tomorrow' ? `${API_BASE}/shift/notify-tomorrow` : `${API_BASE}/shift/notify-today`;
+      const res = await fetch(endpoint, { method: 'POST' });
       const data = await res.json();
       if (res.ok) {
-        if (data.status === 'no_shift_today') {
+        if (data.status === 'no_shift_today' || data.status === 'no_shift_tomorrow') {
           setShiftNotifyResult({ type: 'warning', message: data.message });
         } else {
-          setShiftNotifyResult({ type: 'success', message: 'បានបញ្ជូនសាររំលឹកទៅ Telegram រួចរាល់!' });
+          const dayKh = targetDay === 'tomorrow' ? 'ថ្ងៃស្អែក' : 'យប់នេះ';
+          setShiftNotifyResult({ type: 'success', message: `បានបញ្ជូនសាររំលឹកវេនប្រចាំការ${dayKh} ទៅកាន់ Telegram រួចរាល់!` });
         }
       } else {
         setShiftNotifyResult({ type: 'error', message: data.detail || 'បរាជ័យក្នុងការបញ្ជូនសារ។' });
@@ -2545,6 +2547,8 @@ export default function App() {
       setIsNotifyingShift(false);
     }
   };
+
+  const handleNotifyShiftToday = () => handleNotifyShift('today');
 
   const fetchDriveFiles = async () => {
     setIsDriveLoading(true);
@@ -3921,28 +3925,34 @@ export default function App() {
 
   const renderShiftTab = () => {
     const todayStr = new Date().toLocaleDateString('sv-SE');
-    const todayNames = shiftSchedule[todayStr] || [];
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const tmrStr = tomorrow.toLocaleDateString('sv-SE');
+
+    const activeSched = { ...shiftSchedule, ...customShiftSchedule };
+    const todayNames = activeSched[todayStr] || [];
+    const tmrNames = activeSched[tmrStr] || [];
 
     // Filter shift dates
-    const filteredDates = Object.keys(shiftSchedule)
+    const filteredDates = Object.keys(activeSched)
       .sort((a, b) => new Date(a) - new Date(b))
       .filter(dateKey => {
         const query = (subnetSearch || '').toLowerCase().trim();
         if (!query) return true;
         if (dateKey.includes(query)) return true;
-        const names = shiftSchedule[dateKey] || [];
+        const names = activeSched[dateKey] || [];
         return names.some(n => n.toLowerCase().includes(query));
       });
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         
-        {/* Top Cards Section */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '20px' }}>
+        {/* Top Cards Section: Today, Tomorrow, and Telegram Alerts */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
           
           {/* Card 1: Today's Standing Officers */}
           <div className="card" style={{ 
-            padding: '24px', 
+            padding: '22px', 
             borderRadius: '16px', 
             backgroundColor: '#1e293b', 
             color: '#fff', 
@@ -3950,7 +3960,7 @@ export default function App() {
             boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
+            gap: '14px',
             position: 'relative',
             overflow: 'hidden'
           }}>
@@ -3965,34 +3975,39 @@ export default function App() {
               filter: 'blur(20px)' 
             }} />
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(56, 189, 248, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
-                📅
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(56, 189, 248, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                  🌙
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#38bdf8' }}>អ្នកប្រចាំការយប់នេះ (Today)</h3>
+                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>ថ្ងៃទី {todayStr}</span>
+                </div>
               </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#38bdf8' }}>អ្នកប្រចាំការយប់នេះ (Night Shift Standby)</h3>
-                <span style={{ fontSize: '12px', color: '#94a3b8' }}>ថ្ងៃទី {todayStr}</span>
-              </div>
+              <span style={{ padding: '3px 10px', borderRadius: '12px', backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '11px', fontWeight: '800', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+                យប់នេះ
+              </span>
             </div>
 
-            <div style={{ borderTop: '1px solid #334155', paddingTop: '14px' }}>
+            <div style={{ borderTop: '1px solid #334155', paddingTop: '12px' }}>
               {isShiftLoading ? (
                 <div style={{ fontSize: '13px', color: '#94a3b8' }}>⏳ កំពុងទាញយកទិន្នន័យ...</div>
               ) : todayNames.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {todayNames.map((name, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#334155', padding: '10px 14px', borderRadius: '10px' }}>
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#334155', padding: '9px 12px', borderRadius: '10px' }}>
                       <span style={{ fontSize: '16px' }}>👤</span>
                       <span style={{ fontSize: '13.5px', fontWeight: '700' }}>{name}</span>
                     </div>
                   ))}
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '6px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
                     ⏰ <b>ម៉ោងប្រចាំការ ៖</b> ១៧:០០ - ០៨:០០ ព្រឹក
                   </div>
                 </div>
               ) : (
                 <div style={{ padding: '12px', backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '10px', color: '#f59e0b', fontSize: '12.5px' }}>
-                  ℹ️ មិនទាន់មានកាលវិភាគប្រចាំការសម្រាប់ថ្ងៃនេះឡើយ។
+                  ℹ️ មិនទាន់មានកាលវិភាគប្រចាំការសម្រាប់យប់នេះឡើយ។
                 </div>
               )}
             </div>
@@ -4007,16 +4022,88 @@ export default function App() {
             </a>
           </div>
 
-          {/* Card 2: Notification Action Trigger */}
+          {/* Card 2: Tomorrow's Standing Officers */}
           <div className="card" style={{ 
-            padding: '24px', 
+            padding: '22px', 
+            borderRadius: '16px', 
+            backgroundColor: '#0f172a', 
+            color: '#fff', 
+            border: '1px solid #1e293b',
+            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ 
+              position: 'absolute', 
+              top: '-20px', 
+              right: '-20px', 
+              width: '100px', 
+              height: '100px', 
+              borderRadius: '50%', 
+              backgroundColor: 'rgba(168, 85, 247, 0.15)', 
+              filter: 'blur(20px)' 
+            }} />
+            
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(168, 85, 247, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                  🌅
+                </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#c084fc' }}>អ្នកប្រចាំការថ្ងៃស្អែក (Tomorrow)</h3>
+                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>ថ្ងៃទី {tmrStr}</span>
+                </div>
+              </div>
+              <span style={{ padding: '3px 10px', borderRadius: '12px', backgroundColor: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', fontSize: '11px', fontWeight: '800', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+                ស្អែក
+              </span>
+            </div>
+
+            <div style={{ borderTop: '1px solid #334155', paddingTop: '12px' }}>
+              {isShiftLoading ? (
+                <div style={{ fontSize: '13px', color: '#94a3b8' }}>⏳ កំពុងទាញយកទិន្នន័យ...</div>
+              ) : tmrNames.length > 0 ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {tmrNames.map((name, i) => (
+                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#1e293b', padding: '9px 12px', borderRadius: '10px' }}>
+                      <span style={{ fontSize: '16px' }}>👤</span>
+                      <span style={{ fontSize: '13.5px', fontWeight: '700' }}>{name}</span>
+                    </div>
+                  ))}
+                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    ⏰ <b>ម៉ោងប្រចាំការ ៖</b> ១៧:០០ - ០៨:០០ ព្រឹក
+                  </div>
+                </div>
+              ) : (
+                <div style={{ padding: '12px', backgroundColor: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '10px', color: '#c084fc', fontSize: '12.5px' }}>
+                  ℹ️ មិនទាន់មានកាលវិភាគប្រចាំការសម្រាប់ថ្ងៃស្អែកឡើយ។
+                </div>
+              )}
+            </div>
+
+            <a 
+              href="https://shift-dashboard-efda2.web.app" 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              style={{ fontSize: '12px', color: '#c084fc', textDecoration: 'none', fontWeight: '700', marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+            >
+              មើលកាលវិភាគពេញលេញ (External Link) ↗
+            </a>
+          </div>
+
+          {/* Card 3: Notification Action Trigger */}
+          <div className="card" style={{ 
+            padding: '22px', 
             borderRadius: '16px', 
             backgroundColor: '#fff', 
             border: '1px solid #e2e8f0',
             boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px'
+            gap: '14px'
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(0, 136, 204, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#0088cc' }}>
@@ -4024,13 +4111,13 @@ export default function App() {
               </div>
               <div>
                 <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>ប្រព័ន្ធរំលឹកវេនប្រចាំការ (Telegram Alerts)</h3>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>ផ្ញើសាររំលឹកទៅកាន់បុគ្គលិកត្រូវប្រចាំការថ្ងៃនេះ</span>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>ផ្ញើសាររំលឹកទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួន</span>
               </div>
             </div>
 
-            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '14px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
               <p style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5', margin: 0 }}>
-                ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការយប់នេះ ទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួនរបស់ពួកគេ។ សាររួមមានម៉ោង កាលបរិច្ឆេទ និងសមាជិកប្រចាំការរួមគ្នា។
+                ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការ (ថ្ងៃនេះ ឬ ថ្ងៃស្អែក) ទៅកាន់ Telegram ផ្ទាល់ខ្លួនរបស់សាម៉ីខ្លួន។
               </p>
 
               {shiftNotifyResult && (
@@ -4048,25 +4135,52 @@ export default function App() {
               )}
             </div>
 
-            <button
-              className="btn btn-primary"
-              onClick={handleNotifyShiftToday}
-              disabled={isNotifyingShift || isShiftLoading}
-              style={{ 
-                width: '100%', 
-                padding: '12px', 
-                borderRadius: '10px', 
-                fontWeight: '800', 
-                fontSize: '13px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '8px',
-                cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer'
-              }}
-            >
-              {isNotifyingShift ? '⏳ កំពុងបញ្ជូន...' : '📢 បញ្ជូនសាររំលឹកទៅ Telegram (Send Alert)'}
-            </button>
+            <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
+              <button
+                className="btn btn-primary"
+                onClick={() => handleNotifyShift('today')}
+                disabled={Boolean(isNotifyingShift) || isShiftLoading}
+                style={{ 
+                  flex: 1, 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  fontWeight: '800', 
+                  fontSize: '12.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer',
+                  backgroundColor: '#0284c7',
+                  borderColor: '#0284c7'
+                }}
+              >
+                {isNotifyingShift === 'today' ? '⏳ កំពុងផ្ញើ...' : '📢 យប់នេះ (Today)'}
+              </button>
+              
+              <button
+                className="btn"
+                onClick={() => handleNotifyShift('tomorrow')}
+                disabled={Boolean(isNotifyingShift) || isShiftLoading}
+                style={{ 
+                  flex: 1, 
+                  padding: '10px', 
+                  borderRadius: '10px', 
+                  fontWeight: '800', 
+                  fontSize: '12.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer',
+                  backgroundColor: '#7c3aed',
+                  borderColor: '#7c3aed',
+                  color: '#fff'
+                }}
+              >
+                {isNotifyingShift === 'tomorrow' ? '⏳ កំពុងផ្ញើ...' : '🌅 ថ្ងៃស្អែក (Tmr)'}
+              </button>
+            </div>
           </div>
 
         </div>
@@ -4142,18 +4256,21 @@ export default function App() {
                 ) : filteredDates.length > 0 ? (
                   filteredDates.map((dateKey) => {
                     const isToday = dateKey === todayStr;
-                    const names = shiftSchedule[dateKey] || [];
+                    const isTomorrow = dateKey === tmrStr;
+                    const names = activeSched[dateKey] || [];
                     return (
                       <tr 
                         key={dateKey} 
                         style={{ 
                           borderBottom: '1px solid #e2e8f0',
-                          backgroundColor: isToday ? '#fffbeb' : 'transparent',
+                          backgroundColor: isToday ? '#fffbeb' : isTomorrow ? '#f5f3ff' : 'transparent',
                           transition: 'background-color 0.2s'
                         }}
                       >
-                        <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '700', color: isToday ? '#b45309' : '#0f172a' }}>
-                          {dateKey} {isToday && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#fef3c7', color: '#d97706', fontSize: '10px', fontWeight: '800' }}>ថ្ងៃនេះ</span>}
+                        <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '700', color: isToday ? '#b45309' : isTomorrow ? '#6d28d9' : '#0f172a' }}>
+                          {dateKey} 
+                          {isToday && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#fef3c7', color: '#d97706', fontSize: '10px', fontWeight: '800' }}>ថ្ងៃនេះ</span>}
+                          {isTomorrow && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#ede9fe', color: '#7c3aed', fontSize: '10px', fontWeight: '800' }}>ថ្ងៃស្អែក</span>}
                         </td>
                         <td style={{ padding: '14px 16px' }}>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
@@ -4165,9 +4282,9 @@ export default function App() {
                                   borderRadius: '6px', 
                                   fontSize: '12px', 
                                   fontWeight: '700',
-                                  backgroundColor: isToday ? '#fef3c7' : '#f1f5f9',
-                                  color: isToday ? '#b45309' : '#334155',
-                                  border: `1px solid ${isToday ? '#fde68a' : '#cbd5e1'}`
+                                  backgroundColor: isToday ? '#fef3c7' : isTomorrow ? '#ede9fe' : '#f1f5f9',
+                                  color: isToday ? '#b45309' : isTomorrow ? '#6d28d9' : '#334155',
+                                  border: `1px solid ${isToday ? '#fde68a' : isTomorrow ? '#ddd6fe' : '#cbd5e1'}`
                                 }}
                               >
                                 👤 {name}
