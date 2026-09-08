@@ -4494,14 +4494,9 @@ export default function App() {
                         }}>
                           {getOfficerInitials(name)}
                         </div>
-                        <div>
-                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: theme1.nameColor }}>
-                            {name}
-                          </div>
-                          <div style={{ fontSize: '11px', color: theme1.roleColor, fontWeight: '600' }}>
-                            🛡️ មន្ត្រីប្រចាំការ #{i + 1}
-                          </div>
-                        </div>
+                        <span style={{ fontSize: '14px', fontWeight: '800', color: theme1.nameColor }}>
+                          {name}
+                        </span>
                       </div>
 
                       <span style={{ 
@@ -4695,14 +4690,9 @@ export default function App() {
                         }}>
                           {getOfficerInitials(name)}
                         </div>
-                        <div>
-                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: theme2.nameColor }}>
-                            {name}
-                          </div>
-                          <div style={{ fontSize: '11px', color: theme2.roleColor, fontWeight: '600' }}>
-                            🛡️ មន្ត្រីប្រចាំការ #{i + 1}
-                          </div>
-                        </div>
+                        <span style={{ fontSize: '14px', fontWeight: '800', color: theme2.nameColor }}>
+                          {name}
+                        </span>
                       </div>
 
                       <span style={{ 
