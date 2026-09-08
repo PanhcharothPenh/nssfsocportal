@@ -336,6 +336,7 @@ export default function App() {
   const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
   const [showPwaModal, setShowPwaModal] = useState(false);
   const [isStandaloneApp, setIsStandaloneApp] = useState(false);
+  const [dismissInstallBanner, setDismissInstallBanner] = useState(false);
 
   // Shift Random Generator & Monthly Statistics States
   const [selectedShiftMonth, setSelectedShiftMonth] = useState(() => {
@@ -14883,6 +14884,75 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Mobile PWA Install Floating Banner */}
+      {!isStandaloneApp && !dismissInstallBanner && (
+        <div style={{
+          position: 'fixed',
+          bottom: '16px',
+          left: '16px',
+          right: '16px',
+          maxWidth: '460px',
+          margin: '0 auto',
+          backgroundColor: '#0f172a',
+          color: '#fff',
+          padding: '12px 16px',
+          borderRadius: '16px',
+          boxShadow: '0 12px 28px -4px rgba(0, 0, 0, 0.45)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          gap: '12px',
+          zIndex: 9999,
+          border: '1px solid rgba(255, 255, 255, 0.15)',
+          animation: 'fadeInUp 0.3s ease-out'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: 0 }}>
+            <img src={nssfLogo} alt="App Icon" style={{ width: '36px', height: '36px', objectFit: 'contain', flexShrink: 0 }} />
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: '1.25', minWidth: 0 }}>
+              <span style={{ fontSize: '13px', fontWeight: '800', color: '#fff', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                NSSF SOC Portal
+              </span>
+              <span style={{ fontSize: '11px', color: '#94a3b8', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                ដំឡើងលើទូរស័ព្ទមើលបានលឿន
+              </span>
+            </div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+            <button
+              onClick={handleInstallPwa}
+              style={{
+                backgroundColor: '#16a34a',
+                color: '#fff',
+                border: 'none',
+                padding: '7px 14px',
+                borderRadius: '10px',
+                fontSize: '12px',
+                fontWeight: '800',
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+                boxShadow: '0 2px 6px rgba(22, 163, 74, 0.4)'
+              }}
+            >
+              📲 ដំឡើង
+            </button>
+            <button
+              onClick={() => setDismissInstallBanner(true)}
+              style={{
+                backgroundColor: 'transparent',
+                color: '#94a3b8',
+                border: 'none',
+                fontSize: '16px',
+                padding: '4px',
+                cursor: 'pointer'
+              }}
+              title="បិទ"
+            >
+              ✕
+            </button>
           </div>
         </div>
       )}
