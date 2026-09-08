@@ -80,7 +80,18 @@ const NSSF_HQ_DEPTS_LIST = [
 ];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const saved = localStorage.getItem('currentLoginUser');
+      if (saved) {
+        const u = JSON.parse(saved);
+        if (u && ((u.role || '').toLowerCase() === 'guest' || (u.username || '').toLowerCase() === 'guest')) {
+          return 'shift';
+        }
+      }
+    } catch (e) {}
+    return 'dashboard';
+  });
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -6808,10 +6819,9 @@ export default function App() {
                   id: 0,
                   username: 'guest',
                   full_name: 'ភ្ញៀវ / បុគ្គលិកទូទៅ',
-                  role: 'viewer',
+                  role: 'guest',
                   permissions: {
-                    shift: 'read',
-                    dashboard: 'read'
+                    shift: 'read'
                   }
                 };
                 setCurrentLoginUser(guestUser);
@@ -8215,85 +8225,93 @@ export default function App() {
         </div>
         
         <ul className="sidebar-menu">
-          {hasPermission('dashboard', 'read') && (
-            <li className={`menu-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleMenuClick('dashboard')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>📊</span> Dashboard
-            </li>
-          )}
-          {hasPermission('ipam', 'read') && (
-            <li className={`menu-item ${activeTab === 'ipam' ? 'active' : ''}`} onClick={() => handleMenuClick('ipam')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>🏢</span> IPAM / IP Address
-            </li>
-          )}
-          {hasPermission('vpn_remote', 'read') && (
-            <li className={`menu-item ${activeTab === 'vpn' ? 'active' : ''}`} onClick={() => handleMenuClick('vpn')}>
-              <span className="menu-icon" style={{ fontSize: '15px', display: 'flex', alignItems: 'center' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                </svg>
-              </span>
-              VPN Remote Access
-            </li>
-          )}
-          {hasPermission('hospital_vpn', 'read') && (
-            <li className={`menu-item ${activeTab === 's2s' ? 'active' : ''}`} onClick={() => handleMenuClick('s2s')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>🏥</span> Hospital VPNs
-            </li>
-          )}
-          {hasPermission('bank_vpn', 'read') && (
-            <li className={`menu-item ${activeTab === 'banks' ? 'active' : ''}`} onClick={() => handleMenuClick('banks')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>🏦</span> Bank VPNs
-            </li>
-          )}
-          {hasPermission('public_ip', 'read') && (
-            <li className={`menu-item ${activeTab === 'public' ? 'active' : ''}`} onClick={() => handleMenuClick('public')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>🌐</span> Public IP & DNS
-            </li>
-          )}
-          {hasPermission('switches', 'read') && (
-            <li className={`menu-item ${activeTab === 'switches' ? 'active' : ''}`} onClick={() => handleMenuClick('switches')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>🔌</span> Switches List
-            </li>
-          )}
-          {hasPermission('storage', 'read') && (
-            <li className={`menu-item ${activeTab === 'storage' ? 'active' : ''}`} onClick={() => handleMenuClick('storage')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
-            </li>
-          )}
-          {hasPermission('pdf_hub', 'read') && (
-            <li className={`menu-item ${activeTab === 'pdf_hub' || activeTab === 'forms' ? 'active' : ''}`} onClick={() => handleMenuClick('pdf_hub')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>📄</span> ទម្រង់ឯកសារស្នើសុំ PDF (PDF Form Hub)
-            </li>
-          )}
-          {hasPermission('tickets', 'read') && (
-            <li className={`menu-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => handleMenuClick('tickets')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>🎫</span> ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
-            </li>
-          )}
-          {hasPermission('tickets', 'read') && (
-            <li className={`menu-item ${activeTab === 'kanban' ? 'active' : ''}`} onClick={() => handleMenuClick('kanban')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>📋</span> កិច្ចការងារ Bitrix (Kanban)
-            </li>
-          )}
-          {hasPermission('leave', 'read') && (
-            <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => handleMenuClick('leave')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
-            </li>
-          )}
-          {hasPermission('shift', 'read') && (
+          {isGuest ? (
             <li className={`menu-item ${activeTab === 'shift' ? 'active' : ''}`} onClick={() => handleMenuClick('shift')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📅</span> វេនប្រចាំការ (Shift)
             </li>
-          )}
-          {hasPermission('shift', 'write') && (
-            <li className={`menu-item ${activeTab === 'shift_generator' ? 'active' : ''}`} onClick={() => handleMenuClick('shift_generator')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>🎲</span> Random កាលវិភាគប្រចាំការ
-            </li>
-          )}
-          {hasPermission('user_management', 'read') && (
-            <li className={`menu-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => handleMenuClick('users')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>👥</span> គ្រប់គ្រងអ្នកប្រើប្រាស់
-            </li>
+          ) : (
+            <>
+              {hasPermission('dashboard', 'read') && (
+                <li className={`menu-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleMenuClick('dashboard')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>📊</span> Dashboard
+                </li>
+              )}
+              {hasPermission('ipam', 'read') && (
+                <li className={`menu-item ${activeTab === 'ipam' ? 'active' : ''}`} onClick={() => handleMenuClick('ipam')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>🏢</span> IPAM / IP Address
+                </li>
+              )}
+              {hasPermission('vpn_remote', 'read') && (
+                <li className={`menu-item ${activeTab === 'vpn' ? 'active' : ''}`} onClick={() => handleMenuClick('vpn')}>
+                  <span className="menu-icon" style={{ fontSize: '15px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                    </svg>
+                  </span>
+                  VPN Remote Access
+                </li>
+              )}
+              {hasPermission('hospital_vpn', 'read') && (
+                <li className={`menu-item ${activeTab === 's2s' ? 'active' : ''}`} onClick={() => handleMenuClick('s2s')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>🏥</span> Hospital VPNs
+                </li>
+              )}
+              {hasPermission('bank_vpn', 'read') && (
+                <li className={`menu-item ${activeTab === 'banks' ? 'active' : ''}`} onClick={() => handleMenuClick('banks')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>🏦</span> Bank VPNs
+                </li>
+              )}
+              {hasPermission('public_ip', 'read') && (
+                <li className={`menu-item ${activeTab === 'public' ? 'active' : ''}`} onClick={() => handleMenuClick('public')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>🌐</span> Public IP & DNS
+                </li>
+              )}
+              {hasPermission('switches', 'read') && (
+                <li className={`menu-item ${activeTab === 'switches' ? 'active' : ''}`} onClick={() => handleMenuClick('switches')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>🔌</span> Switches List
+                </li>
+              )}
+              {hasPermission('storage', 'read') && (
+                <li className={`menu-item ${activeTab === 'storage' ? 'active' : ''}`} onClick={() => handleMenuClick('storage')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
+                </li>
+              )}
+              {hasPermission('pdf_hub', 'read') && (
+                <li className={`menu-item ${activeTab === 'pdf_hub' || activeTab === 'forms' ? 'active' : ''}`} onClick={() => handleMenuClick('pdf_hub')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>📄</span> ទម្រង់ឯកសារស្នើសុំ PDF (PDF Form Hub)
+                </li>
+              )}
+              {hasPermission('tickets', 'read') && (
+                <li className={`menu-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => handleMenuClick('tickets')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>🎫</span> ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
+                </li>
+              )}
+              {hasPermission('tickets', 'read') && (
+                <li className={`menu-item ${activeTab === 'kanban' ? 'active' : ''}`} onClick={() => handleMenuClick('kanban')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>📋</span> កិច្ចការងារ Bitrix (Kanban)
+                </li>
+              )}
+              {hasPermission('leave', 'read') && (
+                <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => handleMenuClick('leave')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
+                </li>
+              )}
+              {hasPermission('shift', 'read') && (
+                <li className={`menu-item ${activeTab === 'shift' ? 'active' : ''}`} onClick={() => handleMenuClick('shift')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>📅</span> វេនប្រចាំការ (Shift)
+                </li>
+              )}
+              {hasPermission('shift', 'write') && (
+                <li className={`menu-item ${activeTab === 'shift_generator' ? 'active' : ''}`} onClick={() => handleMenuClick('shift_generator')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>🎲</span> Random កាលវិភាគប្រចាំការ
+                </li>
+              )}
+              {hasPermission('user_management', 'read') && (
+                <li className={`menu-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => handleMenuClick('users')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>👥</span> គ្រប់គ្រងអ្នកប្រើប្រាស់
+                </li>
+              )}
+            </>
           )}
         </ul>
         
@@ -8334,22 +8352,48 @@ export default function App() {
             </button>
           </div>
           
-          <div className="help-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ color: '#2563eb', display: 'flex', alignItems: 'center' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <line x1="12" y1="16" x2="12" y2="12"></line>
-                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                </svg>
-              </span>
-              <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: '1.2' }}>
-                <span style={{ fontSize: '10.5px', fontWeight: '800', color: 'var(--text-primary)' }}>Need help?</span>
-                <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-muted)' }}>Contact IT Support</span>
-              </div>
+          {isGuest ? (
+            <div 
+              onClick={() => {
+                setCurrentLoginUser(null);
+                localStorage.removeItem('currentLoginUser');
+                setActiveTab('dashboard');
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                padding: '10px 14px',
+                backgroundColor: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                borderRadius: '8px',
+                color: '#1d4ed8',
+                fontSize: '12px',
+                fontWeight: '800',
+                cursor: 'pointer'
+              }}
+            >
+              🔑 <span>ចូលគណនី Admin</span>
             </div>
-            <span style={{ color: 'var(--text-muted)', fontSize: '9px', fontWeight: '800' }}>❯</span>
-          </div>
+          ) : (
+            <div className="help-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#2563eb', display: 'flex', alignItems: 'center' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <line x1="12" y1="16" x2="12" y2="12"></line>
+                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                  </svg>
+                </span>
+                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: '1.2' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: '800', color: 'var(--text-primary)' }}>Need help?</span>
+                  <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-muted)' }}>Contact IT Support</span>
+                </div>
+              </div>
+              <span style={{ color: 'var(--text-muted)', fontSize: '9px', fontWeight: '800' }}>❯</span>
+            </div>
+          )}
         </div>
       </aside>
 
