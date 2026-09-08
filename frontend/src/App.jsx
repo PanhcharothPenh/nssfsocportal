@@ -321,6 +321,11 @@ export default function App() {
     return `${y}-${m}`;
   });
 
+  // PWA Add to Home Screen States
+  const [deferredInstallPrompt, setDeferredInstallPrompt] = useState(null);
+  const [showPwaModal, setShowPwaModal] = useState(false);
+  const [isStandaloneApp, setIsStandaloneApp] = useState(false);
+
   // Shift Random Generator & Monthly Statistics States
   const [selectedShiftMonth, setSelectedShiftMonth] = useState(() => {
     const today = new Date();
@@ -861,12 +866,47 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Check if app is running in standalone mode (already installed as PWA)
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    setIsStandaloneApp(isStandalone);
+
+    const handleBeforeInstall = (e) => {
+      e.preventDefault();
+      setDeferredInstallPrompt(e);
+    };
+
+    const handleInstalled = () => {
+      setIsStandaloneApp(true);
+      setDeferredInstallPrompt(null);
+    };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleInstalled);
+
     return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleInstalled);
       if (telegramLoginPollInterval.current) {
         clearInterval(telegramLoginPollInterval.current);
       }
     };
   }, []);
+
+  const handleInstallPwa = async () => {
+    if (deferredInstallPrompt) {
+      try {
+        deferredInstallPrompt.prompt();
+        const { outcome } = await deferredInstallPrompt.userChoice;
+        if (outcome === 'accepted') {
+          setDeferredInstallPrompt(null);
+        }
+      } catch {
+        setShowPwaModal(true);
+      }
+    } else {
+      setShowPwaModal(true);
+    }
+  };
 
   const handleAutoTelegramLogin = async (chatId, username) => {
     try {
@@ -8193,6 +8233,32 @@ export default function App() {
         </ul>
         
         <div className="sidebar-footer" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          {!isStandaloneApp && (
+            <div 
+              onClick={handleInstallPwa}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '9px 12px',
+                backgroundColor: '#f0fdf4',
+                border: '1px solid #bbf7d0',
+                borderRadius: '8px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease'
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '15px' }}>📲</span>
+                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: '1.2' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#15803d' }}>ដំឡើងលើទូរស័ព្ទ</span>
+                  <span style={{ fontSize: '9px', fontWeight: '600', color: '#16a34a' }}>Add to Home Screen</span>
+                </div>
+              </div>
+              <span style={{ color: '#15803d', fontSize: '9px', fontWeight: '800' }}>❯</span>
+            </div>
+          )}
+
           <div className="last-updated-box" style={{ padding: '8px 12px' }}>
             <div className="last-updated-info">
               <span className="last-updated-label" style={{ fontSize: '9px' }}>Last Updated</span>
@@ -8300,6 +8366,30 @@ export default function App() {
                 </div>
               )}
             </div>
+
+            {!isStandaloneApp && (
+              <button
+                type="button"
+                className="btn"
+                onClick={handleInstallPwa}
+                title="Add to Home Screen / ដំឡើងកម្មវិធីលើទូរស័ព្ទ"
+                style={{
+                  borderRadius: '20px',
+                  padding: '6px 12px',
+                  fontWeight: '800',
+                  fontSize: '11.5px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: '#f0fdf4',
+                  color: '#15803d',
+                  border: '1px solid #bbf7d0',
+                  cursor: 'pointer'
+                }}
+              >
+                📲 <span>ដំឡើង App</span>
+              </button>
+            )}
 
             <button
               className="btn btn-secondary"
@@ -14651,6 +14741,119 @@ export default function App() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* PWA Add to Home Screen Instructions Modal */}
+      {showPwaModal && (
+        <div className="modal-overlay" onClick={() => setShowPwaModal(false)} style={{ zIndex: 99999 }}>
+          <div 
+            className="modal-content" 
+            onClick={(e) => e.stopPropagation()} 
+            style={{ 
+              maxWidth: '500px', 
+              width: '92%', 
+              borderRadius: '20px', 
+              padding: '24px', 
+              backgroundColor: '#fff',
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' 
+            }}
+          >
+            {/* Modal Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <img src="/nssf_logo.png" alt="NSSF" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0f172a' }}>
+                    ដំឡើង App លើទូរស័ព្ទដៃ
+                  </h3>
+                  <span style={{ fontSize: '11.5px', color: '#64748b' }}>
+                    Add to Home Screen (PWA)
+                  </span>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowPwaModal(false)}
+                style={{ 
+                  background: 'none', 
+                  border: 'none', 
+                  fontSize: '20px', 
+                  cursor: 'pointer', 
+                  color: '#94a3b8',
+                  padding: '4px'
+                }}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Content Body */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              
+              {/* iOS Guide Box */}
+              <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>🍎</span>
+                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>សម្រាប់ iPhone / iPad (Safari)</span>
+                </div>
+                <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#334155', lineHeight: '1.7' }}>
+                  <li>បើកគេហទំព័រនេះក្នុងកម្មវិធី <b>Safari</b></li>
+                  <li>ចុចប៊ូតុង <b>Share</b> (រូបប្រអប់ព្រួញឡើងលើ <span style={{ fontSize: '14px' }}>📤</span> នៅរបារខាងក្រោម)</li>
+                  <li>រំកិលចុះក្រោម រួចជ្រើសរើសយក <b>"Add to Home Screen" (បន្ថែមលើអេក្រង់ដើម ➕)</b></li>
+                  <li>ចុចពាក្យ <b>"Add" (បន្ថែម)</b> នៅជ្រុងខាងស្តាំខាងលើជាការស្រេច!</li>
+                </ol>
+              </div>
+
+              {/* Android Guide Box */}
+              <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '18px' }}>🤖</span>
+                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>សម្រាប់ Android (Google Chrome / Samsung Internet)</span>
+                </div>
+                <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#334155', lineHeight: '1.7' }}>
+                  <li>បើកគេហទំព័រនេះក្នុងកម្មវិធី <b>Chrome</b></li>
+                  <li>ចុចលើសញ្ញាចុចបី <b>⋮ (Menu)</b> នៅជ្រុងខាងស្តាំខាងលើ</li>
+                  <li>ជ្រើសរើសយក <b>"Install app" (ដំឡើងកម្មវិធី)</b> ឬ <b>"Add to Home screen" (បន្ថែមលើអេក្រង់ដើម 📲)</b></li>
+                  <li>ចុច <b>Install</b> នោះ App នឹងបង្ហាញនៅលើអេក្រង់ទូរស័ព្ទភ្លាមៗ</li>
+                </ol>
+              </div>
+
+              {/* Benefits Note */}
+              <div style={{ padding: '10px 14px', borderRadius: '10px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: '11.5px', color: '#1d4ed8', lineHeight: '1.5' }}>
+                💡 <b>អត្ថប្រយោជន៍ ៖</b> ដំណើរការពេញអេក្រង់ដូច App ទូរស័ព្ទផ្លូវការ (គ្មានរបារ Browser), ងាយស្រួលបើកមើលកាលវិភាគប្រចាំការ ឬដាក់សំណើការងាររហ័សទាន់ចិត្ត។
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '4px' }}>
+                {deferredInstallPrompt && (
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={async () => {
+                      deferredInstallPrompt.prompt();
+                      const { outcome } = await deferredInstallPrompt.userChoice;
+                      if (outcome === 'accepted') {
+                        setDeferredInstallPrompt(null);
+                        setShowPwaModal(false);
+                      }
+                    }}
+                    style={{ padding: '8px 18px', borderRadius: '8px', fontWeight: '800', fontSize: '12.5px', backgroundColor: '#16a34a', borderColor: '#16a34a' }}
+                  >
+                    📲 ចុចដំឡើងឥឡូវនេះ (Install)
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setShowPwaModal(false)}
+                  style={{ padding: '8px 18px', borderRadius: '8px', fontWeight: '800', fontSize: '12.5px' }}
+                >
+                  យល់ព្រម (Got it)
+                </button>
+              </div>
+            </div>
+
           </div>
         </div>
       )}
