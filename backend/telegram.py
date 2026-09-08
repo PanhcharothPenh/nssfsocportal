@@ -72,8 +72,14 @@ def send_telegram_message(message: str, chat_id: str = None, reply_markup: dict 
         'text': message,
         'parse_mode': 'HTML' # Allow bold, code blocks, etc.
     }
+    is_group = str(chat_id).strip().startswith("-")
     if reply_markup:
-        payload['reply_markup'] = reply_markup
+        if is_group and "keyboard" in reply_markup:
+            payload['reply_markup'] = {"remove_keyboard": True}
+        else:
+            payload['reply_markup'] = reply_markup
+    elif is_group:
+        payload['reply_markup'] = {"remove_keyboard": True}
     
     try:
         res = requests.post(url, json=payload, timeout=8)
@@ -105,8 +111,14 @@ def send_telegram_message_raw(message: str, chat_id: str = None, reply_markup: d
         return False, {}
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
     payload = {'chat_id': chat_id, 'text': message, 'parse_mode': 'HTML'}
+    is_group = str(chat_id).strip().startswith("-")
     if reply_markup:
-        payload['reply_markup'] = reply_markup
+        if is_group and "keyboard" in reply_markup:
+            payload['reply_markup'] = {"remove_keyboard": True}
+        else:
+            payload['reply_markup'] = reply_markup
+    elif is_group:
+        payload['reply_markup'] = {"remove_keyboard": True}
     try:
         res = requests.post(url, json=payload, timeout=8)
         if res.status_code == 200:
@@ -122,8 +134,12 @@ def edit_telegram_message(chat_id: str, message_id: int, message: str, reply_mar
         return False
     url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
     payload = {'chat_id': chat_id, 'message_id': message_id, 'text': message, 'parse_mode': 'HTML'}
+    is_group = str(chat_id).strip().startswith("-")
     if reply_markup:
-        payload['reply_markup'] = reply_markup
+        if is_group and "keyboard" in reply_markup:
+            payload['reply_markup'] = {"remove_keyboard": True}
+        else:
+            payload['reply_markup'] = reply_markup
     try:
         res = requests.post(url, json=payload, timeout=8)
         return res.status_code == 200
@@ -1188,10 +1204,23 @@ def process_telegram_incoming_update(update: dict):
     if not text or not chat_id:
         return
 
-    main_menu_kb = get_main_menu_keyboard()
-    leave_options_kb = get_leave_type_inline_keyboard()
+    chat_type = message.get("chat", {}).get("type", "") if isinstance(message, dict) else ""
+    is_group = chat_type in ["group", "supergroup"] or str(chat_id).strip().startswith("-")
+
+    # In group chats, NEVER send persistent reply keyboards; use ReplyKeyboardRemove to clear
+    main_menu_kb = {"remove_keyboard": True} if is_group else get_main_menu_keyboard()
+    leave_options_kb = None if is_group else get_leave_type_inline_keyboard()
 
     t_lower = (text or "").strip().lower()
+
+    # Dedicated command to remove/clear buttons from Telegram group chat
+    if t_lower in ["/remove_keyboard", "/nobuttons", "/clear_buttons", "/clearkeyboard", "/clean", "/clear", "/remove"]:
+        send_telegram_message(
+            "✅ <b>បានដកប៊ូតុងចេញពី Group Chat រួចរាល់ហើយ! (Buttons removed from group chat)</b>",
+            chat_id=chat_id,
+            reply_markup={"remove_keyboard": True}
+        )
+        return
 
     # Handle Web Login via Telegram (supports 6-digit PIN code, /start <token>, plain /start, /login, or Start button)
     import re
@@ -1587,15 +1616,11 @@ def send_ticket_telegram_alert(ticket: dict, level: int = 1):
                 group_id = str(default_chat).strip()
                 is_group = group_id.startswith("-")
                 if (is_group or not sent_chats) and group_id not in sent_chats:
-                    # For Group Chat: Remove the Approve/Reject buttons, only show "Open Web Portal"
-                    group_reply_markup = {
-                        "inline_keyboard": [
-                            [
-                                {"text": "🌐 បើកមើលលើ Web Portal", "url": "https://nssfsocportal.vercel.app"}
-                            ]
-                        ]
-                    }
-                    send_telegram_message(msg, chat_id=group_id, reply_markup=group_reply_markup)
+                    # For Group Chat: Remove all buttons and prompt text completely
+                    clean_group_msg = msg.replace("👇 <b>សូមជ្រើសរើស Action ដើម្បីអនុម័តដោយផ្ទាល់ ៖</b>", "").strip()
+                    if clean_group_msg.endswith("━━━━━━━━━━━━━━━━━━━━━━"):
+                        clean_group_msg = clean_group_msg[:-22].strip()
+                    send_telegram_message(clean_group_msg, chat_id=group_id, reply_markup={"remove_keyboard": True})
 
         except Exception as ex:
             print("Error sending ticket approval alert:", ex)
