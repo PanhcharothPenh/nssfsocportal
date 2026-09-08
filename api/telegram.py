@@ -25,8 +25,8 @@ def get_telegram_config():
     if _tg_config_cache["bot_token"] and now < _tg_config_cache["expires_at"]:
         return _tg_config_cache["bot_token"], _tg_config_cache["chat_id"]
         
-    bot_token = None
-    chat_id = None
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    chat_id = os.getenv("TELEGRAM_CHAT_ID")
     try:
         from database import get_db_connection
         conn = get_db_connection()
@@ -36,9 +36,12 @@ def get_telegram_config():
         conn.close()
         for r in rows:
             if r['key'] == 'telegram_bot_token' and r['value']:
-                bot_token = r['value']
+                val = str(r['value']).strip()
+                # Prefer DB token unless env var is explicitly provided and DB token is invalid
+                if val:
+                    bot_token = val
             elif r['key'] == 'telegram_chat_id' and r['value']:
-                chat_id = r['value']
+                chat_id = str(r['value']).strip()
     except Exception as db_err:
         print(f"Error reading telegram config from DB: {db_err}")
 
@@ -60,20 +63,6 @@ def send_telegram_message(message: str, chat_id: str = None, reply_markup: dict 
     if not chat_id:
         chat_id = default_chat_id
 
-    # If target chat_id is the group chat and group notifications are disabled, skip sending to group
-    if chat_id and (str(chat_id).strip() == "-1002124589536" or str(chat_id).strip() == str(default_chat_id).strip()):
-        try:
-            from database import get_db_connection
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_notify_group'")
-            setting = cursor.fetchone()
-            conn.close()
-            if setting and str(setting['value']).strip().lower() in ['0', 'false', 'off', 'no', 'disabled']:
-                return False, "Group chat notifications disabled by user"
-        except Exception:
-            pass
-
     if not bot_token or not chat_id:
         return False, "Telegram Bot Token or Chat ID not configured in settings or .env"
         
@@ -87,7 +76,7 @@ def send_telegram_message(message: str, chat_id: str = None, reply_markup: dict 
         payload['reply_markup'] = reply_markup
     
     try:
-        res = requests.post(url, json=payload, timeout=4)
+        res = requests.post(url, json=payload, timeout=8)
         if res.status_code == 200:
             return True, "Message sent successfully"
         else:
@@ -97,52 +86,21 @@ def send_telegram_message(message: str, chat_id: str = None, reply_markup: dict 
 
 def send_telegram_chat_action(chat_id: str, action: str = "typing"):
     """Sends a chat action (like 'typing') to Telegram so chat status shows 'typing...'"""
-    bot_token = None
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
-        row = cursor.fetchone()
-        if row and row['value']:
-            bot_token = row['value']
-        conn.close()
-    except Exception:
-        pass
-    if not bot_token:
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    bot_token, _ = get_telegram_config()
     if not bot_token or not chat_id:
         return False
     try:
         url = f"https://api.telegram.org/bot{bot_token}/sendChatAction"
-        requests.post(url, json={"chat_id": chat_id, "action": action}, timeout=3)
+        requests.post(url, json={"chat_id": chat_id, "action": action}, timeout=4)
         return True
     except Exception:
         return False
 
 def send_telegram_message_raw(message: str, chat_id: str = None, reply_markup: dict = None):
     """Sends message to Telegram and returns (success, result_dict containing message_id)"""
-    bot_token = None
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
-        row = cursor.fetchone()
-        if row and row['value']:
-            bot_token = row['value']
-        if not chat_id:
-            cursor.execute("SELECT value FROM settings WHERE key = 'telegram_chat_id'")
-            row = cursor.fetchone()
-            if row and row['value']:
-                chat_id = row['value']
-        conn.close()
-    except Exception:
-        pass
-    if not bot_token:
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    bot_token, default_chat_id = get_telegram_config()
     if not chat_id:
-        chat_id = os.getenv("TELEGRAM_CHAT_ID")
+        chat_id = default_chat_id
     if not bot_token or not chat_id:
         return False, {}
     url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
@@ -150,7 +108,7 @@ def send_telegram_message_raw(message: str, chat_id: str = None, reply_markup: d
     if reply_markup:
         payload['reply_markup'] = reply_markup
     try:
-        res = requests.post(url, json=payload, timeout=10)
+        res = requests.post(url, json=payload, timeout=8)
         if res.status_code == 200:
             return True, res.json().get("result", {})
         return False, {}
@@ -159,20 +117,7 @@ def send_telegram_message_raw(message: str, chat_id: str = None, reply_markup: d
 
 def edit_telegram_message(chat_id: str, message_id: int, message: str, reply_markup: dict = None):
     """Edits an existing Telegram message in place"""
-    bot_token = None
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT value FROM settings WHERE key = 'telegram_bot_token'")
-        row = cursor.fetchone()
-        if row and row['value']:
-            bot_token = row['value']
-        conn.close()
-    except Exception:
-        pass
-    if not bot_token:
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    bot_token, _ = get_telegram_config()
     if not bot_token or not chat_id or not message_id:
         return False
     url = f"https://api.telegram.org/bot{bot_token}/editMessageText"
@@ -180,7 +125,7 @@ def edit_telegram_message(chat_id: str, message_id: int, message: str, reply_mar
     if reply_markup:
         payload['reply_markup'] = reply_markup
     try:
-        res = requests.post(url, json=payload, timeout=10)
+        res = requests.post(url, json=payload, timeout=8)
         return res.status_code == 200
     except Exception:
         return False
@@ -623,7 +568,7 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
 
     # 2. Second priority: Gemini AI with Full Website Live Context!
     if gemini_key:
-        models_to_try = ["gemini-flash-latest", "gemini-3.6-flash", "gemini-3.7-flash"]
+        models_to_try = ["gemini-3.6-flash", "gemini-flash-latest"]
         live_web_data = get_full_web_portal_context()
         prompt_text = (
             f"You are the NSSF SOC Portal Gemini AI Assistant, an expert AI created for the National Social Security Fund (NSSF) Security Operations Center.\n"
@@ -645,7 +590,7 @@ def ask_gemini_ai(user_query: str, username: str = None) -> str:
         for m in models_to_try:
             api_url = f"https://generativelanguage.googleapis.com/v1beta/models/{m}:generateContent?key={gemini_key}"
             try:
-                res = requests.post(api_url, json=payload, timeout=4)
+                res = requests.post(api_url, json=payload, timeout=8)
                 if res.status_code == 200:
                     data = res.json()
                     reply = data['candidates'][0]['content']['parts'][0]['text']
@@ -963,7 +908,7 @@ def process_telegram_incoming_update(update: dict):
         
         # Acknowledge callback query to stop loading animation on button
         try:
-            bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+            bot_token, _ = get_telegram_config()
             if bot_token:
                 requests.post(f"https://api.telegram.org/bot{bot_token}/answerCallbackQuery", json={"callback_query_id": cb_id}, timeout=3)
         except Exception:
@@ -1021,7 +966,7 @@ def process_telegram_incoming_update(update: dict):
                     now_str = ict_now.strftime("%Y-%m-%d %H:%M:%S")
 
                     # Send Force Reply message to get comment/remark
-                    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+                    bot_token, _ = get_telegram_config()
                     if bot_token:
                         action_label = "ការអនុម័ត" if action_type == "app" else "ការបដិសេធ"
                         orig_mid = msg.get("message_id") or ""
@@ -1141,7 +1086,7 @@ def process_telegram_incoming_update(update: dict):
                         ict_now = datetime.datetime.utcnow() + datetime.timedelta(hours=7)
                         now_str = ict_now.strftime("%Y-%m-%d %H:%M:%S")
                         
-                        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+                        bot_token, _ = get_telegram_config()
                         
                         if action_type == "rej":
                             cursor.execute("UPDATE tickets SET status = 'rejected', rejection_reason = ?, l1_comment = ?, updated_at = ? WHERE id = ?",

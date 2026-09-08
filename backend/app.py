@@ -286,7 +286,11 @@ def auto_sync_loop():
 def telegram_polling_loop():
     import requests
     
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    try:
+        from backend.telegram import get_telegram_config
+    except ImportError:
+        from api.telegram import get_telegram_config
+    bot_token, _ = get_telegram_config()
     if not bot_token:
         print("Telegram Bot Token not set, background bot polling disabled.")
         return
@@ -401,27 +405,40 @@ def telegram_polling_loop():
             time.sleep(5)
 
 @app.post("/api/telegram/webhook")
-async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
+async def telegram_webhook(request: Request):
     try:
         payload = await request.json()
         if not payload:
             return {"status": "skipped"}
             
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        try:
+            from backend.telegram import process_telegram_incoming_update
+        except ImportError:
+            from api.telegram import process_telegram_incoming_update
             
-        from backend.telegram import process_telegram_incoming_update
-        background_tasks.add_task(process_telegram_incoming_update, payload)
+        process_telegram_incoming_update(payload)
         return {"status": "ok"}
     except Exception as e:
+        print(f"Error handling telegram webhook: {e}")
         return {"status": "error", "detail": str(e)}
 
 @app.post("/api/telegram/setup_webhook")
-def setup_telegram_webhook():
+def setup_telegram_webhook(request: Request):
     import requests
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    try:
+        from backend.telegram import get_telegram_config
+    except ImportError:
+        from api.telegram import get_telegram_config
+    bot_token, _ = get_telegram_config()
     if not bot_token:
         raise HTTPException(status_code=400, detail="TELEGRAM_BOT_TOKEN not configured")
-    webhook_url = "https://nssfsocportal.vercel.app/api/telegram/webhook"
+    
+    host = request.url.netloc
+    if host and "localhost" not in host and "127.0.0.1" not in host:
+        webhook_url = f"https://{host}/api/telegram/webhook"
+    else:
+        webhook_url = "https://nssfsocportal.vercel.app/api/telegram/webhook"
+        
     res = requests.post(f"https://api.telegram.org/bot{bot_token}/setWebhook", json={"url": webhook_url})
     return res.json()
 
@@ -2211,7 +2228,11 @@ def telegram_session_create(request: Request):
     token = str(random.randint(100000, 999999))
     
     # Setup webhook dynamically in Vercel/Production environments
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    try:
+        from backend.telegram import get_telegram_config
+    except ImportError:
+        from api.telegram import get_telegram_config
+    bot_token, _ = get_telegram_config()
     if bot_token:
         host = request.url.netloc
         if "localhost" not in host and "127.0.0.1" not in host:

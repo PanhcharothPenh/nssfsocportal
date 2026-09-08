@@ -286,7 +286,11 @@ def auto_sync_loop():
 def telegram_polling_loop():
     import requests
     
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    try:
+        from backend.telegram import get_telegram_config
+    except ImportError:
+        from api.telegram import get_telegram_config
+    bot_token, _ = get_telegram_config()
     if not bot_token:
         print("Telegram Bot Token not set, background bot polling disabled.")
         return
@@ -388,7 +392,7 @@ def telegram_polling_loop():
                                 
                             conn.close()
                     elif text or update:
-                        from api.telegram import process_telegram_incoming_update
+                        from backend.telegram import process_telegram_incoming_update
                         process_telegram_incoming_update(update)
             elif res.status_code == 409:
                 print("Webhook conflict detected (409). Force deleting Telegram webhook...")
@@ -401,50 +405,79 @@ def telegram_polling_loop():
             time.sleep(5)
 
 @app.post("/api/telegram/webhook")
-async def telegram_webhook(request: Request, background_tasks: BackgroundTasks):
+async def telegram_webhook(request: Request):
     try:
         payload = await request.json()
         if not payload:
             return {"status": "skipped"}
             
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+        try:
+            from backend.telegram import process_telegram_incoming_update
+        except ImportError:
+            from api.telegram import process_telegram_incoming_update
             
-        from api.telegram import process_telegram_incoming_update
-        background_tasks.add_task(process_telegram_incoming_update, payload)
+        process_telegram_incoming_update(payload)
         return {"status": "ok"}
     except Exception as e:
+        print(f"Error handling telegram webhook: {e}")
         return {"status": "error", "detail": str(e)}
 
 @app.post("/api/telegram/setup_webhook")
-def setup_telegram_webhook():
+def setup_telegram_webhook(request: Request):
     import requests
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    try:
+        from backend.telegram import get_telegram_config
+    except ImportError:
+        from api.telegram import get_telegram_config
+    bot_token, _ = get_telegram_config()
     if not bot_token:
         raise HTTPException(status_code=400, detail="TELEGRAM_BOT_TOKEN not configured")
-    webhook_url = "https://nssfsocportal.vercel.app/api/telegram/webhook"
+    
+    host = request.url.netloc
+    if host and "localhost" not in host and "127.0.0.1" not in host:
+        webhook_url = f"https://{host}/api/telegram/webhook"
+    else:
+        webhook_url = "https://nssfsocportal.vercel.app/api/telegram/webhook"
+        
     res = requests.post(f"https://api.telegram.org/bot{bot_token}/setWebhook", json={"url": webhook_url})
     return res.json()
 
-@app.on_event("startup")
-def startup_event():
-    import threading
-    try:
-        from parser import create_tables
-        conn = get_db_connection()
-        create_tables(conn)
-        conn.close()
-        print("Database tables initialized successfully on startup.")
-    except Exception as e:
-        print(f"Error initializing tables on startup: {e}")
-        
+_bg_threads_started = False
+def ensure_background_threads():
+    global _bg_threads_started
+    if _bg_threads_started:
+        return
     if not os.getenv("VERCEL"):
+        _bg_threads_started = True
+        import threading
         thread1 = threading.Thread(target=auto_sync_loop, daemon=True)
         thread1.start()
         
         thread2 = threading.Thread(target=telegram_polling_loop, daemon=True)
         thread2.start()
-    else:
-        print("Running on Vercel: background threads disabled.")
+        print("Background Telegram polling and auto-sync threads initialized successfully!")
+
+@app.on_event("startup")
+def startup_event():
+    import threading
+    def async_startup():
+        try:
+            init_db_migrations()
+        except Exception as e_m:
+            print("Migration warning:", e_m)
+
+        try:
+            from parser import create_tables
+            conn = get_db_connection()
+            create_tables(conn)
+            conn.close()
+            print("Database tables initialized successfully on startup.")
+        except Exception as e:
+            print(f"Error initializing tables on startup: {e}")
+            
+        ensure_background_threads()
+
+    threading.Thread(target=async_startup, daemon=True).start()
 
 # (get_db_connection already imported at top)
 
@@ -1063,7 +1096,7 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from api.telegram import notify_data_change
+        from backend.telegram import notify_data_change
         editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         branch_name = f"{branch_row['name_kh']} ({branch_row['name_en']})"
@@ -1278,7 +1311,7 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from api.telegram import notify_data_change
+        from backend.telegram import notify_data_change
         editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         dept_name = f"{dept_row['name_en']} (VLAN {dept_row['vlan_id']})"
@@ -1391,7 +1424,7 @@ def create_vpn_user(v_data: VPNUserUpdate, request: Request = None):
         # Trigger Telegram Audit Notification
         try:
             try:
-                from api.telegram import notify_data_change
+                from backend.telegram import notify_data_change
             except ImportError:
                 try:
                     from api.telegram import notify_data_change
@@ -1464,7 +1497,7 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
         
         # Trigger Telegram Audit Notification
         try:
-            from api.telegram import notify_data_change
+            from backend.telegram import notify_data_change
             editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
             client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             notify_data_change(
@@ -1517,7 +1550,7 @@ def delete_vpn_user(id: int, request: Request):
         conn.close()
         
         try:
-            from api.telegram import notify_data_change
+            from backend.telegram import notify_data_change
             editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
             client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             user_name = user_rec['name'] if hasattr(user_rec, 'keys') and 'name' in user_rec else (user_rec[1] if isinstance(user_rec, (tuple, list)) and len(user_rec) > 1 else '')
@@ -1596,7 +1629,7 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request):
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from api.telegram import notify_data_change
+        from backend.telegram import notify_data_change
         editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         notify_data_change(
@@ -2102,7 +2135,7 @@ class TelegramSendMessagePayload(BaseModel):
 
 @app.post("/api/telegram/send")
 def send_telegram(payload: TelegramSendMessagePayload):
-    from api.telegram import send_telegram_message
+    from backend.telegram import send_telegram_message
     
     chat_id = None
     if payload.username:
@@ -2195,7 +2228,11 @@ def telegram_session_create(request: Request):
     token = str(random.randint(100000, 999999))
     
     # Setup webhook dynamically in Vercel/Production environments
-    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
+    try:
+        from backend.telegram import get_telegram_config
+    except ImportError:
+        from api.telegram import get_telegram_config
+    bot_token, _ = get_telegram_config()
     if bot_token:
         host = request.url.netloc
         if "localhost" not in host and "127.0.0.1" not in host:
@@ -3612,7 +3649,7 @@ async def create_ticket(request: Request):
         }
         
         try:
-            from api.telegram import send_ticket_telegram_alert, send_ticket_assignee_alert
+            from backend.telegram import send_ticket_telegram_alert, send_ticket_assignee_alert
             if approval_level_required == 0:
                 send_ticket_assignee_alert(new_ticket_obj, event_type="auto_approved")
             else:
@@ -3722,7 +3759,7 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
     # Broadcast to Telegram asynchronously for INSTANT speed
     import threading
     try:
-        from api.telegram import send_ticket_telegram_alert, send_telegram_message
+        from backend.telegram import send_ticket_telegram_alert, send_telegram_message
         c2 = get_db_connection()
         cur2 = c2.cursor()
         cur2.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
@@ -3737,7 +3774,7 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
                 send_ticket_telegram_alert(up_tkt, level=3)
             else:
                 if action != "reject":
-                    from api.telegram import send_ticket_assignee_alert
+                    from backend.telegram import send_ticket_assignee_alert
                     send_ticket_assignee_alert(up_tkt, event_type="approved")
                 st_desc = "❌ បដិសេធ" if action == "reject" else "✅ បានអនុម័តផ្លូវការ (Approved)"
                 c_txt = comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if action != "reject" else "បដិសេធដោយថ្នាក់ដឹកនាំ")
@@ -3793,7 +3830,7 @@ def update_ticket_status(ticket_id: int, payload: dict = Body(...)):
         cursor.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
         up_row = cursor.fetchone()
         if up_row:
-            from api.telegram import send_ticket_assignee_alert
+            from backend.telegram import send_ticket_assignee_alert
             send_ticket_assignee_alert(dict(up_row), event_type=new_status)
     except Exception as ex_st:
         print("Error sending ticket status change alert to Telegram:", ex_st)
@@ -3869,7 +3906,7 @@ def create_kanban_task(payload: dict = Body(...)):
     
     # Dispatch Telegram Alert to assignee
     try:
-        from api.telegram import send_task_kanban_telegram_alert
+        from backend.telegram import send_task_kanban_telegram_alert
         send_task_kanban_telegram_alert(task_obj)
     except Exception as ex_t:
         print("Kanban task telegram alert exception:", ex_t)
