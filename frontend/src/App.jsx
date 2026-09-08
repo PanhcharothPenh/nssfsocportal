@@ -4065,6 +4065,35 @@ export default function App() {
       return names.some(n => (n || '').toLowerCase().includes(query));
     });
 
+    const getOfficerInitials = (name) => {
+      if (!name || typeof name !== 'string') return '??';
+      const parts = name.trim().split(/\s+/);
+      if (parts.length === 1) return parts[0].slice(0, 2);
+      const first = parts[0].charAt(0);
+      const last = parts[parts.length - 1].charAt(0);
+      return `${first}${last}`;
+    };
+
+    const officerGradients = [
+      'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)', // Sky Blue
+      'linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)', // Violet
+      'linear-gradient(135deg, #059669 0%, #047857 100%)', // Emerald
+      'linear-gradient(135deg, #d97706 0%, #b45309 100%)', // Amber
+      'linear-gradient(135deg, #e11d48 0%, #be123c 100%)', // Rose
+      'linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%)', // Indigo
+      'linear-gradient(135deg, #0891b2 0%, #0e7490 100%)', // Cyan
+      'linear-gradient(135deg, #4f46e5 0%, #3730a3 100%)', // Royal Blue
+    ];
+
+    const getOfficerGradient = (name, index = 0) => {
+      if (!name) return officerGradients[0];
+      let hash = 0;
+      for (let i = 0; i < name.length; i++) {
+        hash = name.charCodeAt(i) + ((hash << 5) - hash);
+      }
+      return officerGradients[Math.abs(hash + index) % officerGradients.length];
+    };
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
@@ -4073,179 +4102,466 @@ export default function App() {
           
           {/* Card 1: Today's Standing Officers */}
           <div className="card shift-card-compact" style={{ 
-            padding: '20px', 
-            borderRadius: '16px', 
-            backgroundColor: '#1e293b', 
-            color: '#fff', 
-            border: '1px solid #334155',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+            padding: '22px 20px', 
+            borderRadius: '18px', 
+            backgroundColor: '#ffffff', 
+            color: '#0f172a', 
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
             display: 'flex',
             flexDirection: 'column',
             gap: '14px',
             position: 'relative',
             overflow: 'hidden'
           }}>
+            {/* Top Accent Gradient Bar */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #0284c7 0%, #38bdf8 100%)'
+            }} />
+
+            {/* Subtle Ambient Glow */}
             <div style={{ 
               position: 'absolute', 
-              top: '-20px', 
-              right: '-20px', 
-              width: '100px', 
-              height: '100px', 
+              top: '-30px', 
+              right: '-30px', 
+              width: '120px', 
+              height: '120px', 
               borderRadius: '50%', 
-              backgroundColor: 'rgba(56, 189, 248, 0.15)', 
-              filter: 'blur(20px)' 
+              backgroundColor: 'rgba(56, 189, 248, 0.08)', 
+              filter: 'blur(25px)',
+              pointerEvents: 'none'
             }} />
             
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(56, 189, 248, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <div style={{ 
+                  width: '44px', 
+                  height: '44px', 
+                  borderRadius: '12px', 
+                  background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', 
+                  border: '1px solid rgba(56, 189, 248, 0.3)',
+                  boxShadow: '0 4px 10px rgba(2, 132, 199, 0.12)',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: '22px',
+                  flexShrink: 0
+                }}>
                   🌙
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#38bdf8' }}>អ្នកប្រចាំការយប់នេះ (Today)</h3>
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>ថ្ងៃទី {todayStr}</span>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.01em' }}>
+                    អ្នកប្រចាំការយប់នេះ (Today)
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>📅</span>
+                    <span>{formatKhmerFullDate(todayStr) || `ថ្ងៃទី ${todayStr}`}</span>
+                  </div>
                 </div>
               </div>
-              <span style={{ padding: '3px 10px', borderRadius: '12px', backgroundColor: 'rgba(56, 189, 248, 0.15)', color: '#38bdf8', fontSize: '11px', fontWeight: '800', border: '1px solid rgba(56, 189, 248, 0.3)' }}>
+              <span style={{ 
+                padding: '4px 10px', 
+                borderRadius: '20px', 
+                backgroundColor: '#ecfdf5', 
+                color: '#059669', 
+                fontSize: '11px', 
+                fontWeight: '800', 
+                border: '1px solid #a7f3d0',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                flexShrink: 0
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', boxShadow: '0 0 6px #10b981' }} />
                 យប់នេះ
               </span>
             </div>
 
-            <div style={{ borderTop: '1px solid #334155', paddingTop: '12px' }}>
+            {/* Officer List Section */}
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
               {isShiftLoading ? (
-                <div style={{ fontSize: '13px', color: '#94a3b8' }}>⏳ កំពុងទាញយកទិន្នន័យ...</div>
+                <div style={{ fontSize: '13px', color: '#64748b', padding: '12px 0', textAlign: 'center' }}>
+                  ⏳ កំពុងទាញយកទិន្នន័យ...
+                </div>
               ) : todayNames.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {todayNames.map((name, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#334155', padding: '9px 12px', borderRadius: '10px' }}>
-                      <span style={{ fontSize: '16px' }}>👤</span>
-                      <span style={{ fontSize: '13.5px', fontWeight: '700' }}>{name}</span>
+                    <div 
+                      key={i} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        backgroundColor: '#f8fafc', 
+                        border: '1px solid #edf2f7',
+                        padding: '9px 12px', 
+                        borderRadius: '12px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ 
+                          width: '34px', 
+                          height: '34px', 
+                          borderRadius: '50%', 
+                          background: getOfficerGradient(name, i),
+                          color: '#ffffff',
+                          fontWeight: '800',
+                          fontSize: '12.5px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)'
+                        }}>
+                          {getOfficerInitials(name)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>
+                            {name}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                            🛡️ មន្ត្រីប្រចាំការ #{i + 1}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span style={{ 
+                        fontSize: '11px', 
+                        fontWeight: '700', 
+                        color: '#0284c7', 
+                        backgroundColor: 'rgba(2, 132, 199, 0.08)', 
+                        padding: '3px 8px', 
+                        borderRadius: '6px',
+                        border: '1px solid rgba(2, 132, 199, 0.15)'
+                      }}>
+                        ● សកម្ម
+                      </span>
                     </div>
                   ))}
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    ⏰ <b>ម៉ោងប្រចាំការ ៖</b> ១៧:០០ - ០៨:០០ ព្រឹក
+
+                  <div style={{ 
+                    marginTop: '4px',
+                    padding: '8px 12px', 
+                    borderRadius: '10px', 
+                    backgroundColor: '#f1f5f9', 
+                    border: '1px solid #e2e8f0',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    fontSize: '11.5px', 
+                    color: '#475569' 
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span>⏰</span>
+                      <b>ម៉ោងប្រចាំការ ៖</b>
+                    </span>
+                    <span style={{ fontWeight: '800', color: '#0f172a' }}>
+                      ១៧:០០ - ០៨:០០ ព្រឹក
+                    </span>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '12px', backgroundColor: 'rgba(245, 158, 11, 0.1)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '10px', color: '#f59e0b', fontSize: '12.5px' }}>
+                <div style={{ padding: '14px', backgroundColor: 'rgba(245, 158, 11, 0.06)', border: '1px solid rgba(245, 158, 11, 0.2)', borderRadius: '12px', color: '#b45309', fontSize: '12.5px', textAlign: 'center' }}>
                   ℹ️ មិនទាន់មានកាលវិភាគប្រចាំការសម្រាប់យប់នេះឡើយ។
                 </div>
               )}
             </div>
 
+            {/* Action Link */}
             <a 
               href="https://shift-dashboard-efda2.web.app" 
               target="_blank" 
               rel="noopener noreferrer" 
-              style={{ fontSize: '12px', color: '#38bdf8', textDecoration: 'none', fontWeight: '700', marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              style={{ 
+                fontSize: '12px', 
+                color: '#0284c7', 
+                textDecoration: 'none', 
+                fontWeight: '800', 
+                marginTop: 'auto', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(2, 132, 199, 0.06)',
+                border: '1px solid rgba(2, 132, 199, 0.15)',
+                transition: 'all 0.2s ease'
+              }}
             >
-              មើលកាលវិភាគពេញលេញ (External Link) ↗
+              <span>🔍 មើលកាលវិភាគពេញលេញ (Full Roster)</span>
+              <span>↗</span>
             </a>
           </div>
 
           {/* Card 2: Tomorrow's Standing Officers */}
           <div className="card shift-card-compact" style={{ 
-            padding: '20px', 
-            borderRadius: '16px', 
-            backgroundColor: '#0f172a', 
-            color: '#fff', 
-            border: '1px solid #1e293b',
-            boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.3)',
+            padding: '22px 20px', 
+            borderRadius: '18px', 
+            backgroundColor: '#ffffff', 
+            color: '#0f172a', 
+            border: '1px solid #e2e8f0',
+            boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
             display: 'flex',
             flexDirection: 'column',
             gap: '14px',
             position: 'relative',
             overflow: 'hidden'
           }}>
+            {/* Top Accent Gradient Bar */}
+            <div style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: 'linear-gradient(90deg, #7c3aed 0%, #c084fc 100%)'
+            }} />
+
+            {/* Subtle Ambient Glow */}
             <div style={{ 
               position: 'absolute', 
-              top: '-20px', 
-              right: '-20px', 
-              width: '100px', 
-              height: '100px', 
+              top: '-30px', 
+              right: '-30px', 
+              width: '120px', 
+              height: '120px', 
               borderRadius: '50%', 
-              backgroundColor: 'rgba(168, 85, 247, 0.15)', 
-              filter: 'blur(20px)' 
+              backgroundColor: 'rgba(168, 85, 247, 0.08)', 
+              filter: 'blur(25px)',
+              pointerEvents: 'none'
             }} />
             
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(168, 85, 247, 0.2)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                <div style={{ 
+                  width: '44px', 
+                  height: '44px', 
+                  borderRadius: '12px', 
+                  background: 'linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%)', 
+                  border: '1px solid rgba(168, 85, 247, 0.3)',
+                  boxShadow: '0 4px 10px rgba(124, 58, 237, 0.12)',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: '22px',
+                  flexShrink: 0
+                }}>
                   🌅
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#c084fc' }}>អ្នកប្រចាំការថ្ងៃស្អែក (Tomorrow)</h3>
-                  <span style={{ fontSize: '12px', color: '#94a3b8' }}>ថ្ងៃទី {tmrStr}</span>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.01em' }}>
+                    អ្នកប្រចាំការថ្ងៃស្អែក (Tomorrow)
+                  </h3>
+                  <div style={{ fontSize: '12px', color: '#64748b', fontWeight: '600', marginTop: '2px', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span>📅</span>
+                    <span>{formatKhmerFullDate(tmrStr) || `ថ្ងៃទី ${tmrStr}`}</span>
+                  </div>
                 </div>
               </div>
-              <span style={{ padding: '3px 10px', borderRadius: '12px', backgroundColor: 'rgba(168, 85, 247, 0.15)', color: '#c084fc', fontSize: '11px', fontWeight: '800', border: '1px solid rgba(168, 85, 247, 0.3)' }}>
+              <span style={{ 
+                padding: '4px 10px', 
+                borderRadius: '20px', 
+                backgroundColor: '#f5f3ff', 
+                color: '#7c3aed', 
+                fontSize: '11px', 
+                fontWeight: '800', 
+                border: '1px solid #ddd6fe',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '5px',
+                flexShrink: 0
+              }}>
+                <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#8b5cf6', boxShadow: '0 0 6px #8b5cf6' }} />
                 ស្អែក
               </span>
             </div>
 
-            <div style={{ borderTop: '1px solid #334155', paddingTop: '12px' }}>
+            {/* Officer List Section */}
+            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px' }}>
               {isShiftLoading ? (
-                <div style={{ fontSize: '13px', color: '#94a3b8' }}>⏳ កំពុងទាញយកទិន្នន័យ...</div>
+                <div style={{ fontSize: '13px', color: '#64748b', padding: '12px 0', textAlign: 'center' }}>
+                  ⏳ កំពុងទាញយកទិន្នន័យ...
+                </div>
               ) : tmrNames.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {tmrNames.map((name, i) => (
-                    <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', backgroundColor: '#1e293b', padding: '9px 12px', borderRadius: '10px' }}>
-                      <span style={{ fontSize: '16px' }}>👤</span>
-                      <span style={{ fontSize: '13.5px', fontWeight: '700' }}>{name}</span>
+                    <div 
+                      key={i} 
+                      style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'space-between',
+                        backgroundColor: '#f8fafc', 
+                        border: '1px solid #edf2f7',
+                        padding: '9px 12px', 
+                        borderRadius: '12px',
+                        transition: 'all 0.2s ease'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div style={{ 
+                          width: '34px', 
+                          height: '34px', 
+                          borderRadius: '50%', 
+                          background: getOfficerGradient(name, i + 3),
+                          color: '#ffffff',
+                          fontWeight: '800',
+                          fontSize: '12.5px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          boxShadow: '0 2px 6px rgba(0, 0, 0, 0.12)'
+                        }}>
+                          {getOfficerInitials(name)}
+                        </div>
+                        <div>
+                          <div style={{ fontSize: '13.5px', fontWeight: '800', color: '#0f172a' }}>
+                            {name}
+                          </div>
+                          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                            🛡️ មន្ត្រីប្រចាំការ #{i + 1}
+                          </div>
+                        </div>
+                      </div>
+
+                      <span style={{ 
+                        fontSize: '11px', 
+                        fontWeight: '700', 
+                        color: '#7c3aed', 
+                        backgroundColor: 'rgba(124, 58, 237, 0.08)', 
+                        padding: '3px 8px', 
+                        borderRadius: '6px',
+                        border: '1px solid rgba(124, 58, 237, 0.15)'
+                      }}>
+                        ● វេនបន្ទាប់
+                      </span>
                     </div>
                   ))}
-                  <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    ⏰ <b>ម៉ោងប្រចាំការ ៖</b> ១៧:០០ - ០៨:០០ ព្រឹក
+
+                  <div style={{ 
+                    marginTop: '4px',
+                    padding: '8px 12px', 
+                    borderRadius: '10px', 
+                    backgroundColor: '#f1f5f9', 
+                    border: '1px solid #e2e8f0',
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    justifyContent: 'space-between',
+                    fontSize: '11.5px', 
+                    color: '#475569' 
+                  }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                      <span>⏰</span>
+                      <b>ម៉ោងប្រចាំការ ៖</b>
+                    </span>
+                    <span style={{ fontWeight: '800', color: '#0f172a' }}>
+                      ១៧:០០ - ០៨:០០ ព្រឹក
+                    </span>
                   </div>
                 </div>
               ) : (
-                <div style={{ padding: '12px', backgroundColor: 'rgba(168, 85, 247, 0.1)', border: '1px solid rgba(168, 85, 247, 0.2)', borderRadius: '10px', color: '#c084fc', fontSize: '12.5px' }}>
+                <div style={{ padding: '14px', backgroundColor: 'rgba(124, 58, 237, 0.06)', border: '1px solid rgba(124, 58, 237, 0.2)', borderRadius: '12px', color: '#6d28d9', fontSize: '12.5px', textAlign: 'center' }}>
                   ℹ️ មិនទាន់មានកាលវិភាគប្រចាំការសម្រាប់ថ្ងៃស្អែកឡើយ។
                 </div>
               )}
             </div>
 
+            {/* Action Link */}
             <a 
               href="https://shift-dashboard-efda2.web.app" 
               target="_blank" 
               rel="noopener noreferrer" 
-              style={{ fontSize: '12px', color: '#c084fc', textDecoration: 'none', fontWeight: '700', marginTop: 'auto', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+              style={{ 
+                fontSize: '12px', 
+                color: '#7c3aed', 
+                textDecoration: 'none', 
+                fontWeight: '800', 
+                marginTop: 'auto', 
+                display: 'inline-flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                gap: '6px',
+                padding: '8px 12px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(124, 58, 237, 0.06)',
+                border: '1px solid rgba(124, 58, 237, 0.15)',
+                transition: 'all 0.2s ease'
+              }}
             >
-              មើលកាលវិភាគពេញលេញ (External Link) ↗
+              <span>🔍 មើលកាលវិភាគពេញលេញ (Full Roster)</span>
+              <span>↗</span>
             </a>
           </div>
 
           {/* Card 3: Notification Action Trigger (Only for authenticated users) */}
           {!isGuest && (
             <div className="card shift-card-compact" style={{ 
-              padding: '20px', 
-              borderRadius: '16px', 
-              backgroundColor: '#fff', 
+              padding: '22px 20px', 
+              borderRadius: '18px', 
+              backgroundColor: '#ffffff', 
               border: '1px solid #e2e8f0',
-              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+              boxShadow: '0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 2px 6px -1px rgba(15, 23, 42, 0.02)',
               display: 'flex',
               flexDirection: 'column',
-              gap: '14px'
+              gap: '14px',
+              position: 'relative',
+              overflow: 'hidden'
             }}>
+              {/* Top Accent Gradient Bar */}
+              <div style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '4px',
+                background: 'linear-gradient(90deg, #0088cc 0%, #38bdf8 100%)'
+              }} />
+
+              {/* Header */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(0, 136, 204, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#0088cc' }}>
+                <div style={{ 
+                  width: '44px', 
+                  height: '44px', 
+                  borderRadius: '12px', 
+                  background: 'linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%)', 
+                  border: '1px solid rgba(0, 136, 204, 0.2)',
+                  boxShadow: '0 4px 10px rgba(0, 136, 204, 0.12)',
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  fontSize: '22px', 
+                  flexShrink: 0 
+                }}>
                   🔔
                 </div>
                 <div>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>ប្រព័ន្ធរំលឹកវេនប្រចាំការ (Telegram Alerts)</h3>
-                  <span style={{ fontSize: '12px', color: '#64748b' }}>ផ្ញើសាររំលឹកទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួន</span>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: '#0f172a', letterSpacing: '-0.01em' }}>
+                    ប្រព័ន្ធរំលឹកវេនប្រចាំការ (Telegram Alerts)
+                  </h3>
+                  <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>
+                    ផ្ញើសាររំលឹកទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួន
+                  </span>
                 </div>
               </div>
 
               <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                <p style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5', margin: 0 }}>
+                <p style={{ fontSize: '12.5px', color: '#475569', lineHeight: '1.6', margin: 0 }}>
                   ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការ (ថ្ងៃនេះ ឬ ថ្ងៃស្អែក) ទៅកាន់ Telegram ផ្ទាល់ខ្លួនរបស់សាម៉ីខ្លួន។
                 </p>
 
                 {shiftNotifyResult && (
                   <div style={{ 
                     padding: '10px 14px', 
-                    borderRadius: '8px', 
+                    borderRadius: '10px', 
                     fontSize: '12px', 
                     fontWeight: '700',
                     backgroundColor: shiftNotifyResult.type === 'success' ? '#f0fdf4' : shiftNotifyResult.type === 'warning' ? '#fffbeb' : '#fef2f2',
@@ -4264,7 +4580,7 @@ export default function App() {
                   disabled={Boolean(isNotifyingShift) || isShiftLoading}
                   style={{ 
                     flex: 1, 
-                    padding: '10px', 
+                    padding: '11px', 
                     borderRadius: '10px', 
                     fontWeight: '800', 
                     fontSize: '12.5px',
@@ -4273,8 +4589,10 @@ export default function App() {
                     justifyContent: 'center',
                     gap: '6px',
                     cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer',
-                    backgroundColor: '#0284c7',
-                    borderColor: '#0284c7'
+                    background: 'linear-gradient(135deg, #0284c7 0%, #0369a1 100%)',
+                    border: 'none',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 8px rgba(2, 132, 199, 0.25)'
                   }}
                 >
                   {isNotifyingShift === 'today' ? '⏳ កំពុងផ្ញើ...' : '📢 យប់នេះ (Today)'}
@@ -4286,7 +4604,7 @@ export default function App() {
                   disabled={Boolean(isNotifyingShift) || isShiftLoading}
                   style={{ 
                     flex: 1, 
-                    padding: '10px', 
+                    padding: '11px', 
                     borderRadius: '10px', 
                     fontWeight: '800', 
                     fontSize: '12.5px',
@@ -4295,9 +4613,10 @@ export default function App() {
                     justifyContent: 'center',
                     gap: '6px',
                     cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer',
-                    backgroundColor: '#7c3aed',
-                    borderColor: '#7c3aed',
-                    color: '#fff'
+                    background: 'linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%)',
+                    border: 'none',
+                    color: '#ffffff',
+                    boxShadow: '0 2px 8px rgba(124, 58, 237, 0.25)'
                   }}
                 >
                   {isNotifyingShift === 'tomorrow' ? '⏳ កំពុងផ្ញើ...' : '🌅 ថ្ងៃស្អែក (Tmr)'}
