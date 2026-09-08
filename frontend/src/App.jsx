@@ -312,6 +312,15 @@ export default function App() {
   const [isNotifyingShift, setIsNotifyingShift] = useState(false);
   const [shiftNotifyResult, setShiftNotifyResult] = useState(null);
   
+  // Shift Roster Display & Filter States
+  const [shiftRosterView, setShiftRosterView] = useState('current'); // 'current', 'upcoming', 'all'
+  const [shiftRosterMonth, setShiftRosterMonth] = useState(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  });
+
   // Shift Random Generator & Monthly Statistics States
   const [selectedShiftMonth, setSelectedShiftMonth] = useState(() => {
     const today = new Date();
@@ -3933,16 +3942,61 @@ export default function App() {
     const todayNames = activeSched[todayStr] || [];
     const tmrNames = activeSched[tmrStr] || [];
 
+    // Khmer Localization Helpers
+    const khmerMonthNames = [
+      'មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា',
+      'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'
+    ];
+    const khmerDayNames = ['អាទិត្យ', 'ចន្ទ', 'អង្គារ', 'ពុធ', 'ព្រហស្បតិ៍', 'សុក្រ', 'សៅរ៍'];
+    const khmerDigits = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+    const toKhmerNum = (num) => String(num).split('').map(d => khmerDigits[d] || d).join('');
+
+    const formatKhmerMonth = (yearMonthStr) => {
+      if (!yearMonthStr || !yearMonthStr.includes('-')) return yearMonthStr;
+      const [y, m] = yearMonthStr.split('-');
+      const mIdx = parseInt(m, 10) - 1;
+      return `ខែ${khmerMonthNames[mIdx] || m} ឆ្នាំ${toKhmerNum(y)}`;
+    };
+
+    const formatKhmerFullDate = (dateStr) => {
+      if (!dateStr) return '';
+      const [y, m, d] = dateStr.split('-');
+      const dateObj = new Date(`${dateStr}T00:00:00`);
+      const dayName = khmerDayNames[dateObj.getDay()] || '';
+      return `ថ្ងៃ${dayName} ទី${toKhmerNum(parseInt(d, 10))} ${khmerMonthNames[parseInt(m, 10) - 1]} ${toKhmerNum(y)}`;
+    };
+
+    // Month & Roster Filtering
+    const currentMonthKey = todayStr.slice(0, 7);
+    const availableMonths = Array.from(new Set([
+      currentMonthKey,
+      ...Object.keys(activeSched).map(d => d.slice(0, 7))
+    ])).filter(Boolean).sort();
+
+    const activeMonth = shiftRosterMonth || currentMonthKey;
+    const currentMonthIdx = availableMonths.indexOf(activeMonth);
+    const hasPrevMonth = currentMonthIdx > 0;
+    const hasNextMonth = currentMonthIdx !== -1 && currentMonthIdx < availableMonths.length - 1;
+
     // Filter shift dates
-    const filteredDates = Object.keys(activeSched)
-      .sort((a, b) => new Date(a) - new Date(b))
-      .filter(dateKey => {
-        const query = (subnetSearch || '').toLowerCase().trim();
-        if (!query) return true;
-        if (dateKey.includes(query)) return true;
-        const names = activeSched[dateKey] || [];
-        return names.some(n => n.toLowerCase().includes(query));
-      });
+    const allSortedDates = Object.keys(activeSched).sort((a, b) => new Date(a) - new Date(b));
+
+    const filteredDates = allSortedDates.filter(dateKey => {
+      // 1. View filter
+      if (shiftRosterView === 'current') {
+        if (!dateKey.startsWith(activeMonth)) return false;
+      } else if (shiftRosterView === 'upcoming') {
+        if (dateKey < todayStr) return false;
+      }
+      // 'all' includes all dates
+
+      // 2. Search query filter
+      const query = (subnetSearch || '').toLowerCase().trim();
+      if (!query) return true;
+      if (dateKey.includes(query)) return true;
+      const names = activeSched[dateKey] || [];
+      return names.some(n => (n || '').toLowerCase().includes(query));
+    });
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -4186,10 +4240,27 @@ export default function App() {
         </div>
 
         {/* Calendar Timeline / List Section */}
-        <div className="panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
-            <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>📅 តារាងកាលវិភាគប្រចាំការយប់ (Standby Roster)</h3>
-            
+        <div className="panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+          
+          {/* Section Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '19px', color: '#16a34a' }}>
+                📅
+              </div>
+              <div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h3 style={{ margin: 0, fontSize: '15.5px', fontWeight: '800', color: '#0f172a' }}>តារាងកាលវិភាគប្រចាំការយប់ (Standby Roster)</h3>
+                  <span style={{ padding: '2px 9px', borderRadius: '12px', backgroundColor: '#e2e8f0', color: '#334155', fontSize: '11px', fontWeight: '800' }}>
+                    {toKhmerNum(filteredDates.length)} ថ្ងៃ
+                  </span>
+                </div>
+                <span style={{ fontSize: '12px', color: '#64748b' }}>
+                  {shiftRosterView === 'current' ? `កាលវិភាគក្នុង ${formatKhmerMonth(activeMonth)}` : shiftRosterView === 'upcoming' ? 'កាលវិភាគចាប់ពីថ្ងៃនេះទៅមុខ' : 'កាលវិភាគទាំងអស់ក្នុងប្រព័ន្ធ'}
+                </span>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {/* Export PDF Button */}
               <button
@@ -4223,33 +4294,199 @@ export default function App() {
               </button>
 
               {/* Search Input within Roster Panel */}
-              <div className="search-container" style={{ width: '240px', margin: 0 }}>
+              <div className="search-container" style={{ width: '230px', margin: 0 }}>
                 <span className="search-icon-left">🔍</span>
                 <input
                   type="text"
                   className="search-input"
-                  placeholder="ស្វែងរកថ្ងៃ ឬឈ្មោះបុគ្គលិក..."
+                  placeholder="ស្វែងរកថ្ងៃ ឬឈ្មោះ..."
                   value={subnetSearch}
                   onChange={(e) => setSubnetSearch(e.target.value)}
-                  style={{ padding: '8px 12px 8px 32px', fontSize: '12.5px' }}
+                  style={{ padding: '7px 12px 7px 32px', fontSize: '12.5px' }}
                 />
               </div>
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px' }}>
+          {/* Quick Filter Control Toolbar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            flexWrap: 'wrap',
+            gap: '12px',
+            backgroundColor: '#f8fafc',
+            padding: '10px 14px',
+            borderRadius: '12px',
+            border: '1px solid #e2e8f0'
+          }}>
+            {/* View Mode Switcher Pills */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setShiftRosterView('current');
+                  setShiftRosterMonth(currentMonthKey);
+                }}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  transition: 'all 0.15s ease',
+                  backgroundColor: (shiftRosterView === 'current' && activeMonth === currentMonthKey) ? '#0284c7' : '#fff',
+                  color: (shiftRosterView === 'current' && activeMonth === currentMonthKey) ? '#fff' : '#475569',
+                  borderColor: (shiftRosterView === 'current' && activeMonth === currentMonthKey) ? '#0284c7' : '#cbd5e1'
+                }}
+              >
+                📌 ខែនេះ ({formatKhmerMonth(currentMonthKey)})
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShiftRosterView('upcoming')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  transition: 'all 0.15s ease',
+                  backgroundColor: shiftRosterView === 'upcoming' ? '#7c3aed' : '#fff',
+                  color: shiftRosterView === 'upcoming' ? '#fff' : '#475569',
+                  borderColor: shiftRosterView === 'upcoming' ? '#7c3aed' : '#cbd5e1'
+                }}
+              >
+                🔮 ថ្ងៃខាងមុខ (Upcoming)
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShiftRosterView('all')}
+                style={{
+                  padding: '6px 14px',
+                  borderRadius: '8px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  border: '1px solid',
+                  transition: 'all 0.15s ease',
+                  backgroundColor: shiftRosterView === 'all' ? '#0f172a' : '#fff',
+                  color: shiftRosterView === 'all' ? '#fff' : '#475569',
+                  borderColor: shiftRosterView === 'all' ? '#0f172a' : '#cbd5e1'
+                }}
+              >
+                🌐 ទាំងអស់ ({toKhmerNum(allSortedDates.length)})
+              </button>
+            </div>
+
+            {/* Month Selector Dropdown & Prev/Next Navigation */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginRight: '2px' }}>
+                ជ្រើសរើសខែ ៖
+              </span>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (hasPrevMonth) {
+                    setShiftRosterView('current');
+                    setShiftRosterMonth(availableMonths[currentMonthIdx - 1]);
+                  }
+                }}
+                disabled={!hasPrevMonth}
+                title="ខែមុន"
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: hasPrevMonth ? '#fff' : '#f1f5f9',
+                  color: hasPrevMonth ? '#0f172a' : '#94a3b8',
+                  fontSize: '12px',
+                  fontWeight: '800',
+                  cursor: hasPrevMonth ? 'pointer' : 'not-allowed'
+                }}
+              >
+                ◀
+              </button>
+
+              <select
+                value={shiftRosterView === 'current' ? activeMonth : ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setShiftRosterView('current');
+                    setShiftRosterMonth(e.target.value);
+                  }
+                }}
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  backgroundColor: '#fff',
+                  color: '#0f172a',
+                  cursor: 'pointer'
+                }}
+              >
+                {shiftRosterView !== 'current' && (
+                  <option value="" disabled>-- ជ្រើសរើសខែ --</option>
+                )}
+                {availableMonths.map((m) => (
+                  <option key={m} value={m}>
+                    {formatKhmerMonth(m)} {m === currentMonthKey ? ' (ខែបច្ចុប្បន្ន)' : ''}
+                  </option>
+                ))}
+              </select>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (hasNextMonth) {
+                    setShiftRosterView('current');
+                    setShiftRosterMonth(availableMonths[currentMonthIdx + 1]);
+                  }
+                }}
+                disabled={!hasNextMonth}
+                title="ខែបន្ទាប់"
+                style={{
+                  padding: '5px 10px',
+                  borderRadius: '6px',
+                  border: '1px solid #cbd5e1',
+                  backgroundColor: hasNextMonth ? '#fff' : '#f1f5f9',
+                  color: hasNextMonth ? '#0f172a' : '#94a3b8',
+                  fontSize: '12px',
+                  fontWeight: '800',
+                  cursor: hasNextMonth ? 'pointer' : 'not-allowed'
+                }}
+              >
+                ▶
+              </button>
+            </div>
+          </div>
+
+          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fff' }}>
             <table className="table" style={{ width: '100%', borderCollapse: 'collapse', margin: 0 }}>
               <thead>
-                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>កាលបរិច្ឆេទ (Date)</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>ឈ្មោះអ្នកប្រចាំការ (Standby Officers)</th>
-                  <th style={{ padding: '12px 16px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>វេន (Shift Type)</th>
+                <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569', width: '280px' }}>
+                    កាលបរិច្ឆេទ (Date)
+                  </th>
+                  <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569' }}>
+                    ឈ្មោះអ្នកប្រចាំការ (Standby Officers)
+                  </th>
+                  <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569', width: '220px' }}>
+                    វេន (Shift Type)
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {isShiftLoading ? (
                   <tr>
-                    <td colSpan="3" style={{ padding: '30px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
+                    <td colSpan="3" style={{ padding: '40px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
                       ⏳ កំពុងទាញយកទិន្នន័យកាលវិភាគប្រចាំការ...
                     </td>
                   </tr>
@@ -4258,50 +4495,179 @@ export default function App() {
                     const isToday = dateKey === todayStr;
                     const isTomorrow = dateKey === tmrStr;
                     const names = activeSched[dateKey] || [];
+                    const dateObj = new Date(dateKey + 'T00:00:00');
+                    const dayIdx = dateObj.getDay();
+                    const isWeekend = dayIdx === 0 || dayIdx === 6;
+
                     return (
                       <tr 
                         key={dateKey} 
                         style={{ 
                           borderBottom: '1px solid #e2e8f0',
-                          backgroundColor: isToday ? '#fffbeb' : isTomorrow ? '#f5f3ff' : 'transparent',
-                          transition: 'background-color 0.2s'
+                          backgroundColor: isToday 
+                            ? '#fffbeb' 
+                            : isTomorrow 
+                            ? '#faf5ff' 
+                            : isWeekend 
+                            ? '#fcfcfd' 
+                            : '#ffffff',
+                          borderLeft: isToday 
+                            ? '4px solid #f59e0b' 
+                            : isTomorrow 
+                            ? '4px solid #8b5cf6' 
+                            : '4px solid transparent',
+                          transition: 'background-color 0.15s ease'
                         }}
                       >
-                        <td style={{ padding: '14px 16px', fontSize: '13px', fontWeight: '700', color: isToday ? '#b45309' : isTomorrow ? '#6d28d9' : '#0f172a' }}>
-                          {dateKey} 
-                          {isToday && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#fef3c7', color: '#d97706', fontSize: '10px', fontWeight: '800' }}>ថ្ងៃនេះ</span>}
-                          {isTomorrow && <span style={{ marginLeft: '6px', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#ede9fe', color: '#7c3aed', fontSize: '10px', fontWeight: '800' }}>ថ្ងៃស្អែក</span>}
-                        </td>
-                        <td style={{ padding: '14px 16px' }}>
-                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
-                            {names.map((name, idx) => (
-                              <span 
-                                key={idx} 
-                                style={{ 
-                                  padding: '4px 10px', 
-                                  borderRadius: '6px', 
-                                  fontSize: '12px', 
-                                  fontWeight: '700',
-                                  backgroundColor: isToday ? '#fef3c7' : isTomorrow ? '#ede9fe' : '#f1f5f9',
-                                  color: isToday ? '#b45309' : isTomorrow ? '#6d28d9' : '#334155',
-                                  border: `1px solid ${isToday ? '#fde68a' : isTomorrow ? '#ddd6fe' : '#cbd5e1'}`
-                                }}
-                              >
-                                👤 {name}
+                        {/* Date Column */}
+                        <td style={{ padding: '13px 18px', verticalAlign: 'middle' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                              <span style={{ 
+                                fontSize: '13.5px', 
+                                fontWeight: '700', 
+                                color: isToday ? '#b45309' : isTomorrow ? '#6d28d9' : '#0f172a' 
+                              }}>
+                                {formatKhmerFullDate(dateKey)}
                               </span>
-                            ))}
+
+                              {isToday && (
+                                <span style={{ 
+                                  padding: '2px 8px', 
+                                  borderRadius: '12px', 
+                                  backgroundColor: '#fef3c7', 
+                                  color: '#b45309', 
+                                  fontSize: '10.5px', 
+                                  fontWeight: '800',
+                                  border: '1px solid #fde68a'
+                                }}>
+                                  ⭐ យប់នេះ
+                                </span>
+                              )}
+
+                              {isTomorrow && (
+                                <span style={{ 
+                                  padding: '2px 8px', 
+                                  borderRadius: '12px', 
+                                  backgroundColor: '#ede9fe', 
+                                  color: '#6d28d9', 
+                                  fontSize: '10.5px', 
+                                  fontWeight: '800',
+                                  border: '1px solid #ddd6fe'
+                                }}>
+                                  ✨ ថ្ងៃស្អែក
+                                </span>
+                              )}
+
+                              {isWeekend && !isToday && !isTomorrow && (
+                                <span style={{ 
+                                  padding: '1px 6px', 
+                                  borderRadius: '6px', 
+                                  backgroundColor: '#f1f5f9', 
+                                  color: '#64748b', 
+                                  fontSize: '10px', 
+                                  fontWeight: '700'
+                                }}>
+                                  ចុងសប្តាហ៍
+                                </span>
+                              )}
+                            </div>
+
+                            <span style={{ fontSize: '11px', color: '#94a3b8', fontFamily: 'monospace' }}>
+                              {dateKey}
+                            </span>
                           </div>
                         </td>
-                        <td style={{ padding: '14px 16px', fontSize: '12.5px', color: '#64748b' }}>
-                          🌙 Night Standby (១៧:០០ - ០៨:០០)
+
+                        {/* Standby Officers Column */}
+                        <td style={{ padding: '13px 18px', verticalAlign: 'middle' }}>
+                          {names.length > 0 ? (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                              {names.map((name, idx) => (
+                                <span 
+                                  key={idx} 
+                                  style={{ 
+                                    padding: '5px 12px', 
+                                    borderRadius: '8px', 
+                                    fontSize: '12.5px', 
+                                    fontWeight: '700',
+                                    backgroundColor: isToday 
+                                      ? '#fef3c7' 
+                                      : isTomorrow 
+                                      ? '#ede9fe' 
+                                      : '#f8fafc',
+                                    color: isToday 
+                                      ? '#92400e' 
+                                      : isTomorrow 
+                                      ? '#5b21b6' 
+                                      : '#1e293b',
+                                    border: `1px solid ${isToday ? '#fde68a' : isTomorrow ? '#ddd6fe' : '#e2e8f0'}`,
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    gap: '6px'
+                                  }}
+                                >
+                                  <span>👤</span> {name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: '#94a3b8', fontStyle: 'italic', fontSize: '12px' }}>
+                              — មិនទាន់ចាត់តាំង —
+                            </span>
+                          )}
+                        </td>
+
+                        {/* Shift Type Column */}
+                        <td style={{ padding: '13px 18px', verticalAlign: 'middle' }}>
+                          <span style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '4px 10px',
+                            borderRadius: '6px',
+                            backgroundColor: '#f8fafc',
+                            border: '1px solid #e2e8f0',
+                            color: '#475569',
+                            fontSize: '12px',
+                            fontWeight: '600'
+                          }}>
+                            🌙 វេនយប់ (១៧:០០ - ០៨:០០)
+                          </span>
                         </td>
                       </tr>
                     );
                   })
                 ) : (
                   <tr>
-                    <td colSpan="3" style={{ padding: '30px 16px', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
-                      🚫 មិនស្វែងរកឃើញទិន្នន័យឡើយ។
+                    <td colSpan="3" style={{ padding: '40px 16px', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px' }}>
+                        <span style={{ fontSize: '28px' }}>📋</span>
+                        <span style={{ fontSize: '13.5px', fontWeight: '700', color: '#475569' }}>
+                          មិនមានទិន្នន័យកាលវិភាគសម្រាប់ជម្រើសនេះឡើយ
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setShiftRosterView('current');
+                            setShiftRosterMonth(currentMonthKey);
+                            setSubnetSearch('');
+                          }}
+                          style={{
+                            padding: '6px 14px',
+                            borderRadius: '8px',
+                            backgroundColor: '#0284c7',
+                            color: '#fff',
+                            border: 'none',
+                            fontSize: '12px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            marginTop: '6px'
+                          }}
+                        >
+                          🔄 បង្ហាញខែនេះ ({formatKhmerMonth(currentMonthKey)})
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 )}
