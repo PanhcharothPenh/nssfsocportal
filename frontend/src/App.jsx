@@ -6780,6 +6780,51 @@ export default function App() {
               )}
             </div>
           )}
+
+          {/* Guest / Public Viewer Quick Access */}
+          <div style={{ marginTop: '20px', paddingTop: '16px', borderTop: isDarkMode ? '1px solid rgba(255,255,255,0.08)' : '1px solid #e2e8f0' }}>
+            <button
+              type="button"
+              onClick={() => {
+                const guestUser = {
+                  id: 0,
+                  username: 'guest',
+                  full_name: 'ភ្ញៀវ / បុគ្គលិកទូទៅ',
+                  role: 'viewer',
+                  permissions: {
+                    shift: 'read',
+                    dashboard: 'read'
+                  }
+                };
+                setCurrentLoginUser(guestUser);
+                localStorage.setItem('currentLoginUser', JSON.stringify(guestUser));
+                setActiveTab('shift');
+              }}
+              style={{
+                width: '100%',
+                padding: '11px 16px',
+                borderRadius: '12px',
+                border: isDarkMode ? '1px solid rgba(255,255,255,0.1)' : '1px solid #cbd5e1',
+                backgroundColor: isDarkMode ? 'rgba(255,255,255,0.04)' : '#f8fafc',
+                color: isDarkMode ? '#e2e8f0' : '#334155',
+                fontSize: '13px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+                transition: 'all 0.15s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.08)' : '#f1f5f9'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isDarkMode ? 'rgba(255,255,255,0.04)' : '#f8fafc'}
+            >
+              <span>👁️</span> ចូលមើលកាលវិភាគប្រចាំការ (ចូលជាភ្ញៀវ / Guest)
+            </button>
+            <div style={{ fontSize: '11px', color: isDarkMode ? '#94a3b8' : '#64748b', textAlign: 'center', marginTop: '8px' }}>
+              មិនបាច់ប្រើលេខសម្ងាត់ ដើម្បីពិនិត្យមើលកាលវិភាគវេនប្រចាំការ
+            </div>
+          </div>
         </div>
       </div>
     );
