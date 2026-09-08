@@ -15003,37 +15003,86 @@ export default function App() {
             {/* Content Body */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               
-              {/* iOS Guide Box */}
-              <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>🍎</span>
-                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>សម្រាប់ iPhone / iPad (Safari)</span>
-                </div>
-                <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#334155', lineHeight: '1.7' }}>
-                  <li>បើកគេហទំព័រនេះក្នុងកម្មវិធី <b>Safari</b></li>
-                  <li>ចុចប៊ូតុង <b>Share</b> (រូបប្រអប់ព្រួញឡើងលើ <span style={{ fontSize: '14px' }}>📤</span> នៅរបារខាងក្រោម)</li>
-                  <li>រំកិលចុះក្រោម រួចជ្រើសរើសយក <b>"Add to Home Screen" (បន្ថែមលើអេក្រង់ដើម ➕)</b></li>
-                  <li>ចុចពាក្យ <b>"Add" (បន្ថែម)</b> នៅជ្រុងខាងស្តាំខាងលើជាការស្រេច!</li>
-                </ol>
-              </div>
+              {(() => {
+                const ua = typeof navigator !== 'undefined' ? (navigator.userAgent || '').toLowerCase() : '';
+                const isIos = /iphone|ipad|ipod/.test(ua) || (typeof navigator !== 'undefined' && navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+                const isTelegram = /telegram/i.test(ua);
 
-              {/* Android Guide Box */}
-              <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
-                  <span style={{ fontSize: '18px' }}>🤖</span>
-                  <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>សម្រាប់ Android (Google Chrome / Samsung Internet)</span>
-                </div>
-                <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#334155', lineHeight: '1.7' }}>
-                  <li>បើកគេហទំព័រនេះក្នុងកម្មវិធី <b>Chrome</b></li>
-                  <li>ចុចលើសញ្ញាចុចបី <b>⋮ (Menu)</b> នៅជ្រុងខាងស្តាំខាងលើ</li>
-                  <li>ជ្រើសរើសយក <b>"Install app" (ដំឡើងកម្មវិធី)</b> ឬ <b>"Add to Home screen" (បន្ថែមលើអេក្រង់ដើម 📲)</b></li>
-                  <li>ចុច <b>Install</b> នោះ App នឹងបង្ហាញនៅលើអេក្រង់ទូរស័ព្ទភ្លាមៗ</li>
-                </ol>
-              </div>
+                if (isIos) {
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {isTelegram && (
+                        <div style={{ padding: '12px 14px', borderRadius: '12px', backgroundColor: '#fffbeb', border: '1px solid #fde68a', color: '#b45309', fontSize: '12.5px', lineHeight: '1.5' }}>
+                          ⚠️ <b>លោកអ្នកកំពុងបើកក្នុង Telegram Browser</b>
+                          <div style={{ marginTop: '4px' }}>
+                            Apple មិនអនុញ្ញាតឱ្យ Install ពីក្នុង Telegram ឡើយ។ សូមចុចសញ្ញាចុចបី <b>⋯</b> (នៅជ្រុងខាងស្តាំខាងលើ) ➡️ ជ្រើសរើស <b>"Open in Safari"</b> ទើបអាច Add លើ Home Screen បាន។
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ padding: '16px', borderRadius: '14px', backgroundColor: '#f8fafc', border: '1.5px solid #cbd5e1' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                          <span style={{ fontSize: '20px' }}>🍎</span>
+                          <span style={{ fontSize: '14px', fontWeight: '800', color: '#0f172a' }}>វិធី Add to Home Screen លើ iPhone (Safari)</span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#fff', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '14px', flexShrink: 0 }}>
+                              1
+                            </div>
+                            <div style={{ fontSize: '12.5px', color: '#1e293b' }}>
+                              ចុចប៊ូតុង <b>Share</b> <span style={{ fontSize: '16px', display: 'inline-block', verticalAlign: 'middle', margin: '0 2px' }}>📤</span> (រូបប្រអប់ព្រួញឡើងលើ នៅរបារខាងក្រោមនៃ Safari)
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#fff', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '14px', flexShrink: 0 }}>
+                              2
+                            </div>
+                            <div style={{ fontSize: '12.5px', color: '#1e293b' }}>
+                              រំកិលចុះបន្តិច រួចចុចលើ <b>"Add to Home Screen"</b> <span style={{ fontSize: '14px' }}>(➕ បន្ថែមលើអេក្រង់ដើម)</span>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', backgroundColor: '#fff', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                            <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#dcfce7', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: '800', fontSize: '14px', flexShrink: 0 }}>
+                              3
+                            </div>
+                            <div style={{ fontSize: '12.5px', color: '#1e293b' }}>
+                              ចុចពាក្យ <b>"Add" (បន្ថែម)</b> នៅជ្រុងខាងស្តាំខាងលើជាការស្រេច!
+                            </div>
+                          </div>
+                        </div>
+
+                        <div style={{ textAlign: 'center', marginTop: '12px', fontSize: '12px', color: '#64748b', fontWeight: '700' }}>
+                          👇 ប៊ូតុង Share 📤 ស្ថិតនៅរបារខាងក្រោមនៃទូរស័ព្ទ iPhone
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+
+                return (
+                  /* Android Guide Box */
+                  <div style={{ padding: '14px 16px', borderRadius: '12px', backgroundColor: '#f8fafc', border: '1px solid #e2e8f0' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                      <span style={{ fontSize: '18px' }}>🤖</span>
+                      <span style={{ fontSize: '13px', fontWeight: '800', color: '#0f172a' }}>សម្រាប់ Android (Google Chrome / Samsung Internet)</span>
+                    </div>
+                    <ol style={{ margin: 0, paddingLeft: '20px', fontSize: '12px', color: '#334155', lineHeight: '1.7' }}>
+                      <li>បើកគេហទំព័រនេះក្នុងកម្មវិធី <b>Chrome</b></li>
+                      <li>ចុចលើសញ្ញាចុចបី <b>⋮ (Menu)</b> នៅជ្រុងខាងស្តាំខាងលើ</li>
+                      <li>ជ្រើសរើសយក <b>"Install app" (ដំឡើងកម្មវិធី)</b> ឬ <b>"Add to Home screen" (បន្ថែមលើអេក្រង់ដើម 📲)</b></li>
+                      <li>ចុច <b>Install</b> នោះ App នឹងបង្ហាញនៅលើអេក្រង់ទូរស័ព្ទភ្លាមៗ</li>
+                    </ol>
+                  </div>
+                );
+              })()}
 
               {/* Benefits Note */}
               <div style={{ padding: '10px 14px', borderRadius: '10px', backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', fontSize: '11.5px', color: '#1d4ed8', lineHeight: '1.5' }}>
-                💡 <b>អត្ថប្រយោជន៍ ៖</b> ដំណើរការពេញអេក្រង់ដូច App ទូរស័ព្ទផ្លូវការ (គ្មានរបារ Browser), ងាយស្រួលបើកមើលកាលវិភាគប្រចាំការ ឬដាក់សំណើការងាររហ័សទាន់ចិត្ត។
+                💡 <b>ចំណាំ ៖</b> Apple iOS មិនអនុញ្ញាតឱ្យ Website ដំឡើងដោយស្វ័យប្រវត្តិទេ គឺតម្រូវឱ្យម្ចាស់ទូរស័ព្ទចុច Share 📤 ➡️ Add to Home Screen ដោយខ្លួនឯងតែ ១ ដងគត់។ ពេលដំឡើងរួច លើកក្រោយបើកមើលដូច App ធម្មតា!
               </div>
 
               {/* Action Buttons */}
