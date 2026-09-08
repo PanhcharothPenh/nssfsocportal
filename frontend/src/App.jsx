@@ -2172,11 +2172,20 @@ export default function App() {
   );
 
   const isViewer = currentLoginUser && (currentLoginUser.role || '').toLowerCase() === 'viewer';
+  const isGuest = currentLoginUser && (
+    (currentLoginUser.role || '').toLowerCase() === 'guest' ||
+    (currentLoginUser.username || '').toLowerCase() === 'guest'
+  );
 
   const hasPermission = (moduleName, level = 'read') => {
-    if (!currentLoginUser) return true;
+    if (!currentLoginUser) return false;
     if (currentLoginUser.username === 'admin' || (currentLoginUser.role || '').toLowerCase() === 'admin') {
       return true;
+    }
+    // Guest is strictly restricted to shift roster only
+    if (isGuest) {
+      if (level === 'write') return false;
+      return moduleName === 'shift';
     }
     const perms = currentLoginUser.permissions || {};
     const userVal = perms[moduleName];
@@ -2202,6 +2211,12 @@ export default function App() {
     
     return true;
   };
+
+  useEffect(() => {
+    if (isGuest && activeTab !== 'shift') {
+      setActiveTab('shift');
+    }
+  }, [isGuest, activeTab]);
 
   useEffect(() => {
     if (showPrintModal && signatureImage) {
@@ -4039,14 +4054,14 @@ export default function App() {
     });
 
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
         
         {/* Top Cards Section: Today, Tomorrow, and Telegram Alerts */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+        <div className="shift-cards-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
           
           {/* Card 1: Today's Standing Officers */}
-          <div className="card" style={{ 
-            padding: '22px', 
+          <div className="card shift-card-compact" style={{ 
+            padding: '20px', 
             borderRadius: '16px', 
             backgroundColor: '#1e293b', 
             color: '#fff', 
@@ -4117,8 +4132,8 @@ export default function App() {
           </div>
 
           {/* Card 2: Tomorrow's Standing Officers */}
-          <div className="card" style={{ 
-            padding: '22px', 
+          <div className="card shift-card-compact" style={{ 
+            padding: '20px', 
             borderRadius: '16px', 
             backgroundColor: '#0f172a', 
             color: '#fff', 
@@ -4188,102 +4203,104 @@ export default function App() {
             </a>
           </div>
 
-          {/* Card 3: Notification Action Trigger */}
-          <div className="card" style={{ 
-            padding: '22px', 
-            borderRadius: '16px', 
-            backgroundColor: '#fff', 
-            border: '1px solid #e2e8f0',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '14px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(0, 136, 204, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#0088cc' }}>
-                🔔
-              </div>
-              <div>
-                <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>ប្រព័ន្ធរំលឹកវេនប្រចាំការ (Telegram Alerts)</h3>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>ផ្ញើសាររំលឹកទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួន</span>
-              </div>
-            </div>
-
-            <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
-              <p style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5', margin: 0 }}>
-                ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការ (ថ្ងៃនេះ ឬ ថ្ងៃស្អែក) ទៅកាន់ Telegram ផ្ទាល់ខ្លួនរបស់សាម៉ីខ្លួន។
-              </p>
-
-              {shiftNotifyResult && (
-                <div style={{ 
-                  padding: '10px 14px', 
-                  borderRadius: '8px', 
-                  fontSize: '12px', 
-                  fontWeight: '700',
-                  backgroundColor: shiftNotifyResult.type === 'success' ? '#f0fdf4' : shiftNotifyResult.type === 'warning' ? '#fffbeb' : '#fef2f2',
-                  border: `1px solid ${shiftNotifyResult.type === 'success' ? '#dcfce7' : shiftNotifyResult.type === 'warning' ? '#fef3c7' : '#fee2e2'}`,
-                  color: shiftNotifyResult.type === 'success' ? '#15803d' : shiftNotifyResult.type === 'warning' ? '#b45309' : '#b91c1c'
-                }}>
-                  {shiftNotifyResult.message}
+          {/* Card 3: Notification Action Trigger (Only for authenticated users) */}
+          {!isGuest && (
+            <div className="card shift-card-compact" style={{ 
+              padding: '20px', 
+              borderRadius: '16px', 
+              backgroundColor: '#fff', 
+              border: '1px solid #e2e8f0',
+              boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '14px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '40px', height: '40px', borderRadius: '50%', backgroundColor: 'rgba(0, 136, 204, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px', color: '#0088cc' }}>
+                  🔔
                 </div>
-              )}
-            </div>
+                <div>
+                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#0f172a' }}>ប្រព័ន្ធរំលឹកវេនប្រចាំការ (Telegram Alerts)</h3>
+                  <span style={{ fontSize: '12px', color: '#64748b' }}>ផ្ញើសាររំលឹកទៅកាន់គណនី Telegram ផ្ទាល់ខ្លួន</span>
+                </div>
+              </div>
 
-            <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
-              <button
-                className="btn btn-primary"
-                onClick={() => handleNotifyShift('today')}
-                disabled={Boolean(isNotifyingShift) || isShiftLoading}
-                style={{ 
-                  flex: 1, 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  fontWeight: '800', 
-                  fontSize: '12.5px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer',
-                  backgroundColor: '#0284c7',
-                  borderColor: '#0284c7'
-                }}
-              >
-                {isNotifyingShift === 'today' ? '⏳ កំពុងផ្ញើ...' : '📢 យប់នេះ (Today)'}
-              </button>
-              
-              <button
-                className="btn"
-                onClick={() => handleNotifyShift('tomorrow')}
-                disabled={Boolean(isNotifyingShift) || isShiftLoading}
-                style={{ 
-                  flex: 1, 
-                  padding: '10px', 
-                  borderRadius: '10px', 
-                  fontWeight: '800', 
-                  fontSize: '12.5px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '6px',
-                  cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer',
-                  backgroundColor: '#7c3aed',
-                  borderColor: '#7c3aed',
-                  color: '#fff'
-                }}
-              >
-                {isNotifyingShift === 'tomorrow' ? '⏳ កំពុងផ្ញើ...' : '🌅 ថ្ងៃស្អែក (Tmr)'}
-              </button>
+              <div style={{ borderTop: '1px solid #f1f5f9', paddingTop: '12px', flexGrow: 1, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                <p style={{ fontSize: '12px', color: '#475569', lineHeight: '1.5', margin: 0 }}>
+                  ចុចលើប៊ូតុងខាងក្រោមដើម្បីបញ្ជូនសាររំលឹកវេនប្រចាំការ (ថ្ងៃនេះ ឬ ថ្ងៃស្អែក) ទៅកាន់ Telegram ផ្ទាល់ខ្លួនរបស់សាម៉ីខ្លួន។
+                </p>
+
+                {shiftNotifyResult && (
+                  <div style={{ 
+                    padding: '10px 14px', 
+                    borderRadius: '8px', 
+                    fontSize: '12px', 
+                    fontWeight: '700',
+                    backgroundColor: shiftNotifyResult.type === 'success' ? '#f0fdf4' : shiftNotifyResult.type === 'warning' ? '#fffbeb' : '#fef2f2',
+                    border: `1px solid ${shiftNotifyResult.type === 'success' ? '#dcfce7' : shiftNotifyResult.type === 'warning' ? '#fef3c7' : '#fee2e2'}`,
+                    color: shiftNotifyResult.type === 'success' ? '#15803d' : shiftNotifyResult.type === 'warning' ? '#b45309' : '#b91c1c'
+                  }}>
+                    {shiftNotifyResult.message}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleNotifyShift('today')}
+                  disabled={Boolean(isNotifyingShift) || isShiftLoading}
+                  style={{ 
+                    flex: 1, 
+                    padding: '10px', 
+                    borderRadius: '10px', 
+                    fontWeight: '800', 
+                    fontSize: '12.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer',
+                    backgroundColor: '#0284c7',
+                    borderColor: '#0284c7'
+                  }}
+                >
+                  {isNotifyingShift === 'today' ? '⏳ កំពុងផ្ញើ...' : '📢 យប់នេះ (Today)'}
+                </button>
+                
+                <button
+                  className="btn"
+                  onClick={() => handleNotifyShift('tomorrow')}
+                  disabled={Boolean(isNotifyingShift) || isShiftLoading}
+                  style={{ 
+                    flex: 1, 
+                    padding: '10px', 
+                    borderRadius: '10px', 
+                    fontWeight: '800', 
+                    fontSize: '12.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px',
+                    cursor: (isNotifyingShift || isShiftLoading) ? 'not-allowed' : 'pointer',
+                    backgroundColor: '#7c3aed',
+                    borderColor: '#7c3aed',
+                    color: '#fff'
+                  }}
+                >
+                  {isNotifyingShift === 'tomorrow' ? '⏳ កំពុងផ្ញើ...' : '🌅 ថ្ងៃស្អែក (Tmr)'}
+                </button>
+              </div>
             </div>
-          </div>
+          )}
 
         </div>
 
         {/* Calendar Timeline / List Section */}
-        <div className="panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
+        <div className="panel roster-panel" style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '18px' }}>
           
           {/* Section Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
+          <div className="roster-header-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               <div style={{ width: '38px', height: '38px', borderRadius: '10px', backgroundColor: '#f0fdf4', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '19px', color: '#16a34a' }}>
                 📅
@@ -4301,7 +4318,7 @@ export default function App() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div className="roster-header-actions" style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
               {/* Export PDF Button */}
               <button
                 type="button"
@@ -4349,7 +4366,7 @@ export default function App() {
           </div>
 
           {/* Quick Filter Control Toolbar */}
-          <div style={{
+          <div className="roster-filter-toolbar" style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -4361,7 +4378,7 @@ export default function App() {
             border: '1px solid #e2e8f0'
           }}>
             {/* View Mode Switcher Pills */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+            <div className="roster-view-pills" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
               <button
                 type="button"
                 onClick={() => {
@@ -4424,7 +4441,7 @@ export default function App() {
             </div>
 
             {/* Month Selector Dropdown & Prev/Next Navigation */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div className="roster-month-nav" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', marginRight: '2px' }}>
                 ជ្រើសរើសខែ ៖
               </span>
@@ -4508,8 +4525,8 @@ export default function App() {
             </div>
           </div>
 
-          <div style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fff' }}>
-            <table className="table" style={{ width: '100%', borderCollapse: 'collapse', margin: 0 }}>
+          <div className="roster-table-container" style={{ overflowX: 'auto', border: '1px solid #e2e8f0', borderRadius: '12px', backgroundColor: '#fff' }}>
+            <table className="table roster-table" style={{ width: '100%', borderCollapse: 'collapse', margin: 0 }}>
               <thead>
                 <tr style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
                   <th style={{ padding: '12px 18px', textAlign: 'left', fontSize: '12.5px', fontWeight: '800', color: '#475569', width: '280px' }}>
@@ -4542,6 +4559,7 @@ export default function App() {
                     return (
                       <tr 
                         key={dateKey} 
+                        className="roster-row"
                         style={{ 
                           borderBottom: '1px solid #e2e8f0',
                           backgroundColor: isToday 
@@ -4622,7 +4640,7 @@ export default function App() {
                         {/* Standby Officers Column */}
                         <td style={{ padding: '13px 18px', verticalAlign: 'middle' }}>
                           {names.length > 0 ? (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                            <div className="roster-officers-wrap" style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
                               {names.map((name, idx) => (
                                 <span 
                                   key={idx} 
@@ -8242,9 +8260,11 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
             </li>
           )}
-          <li className={`menu-item ${activeTab === 'pdf_hub' || activeTab === 'forms' ? 'active' : ''}`} onClick={() => handleMenuClick('pdf_hub')}>
-            <span className="menu-icon" style={{ fontSize: '15px' }}>📄</span> ទម្រង់ឯកសារស្នើសុំ PDF (PDF Form Hub)
-          </li>
+          {hasPermission('pdf_hub', 'read') && (
+            <li className={`menu-item ${activeTab === 'pdf_hub' || activeTab === 'forms' ? 'active' : ''}`} onClick={() => handleMenuClick('pdf_hub')}>
+              <span className="menu-icon" style={{ fontSize: '15px' }}>📄</span> ទម្រង់ឯកសារស្នើសុំ PDF (PDF Form Hub)
+            </li>
+          )}
           {hasPermission('tickets', 'read') && (
             <li className={`menu-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => handleMenuClick('tickets')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>🎫</span> ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
@@ -8260,12 +8280,12 @@ export default function App() {
               <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
             </li>
           )}
-          {hasPermission('dashboard', 'read') && (
+          {hasPermission('shift', 'read') && (
             <li className={`menu-item ${activeTab === 'shift' ? 'active' : ''}`} onClick={() => handleMenuClick('shift')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>📅</span> វេនប្រចាំការ (Shift)
             </li>
           )}
-          {hasPermission('dashboard', 'read') && (
+          {hasPermission('shift', 'write') && (
             <li className={`menu-item ${activeTab === 'shift_generator' ? 'active' : ''}`} onClick={() => handleMenuClick('shift_generator')}>
               <span className="menu-icon" style={{ fontSize: '15px' }}>🎲</span> Random កាលវិភាគប្រចាំការ
             </li>
@@ -8384,33 +8404,35 @@ export default function App() {
             </p>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
             {/* Search bar */}
-            <div className="search-container">
-              <span className="search-icon-left">🔍</span>
-              <input
-                type="text"
-                className="search-input"
-                placeholder="Search user, IP, MAC, branch..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-                onFocus={() => setShowSearchDropdown(searchResults.length > 0)}
-                onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
-              />
-              {showSearchDropdown && (
-                <div className="search-dropdown">
-                  {searchResults.map((r, i) => (
-                    <div key={i} className="search-result-item" onClick={() => handleSearchResultClick(r)}>
-                      <div className="search-result-title">{r.title}</div>
-                      <div className="search-result-subtitle">{r.subtitle}</div>
-                      <span className={`search-badge ${r.status === 'Using' || r.status === 'active' || r.status === 'UP' ? 'badge-active' : 'badge-inactive'}`}>
-                        {r.status || 'Available'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+            {!isGuest && (
+              <div className="search-container hide-on-mobile">
+                <span className="search-icon-left">🔍</span>
+                <input
+                  type="text"
+                  className="search-input"
+                  placeholder="Search user, IP, MAC, branch..."
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  onFocus={() => setShowSearchDropdown(searchResults.length > 0)}
+                  onBlur={() => setTimeout(() => setShowSearchDropdown(false), 200)}
+                />
+                {showSearchDropdown && (
+                  <div className="search-dropdown">
+                    {searchResults.map((r, i) => (
+                      <div key={i} className="search-result-item" onClick={() => handleSearchResultClick(r)}>
+                        <div className="search-result-title">{r.title}</div>
+                        <div className="search-result-subtitle">{r.subtitle}</div>
+                        <span className={`search-badge ${r.status === 'Using' || r.status === 'active' || r.status === 'UP' ? 'badge-active' : 'badge-inactive'}`}>
+                          {r.status || 'Available'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {!isStandaloneApp && (
               <button
@@ -8436,59 +8458,90 @@ export default function App() {
               </button>
             )}
 
-            <button
-              className="btn btn-secondary"
-              onClick={() => handleMenuClick('forms')}
-              style={{ borderRadius: '20px', padding: '6px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', cursor: 'pointer' }}
-            >
-              📄 ទម្រង់ឯកសារស្នើសុំផ្សេងៗ
-            </button>
+            {isGuest && (
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setCurrentLoginUser(null);
+                  localStorage.removeItem('currentLoginUser');
+                  setActiveTab('dashboard');
+                }}
+                style={{
+                  borderRadius: '20px',
+                  padding: '6px 14px',
+                  fontWeight: '800',
+                  fontSize: '12px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: '#2563eb',
+                  color: '#fff',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+              >
+                🔑 <span>ចូលគណនី Admin</span>
+              </button>
+            )}
+
+            {!isGuest && (
+              <button
+                className="btn btn-secondary hide-on-mobile"
+                onClick={() => handleMenuClick('forms')}
+                style={{ borderRadius: '20px', padding: '6px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', cursor: 'pointer' }}
+              >
+                📄 ទម្រង់ឯកសារស្នើសុំផ្សេងៗ
+              </button>
+            )}
 
             {/* Google Sheets Sync Status & Trigger */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{
-                fontSize: '11px',
-                fontWeight: '700',
-                padding: '6px 12px',
-                borderRadius: '20px',
-                backgroundColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#e6f4ea' : '#f1f5f9',
-                color: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#137333' : '#475569',
-                border: '1px solid',
-                borderColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#a3cfbb' : '#cbd5e1',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px'
-              }}>
-                <span style={{
-                  width: '6px',
-                  height: '6px',
-                  borderRadius: '50%',
-                  backgroundColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#10b981' : '#94a3b8'
-                }}></span>
-                {syncStatus.use_google_sheets && syncStatus.has_credentials_file ? 'Google Sheets សកម្ម' : 'Local Excel Mode'}
+            {!isGuest && (
+              <div className="hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  padding: '6px 12px',
+                  borderRadius: '20px',
+                  backgroundColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#e6f4ea' : '#f1f5f9',
+                  color: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#137333' : '#475569',
+                  border: '1px solid',
+                  borderColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#a3cfbb' : '#cbd5e1',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span style={{
+                    width: '6px',
+                    height: '6px',
+                    borderRadius: '50%',
+                    backgroundColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#10b981' : '#94a3b8'
+                  }}></span>
+                  {syncStatus.use_google_sheets && syncStatus.has_credentials_file ? 'Google Sheets សកម្ម' : 'Local Excel Mode'}
+                </div>
+                {syncStatus.use_google_sheets && syncStatus.has_credentials_file && !isViewer && (
+                  <button
+                    className="btn btn-secondary"
+                    style={{
+                      padding: '6px 12px',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      height: '32px'
+                    }}
+                    onClick={handlePullSync}
+                    disabled={isSyncing}
+                  >
+                    {isSyncing ? 'កំពុងទាញយក...' : '🔄 Sync ពី Google Sheets'}
+                  </button>
+                )}
               </div>
-              {syncStatus.use_google_sheets && syncStatus.has_credentials_file && !isViewer && (
-                <button
-                  className="btn btn-secondary"
-                  style={{
-                    padding: '6px 12px',
-                    fontSize: '11px',
-                    fontWeight: '700',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    height: '32px'
-                  }}
-                  onClick={handlePullSync}
-                  disabled={isSyncing}
-                >
-                  {isSyncing ? 'កំពុងទាញយក...' : '🔄 Sync ពី Google Sheets'}
-                </button>
-              )}
-            </div>
+            )}
             
             {/* Dynamic Interactive Notification Bell with Pending Approvals Panel */}
-            {(() => {
+            {!isGuest && (() => {
               const uFull = (currentLoginUser?.full_name || '').toLowerCase();
               const uName = (currentLoginUser?.username || '').toLowerCase();
               const pendingApprovalTickets = (tickets || []).filter(t => {

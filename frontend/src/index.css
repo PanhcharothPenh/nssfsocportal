@@ -1415,6 +1415,127 @@ body {
   }
 }
 
+/* Mobile Responsive Optimization for Standby Roster */
+@media (max-width: 768px) {
+  .hide-on-mobile {
+    display: none !important;
+  }
+
+  .navbar {
+    padding: 0 12px !important;
+    gap: 8px !important;
+  }
+
+  .shift-cards-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+  }
+  
+  .shift-card-compact {
+    padding: 16px !important;
+  }
+
+  .roster-panel {
+    padding: 14px !important;
+    border-radius: 16px !important;
+  }
+
+  .roster-header-top {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 12px !important;
+  }
+
+  .roster-header-actions {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .roster-header-actions .search-container {
+    width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .roster-header-actions .btn {
+    width: 100% !important;
+    justify-content: center !important;
+  }
+
+  .roster-filter-toolbar {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .roster-view-pills {
+    display: flex !important;
+    overflow-x: auto !important;
+    white-space: nowrap !important;
+    padding-bottom: 4px !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+  }
+
+  .roster-view-pills button {
+    flex-shrink: 0 !important;
+  }
+
+  .roster-month-nav {
+    justify-content: space-between !important;
+    width: 100% !important;
+  }
+
+  .roster-month-nav select {
+    flex: 1 !important;
+  }
+
+  /* Transform table into clean touch-friendly cards on mobile */
+  .roster-table-container {
+    border: none !important;
+    background: transparent !important;
+  }
+
+  .roster-table thead {
+    display: none !important;
+  }
+
+  .roster-table,
+  .roster-table tbody {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    width: 100% !important;
+  }
+
+  .roster-table tr.roster-row {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 10px !important;
+    padding: 14px 16px !important;
+    border-radius: 14px !important;
+    border: 1px solid #e2e8f0 !important;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.03) !important;
+  }
+
+  .roster-table tr.roster-row td {
+    display: block !important;
+    padding: 0 !important;
+    border: none !important;
+    width: 100% !important;
+  }
+
+  .roster-officers-wrap {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    padding-top: 2px !important;
+  }
+}
+
 /* Ensure 100% full background colors and badges when printing / saving as PDF */
 @media print {
   * {
