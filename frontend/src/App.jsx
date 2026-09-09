@@ -14506,7 +14506,7 @@ export default function App() {
                               style={{ padding: '10px 12px', fontSize: '13px', borderRadius: '8px', border: '1px solid #cbd5e1' }}
                               value={telegramTemplatesForm.telegram_bot_token}
                               onChange={(e) => setTelegramTemplatesForm({ ...telegramTemplatesForm, telegram_bot_token: e.target.value })}
-                              placeholder="e.g. 8621517870:AAFah..."
+                              placeholder="e.g. 1234567890:ABCdefGHIjklMNOpqrs..."
                             />
                           </div>
                           <div className="form-group" style={{ margin: 0, flex: 1 }}>

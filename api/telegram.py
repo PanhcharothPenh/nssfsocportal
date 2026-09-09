@@ -25,31 +25,27 @@ def get_telegram_config():
     if _tg_config_cache["bot_token"] and now < _tg_config_cache["expires_at"]:
         return _tg_config_cache["bot_token"], _tg_config_cache["chat_id"]
         
+    # Top priority: Read from Environment Variable (e.g. Vercel Environment Variables)
     bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     chat_id = os.getenv("TELEGRAM_CHAT_ID")
-    try:
-        from database import get_db_connection
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id')")
-        rows = cursor.fetchall()
-        conn.close()
-        for r in rows:
-            if r['key'] == 'telegram_bot_token' and r['value']:
-                val = str(r['value']).strip()
-                # Prefer DB token unless env var is explicitly provided and DB token is invalid
-                if val:
-                    bot_token = val
-            elif r['key'] == 'telegram_chat_id' and r['value']:
-                chat_id = str(r['value']).strip()
-    except Exception as db_err:
-        print(f"Error reading telegram config from DB: {db_err}")
+    
+    # Fallback to Database settings only if not set in environment
+    if not bot_token or not chat_id:
+        try:
+            from database import get_db_connection
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute("SELECT key, value FROM settings WHERE key IN ('telegram_bot_token', 'telegram_chat_id')")
+            rows = cursor.fetchall()
+            conn.close()
+            for r in rows:
+                if not bot_token and r['key'] == 'telegram_bot_token' and r['value']:
+                    bot_token = str(r['value']).strip()
+                elif not chat_id and r['key'] == 'telegram_chat_id' and r['value']:
+                    chat_id = str(r['value']).strip()
+        except Exception as db_err:
+            pass
 
-    if not bot_token:
-        bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
-    if not chat_id:
-        chat_id = os.getenv("TELEGRAM_CHAT_ID")
-        
     _tg_config_cache["bot_token"] = bot_token
     _tg_config_cache["chat_id"] = chat_id
     _tg_config_cache["expires_at"] = now + 60
