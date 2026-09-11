@@ -1307,8 +1307,8 @@ export default function App() {
 
   async function handleSaveDevRequest(e) {
     if (e) e.preventDefault();
-    if (!devRequestForm.purpose_kh && !devRequestForm.purpose_en) {
-      alert('សូមបញ្ចូលគោលបំណងស្នើសុំ (Purpose)');
+    if (!devRequestForm.purpose_kh?.trim()) {
+      alert('សូមបញ្ចូលគោលបំណងស្នើសុំ');
       return;
     }
     setSubmittingDevRequest(true);
@@ -9143,12 +9143,8 @@ export default function App() {
           <tr>
             <td style="text-align: center; font-weight: 700; width: 35px;">${toKhmerDigits(index + 1)}</td>
             <td style="white-space: nowrap; text-align: center; width: 75px;">${item.request_date || '-'}</td>
-            <td style="font-weight: 700; color: #0f172a; max-width: 250px;">
+            <td style="font-weight: 700; color: #0f172a; max-width: 320px;">
               ${item.purpose_kh || item.purpose_en || '-'}
-              ${item.purpose_kh && item.purpose_en ? `<div style="font-size: 9px; color: #475569; font-family: monospace; margin-top: 2px;">${item.purpose_en}</div>` : ''}
-            </td>
-            <td style="font-family: monospace; font-size: 9.5px; color: #1e3a8a; max-width: 170px; word-break: break-all;">
-              ${(!item.purpose_kh && item.purpose_en) ? '-' : (item.purpose_en || '-')}
             </td>
             <td style="font-weight: 700; color: #1e293b; width: 85px;">${item.requester || '-'}</td>
             <td style="font-weight: 700; color: #2563eb; width: 85px;">${item.assignee || '-'}</td>
@@ -9318,8 +9314,7 @@ export default function App() {
                 <tr>
                   <th style="text-align: center; width: 32px;">ល.រ</th>
                   <th style="text-align: center; width: 70px;">កាលបរិច្ឆេទ</th>
-                  <th>គោលបំណងស្នើសុំ (Purpose)</th>
-                  <th>Domain / IP / Port Spec</th>
+                  <th>គោលបំណងស្នើសុំ</th>
                   <th style="width: 80px;">អ្នកស្នើ</th>
                   <th style="width: 80px;">អ្នកទទួល</th>
                   <th style="text-align: center; width: 75px;">ស្ថានភាព</th>
@@ -9532,7 +9527,7 @@ export default function App() {
               <thead>
                 <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
                   <th style={{ width: '56px', textAlign: 'center', padding: '14px 10px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ល.រ</th>
-                  <th style={{ minWidth: '300px', padding: '14px 16px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>គោលបំណងស្នើសុំ (Purpose)</th>
+                  <th style={{ minWidth: '300px', padding: '14px 16px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>គោលបំណងស្នើសុំ</th>
                   <th style={{ width: '135px', textAlign: 'center', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ទម្រង់ស្នើសុំ</th>
                   <th style={{ width: '120px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>កាលបរិច្ឆេទស្នើ</th>
                   <th style={{ width: '130px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>អ្នកស្នើ</th>
@@ -9579,16 +9574,6 @@ export default function App() {
                         <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
                           {item.purpose_kh || item.purpose_en || '-'}
                         </div>
-                        {item.purpose_kh && item.purpose_en && (
-                          <div style={{
-                            marginTop: '6px', padding: '6px 10px', borderRadius: '8px',
-                            background: '#f8fafc', border: '1px solid #e2e8f0',
-                            fontSize: '11px', color: '#475569', fontFamily: 'var(--font-mono, monospace)',
-                            lineHeight: '1.5', whiteSpace: 'pre-line'
-                          }}>
-                            {item.purpose_en}
-                          </div>
-                        )}
                       </td>
                       <td style={{ textAlign: 'center', padding: '14px 12px' }}>
                         {(item.form_status || '').trim() === 'រួចរាល់' ? (
@@ -9749,40 +9734,21 @@ export default function App() {
               {/* Form Content */}
               <div style={{ padding: '18px 22px', overflowY: 'auto' }}>
                 <form onSubmit={handleSaveDevRequest} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                  {/* 1. Purpose */}
+                  {/* Purpose */}
                   <div>
                     <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                      គោលបំណងស្នើសុំ (Purpose) <span style={{ color: '#ef4444' }}>*</span>
+                      គោលបំណងស្នើសុំ <span style={{ color: '#ef4444' }}>*</span>
                     </label>
                     <textarea
-                      rows={2}
+                      rows={3}
                       className="form-input"
                       placeholder="ឧ. ស្នើសុំបើកប្រើប្រាស់ពីមន្ទីរពេទ្យ... ទៅកាន់ប្រព័ន្ធ HSPIS ថ្មី..."
                       value={devRequestForm.purpose_kh}
                       onChange={(e) => setDevRequestForm({ ...devRequestForm, purpose_kh: e.target.value })}
                       style={{
-                        width: '100%', minHeight: '65px', padding: '10px 12px', borderRadius: '10px',
+                        width: '100%', minHeight: '80px', padding: '10px 12px', borderRadius: '10px',
                         border: '1.5px solid #cbd5e1', fontSize: '13px', lineHeight: '1.5',
                         background: '#ffffff', resize: 'vertical'
-                      }}
-                    />
-                  </div>
-
-                  {/* 2. English Spec / Domain / IP */}
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                      Domain / IP / Port (Specification)
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="ឧ. dc-nssf.gov.kh | hspis-api.nssf.gov.kh | 192.168.10.20:443"
-                      value={devRequestForm.purpose_en}
-                      onChange={(e) => setDevRequestForm({ ...devRequestForm, purpose_en: e.target.value })}
-                      style={{
-                        width: '100%', padding: '9px 12px', borderRadius: '10px',
-                        border: '1.5px solid #cbd5e1', fontSize: '13px',
-                        fontFamily: 'monospace', background: '#ffffff'
                       }}
                     />
                   </div>
