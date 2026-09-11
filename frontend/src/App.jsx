@@ -7427,28 +7427,6 @@ export default function App() {
 
           {is2FARequired ? (
             <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'center' }}>
-              <div style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                width: '64px',
-                height: '64px',
-                margin: '0 auto 16px auto',
-                backgroundColor: isDarkMode ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
-                border: '2px solid #3b82f6',
-                borderRadius: '20px',
-                boxShadow: '0 8px 16px -4px rgba(59, 130, 246, 0.25)',
-                fontSize: '28px'
-              }}>
-                🔐
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: '800', color: isDarkMode ? '#f8fafc' : '#0f172a', margin: '0 0 6px 0' }}>
-                ផ្ទៀងផ្ទាត់សុវត្ថិភាព 2FA
-              </h3>
-              <p style={{ fontSize: '13px', color: isDarkMode ? '#94a3b8' : '#64748b', margin: '0 0 20px 0', lineHeight: '1.5' }}>
-                លេខកូដសម្ងាត់ ៦ ខ្ទង់ ត្រូវបានផ្ញើទៅកាន់ <strong style={{ color: isDarkMode ? '#60a5fa' : '#2563eb' }}>{twoFATarget}</strong> រួចរាល់ហើយ
-              </p>
-
               <form onSubmit={handleVerify2FA} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
                 <div className="form-group" style={{ margin: 0, textAlign: 'center' }}>
                   <label style={{ display: 'block', fontWeight: '700', color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '13px', marginBottom: '8px' }}>
