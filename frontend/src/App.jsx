@@ -10375,7 +10375,7 @@ export default function App() {
               {activeTab === 'kanban' && 'ប្រព័ន្ធគ្រប់គ្រងកិច្ចការងារ Bitrix (Task Management & Kanban Board)'}
               {activeTab === 'workflow' && 'ប្រព័ន្ធបង្កើត និងកំណត់រចនាសម្ព័ន្ធ Workflow (Visual Workflow & Approval Builder)'}
               {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
-              {activeTab === 'dev_requests' && 'តារាងការស្នើសុំ ខាង Developer (Google Sheet Sync)'}
+              {activeTab === 'dev_requests' && 'តារាងការស្នើសុំ ខាង Developer'}
               {(activeTab === 'pdf_hub' || activeTab === 'forms') && 'ប្រព័ន្ធទម្រង់ PDF តាមប្រភេទ (Categorized PDF Form Hub)'}
               {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
               {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់ (Night Shift Standby Roster)'}
