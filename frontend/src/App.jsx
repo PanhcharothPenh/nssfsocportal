@@ -10098,11 +10098,6 @@ export default function App() {
                 </li>
               )}
               {hasPermission('tickets', 'read') && (
-                <li className={`menu-item ${activeTab === 'kanban' ? 'active' : ''}`} onClick={() => handleMenuClick('kanban')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>📋</span> កិច្ចការងារ Bitrix (Kanban)
-                </li>
-              )}
-              {hasPermission('tickets', 'read') && (
                 <li className={`menu-item ${activeTab === 'dev_requests' ? 'active' : ''}`} onClick={() => handleMenuClick('dev_requests')}>
                   <span className="menu-icon" style={{ fontSize: '15px' }}>💻</span> តារាងស្នើសុំ Dev (Sheets)
                 </li>
