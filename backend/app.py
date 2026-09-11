@@ -2756,28 +2756,6 @@ def auth_verify_2fa(payload: Verify2FAPayload, request: Request):
     cursor.execute("DELETE FROM two_fa_sessions WHERE token = ?", (payload.two_fa_token,))
     conn.commit()
     conn.close()
-    
-    # Send login success notification to Telegram (only to target person if configured)
-    try:
-        from backend.telegram import send_telegram_message, get_telegram_config
-    except ImportError:
-        from api.telegram import send_telegram_message, get_telegram_config
-    now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-    success_msg = (
-        f"✅ <b>ការចូលគណនីជោគជ័យ (Login Verified)</b>\n\n"
-        f"👤 <b>គណនី:</b> <code>{user['username']}</code> ({user['full_name'] or 'Staff'})\n"
-        f"🌐 <b>IP Address:</b> <code>{client_ip}</code>\n"
-        f"⏰ <b>កាលបរិច្ឆេទ:</b> {now_str}\n"
-        f"🛡️ <b>ស្ថានភាព:</b> 2FA Verified by Telegram"
-    )
-    bot_token, default_chat_id = get_telegram_config()
-    target_chat = None
-    if user['telegram_chat_id'] and str(user['telegram_chat_id']).strip():
-        target_chat = str(user['telegram_chat_id']).strip()
-    elif default_chat_id and str(default_chat_id).strip():
-        target_chat = str(default_chat_id).strip()
-    if target_chat:
-        send_telegram_message(success_msg, chat_id=target_chat)
 
     perms = {}
     if user['permissions']:
