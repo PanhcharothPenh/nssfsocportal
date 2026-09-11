@@ -2183,6 +2183,13 @@ class UserLoginPayload(BaseModel):
     username: str
     password: str
 
+class Verify2FAPayload(BaseModel):
+    two_fa_token: str
+    otp_code: str
+
+class Resend2FAPayload(BaseModel):
+    two_fa_token: str
+
 class UserCreatePayload(BaseModel):
     username: str
     password: str
@@ -2545,6 +2552,9 @@ def auth_login(payload: UserLoginPayload, request: Request):
     from auth_utils import verify_password
     import json
     import datetime
+    import random
+    import uuid
+
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (payload.username.strip(),))
@@ -2552,19 +2562,170 @@ def auth_login(payload: UserLoginPayload, request: Request):
     
     if not user or not verify_password(payload.password, user['password_hash']):
         conn.close()
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(status_code=401, detail="ឈ្មោះអ្នកប្រើប្រាស់ ឬលេខសម្ងាត់មិនត្រឹមត្រូវ!")
         
     client_ip = request.client.host if request.client else '127.0.0.1'
+
+    # If guest user, allow direct login without 2FA
+    if user['username'].lower() == 'guest':
+        last_login = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+        cursor.execute("UPDATE users SET client_ip = ?, last_login = ? WHERE id = ?", (client_ip, last_login, user['id']))
+        conn.commit()
+        cursor.execute("SELECT * FROM users WHERE id = ?", (user['id'],))
+        user = cursor.fetchone()
+        conn.close()
+        perms = {}
+        if user['permissions']:
+            try:
+                perms = json.loads(user['permissions'])
+            except Exception:
+                pass
+        return {
+            "status": "success",
+            "user": {
+                "id": user['id'],
+                "username": user['username'],
+                "role": user['role'],
+                "full_name": user['full_name'],
+                "permissions": perms,
+                "email": user['email'],
+                "phone": user['phone'],
+                "department": user['department'],
+                "language": user['language'] or 'English',
+                "timezone": user['timezone'] or '(GMT+07:00) Bangkok',
+                "date_format": user['date_format'] or 'dd/mm/yyyy',
+                "theme": user['theme'] or 'Light',
+                "client_ip": user['client_ip'],
+                "last_login": user['last_login'],
+                "telegram_chat_id": user['telegram_chat_id'],
+                "telegram_username": user['telegram_username'],
+                "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1'
+            }
+        }
+
+    # Generate 6-digit OTP code for 2FA
+    otp_code = str(random.randint(100000, 999999))
+    two_fa_token = str(uuid.uuid4())
+
+    try:
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS two_fa_sessions (
+                token TEXT PRIMARY KEY,
+                user_id INTEGER,
+                username TEXT,
+                otp_code TEXT,
+                client_ip TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)
+        cursor.execute(
+            "INSERT OR REPLACE INTO two_fa_sessions (token, user_id, username, otp_code, client_ip) VALUES (?, ?, ?, ?, ?)",
+            (two_fa_token, user['id'], user['username'], otp_code, client_ip)
+        )
+        conn.commit()
+    except Exception as e:
+        print("Error saving 2fa session:", e)
+    finally:
+        conn.close()
+
+    # Send 2FA OTP Code to Telegram Bot
+    try:
+        from backend.telegram import send_telegram_message, get_telegram_config
+    except ImportError:
+        from api.telegram import send_telegram_message, get_telegram_config
+
+    now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    tg_message = (
+        f"🔐 <b>NSSF SOC Portal — លេខកូដផ្ទៀងផ្ទាត់ 2FA (Login Verification)</b>\n\n"
+        f"👤 <b>គណនី (Account):</b> <code>{user['username']}</code> ({user['full_name'] or 'Staff'})\n"
+        f"🌐 <b>IP Address:</b> <code>{client_ip}</code>\n"
+        f"⏰ <b>កាលបរិច្ឆេទ:</b> {now_str}\n\n"
+        f"🔑 <b>លេខកូដសម្ងាត់ 2FA OTP:</b>\n"
+        f"👉 <code><b>{otp_code}</b></code> 👈\n\n"
+        f"⚠️ <i>លេខកូដនេះមានសុពលភាព ៥ នាទី។ សូមកុំប្រាប់លេខកូដនេះទៅកាន់អ្នកដទៃ!</i>"
+    )
+
+    bot_token, default_chat_id = get_telegram_config()
+    target_chats = []
+    if user['telegram_chat_id']:
+        target_chats.append(str(user['telegram_chat_id']).strip())
+    if default_chat_id and str(default_chat_id).strip() not in target_chats:
+        target_chats.append(str(default_chat_id).strip())
+
+    sent_any = False
+    for cid in target_chats:
+        ok, _ = send_telegram_message(tg_message, chat_id=cid)
+        if ok:
+            sent_any = True
+
+    masked_target = "SOC Telegram Bot"
+    if user['telegram_username']:
+        masked_target = f"@{user['telegram_username']}"
+    elif user['telegram_chat_id']:
+        masked_target = f"Chat ID ...{str(user['telegram_chat_id'])[-4:]}"
+
+    return {
+        "status": "2fa_required",
+        "two_fa_token": two_fa_token,
+        "message": "លេខកូដ 2FA OTP ត្រូវបានផ្ញើទៅកាន់ Telegram Bot រួចរាល់ហើយ",
+        "telegram_target": masked_target,
+        "telegram_sent": sent_any
+    }
+
+@app.post("/api/auth/verify_2fa")
+def auth_verify_2fa(payload: Verify2FAPayload, request: Request):
+    import json
+    import datetime
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM two_fa_sessions WHERE token = ?", (payload.two_fa_token,))
+    session = cursor.fetchone()
+    
+    if not session:
+        conn.close()
+        raise HTTPException(status_code=400, detail="សម័យកាល 2FA មិនត្រឹមត្រូវ ឬបានផុតកំណត់ សូមព្យាយាម Login សារជាថ្មី")
+        
+    if payload.otp_code.strip() != str(session['otp_code']).strip():
+        conn.close()
+        raise HTTPException(status_code=400, detail="លេខកូដផ្ទៀងផ្ទាត់ 2FA មិនត្រឹមត្រូវឡើយ! សូមពិនិត្យមើលសារលើ Telegram ម្តងទៀត")
+        
+    cursor.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    client_ip = request.client.host if request.client else (session['client_ip'] or '127.0.0.1')
     last_login = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     
     cursor.execute("UPDATE users SET client_ip = ?, last_login = ? WHERE id = ?", (client_ip, last_login, user['id']))
+    cursor.execute("DELETE FROM two_fa_sessions WHERE token = ?", (payload.two_fa_token,))
     conn.commit()
-    
-    # Reload user info to get the updated values
-    cursor.execute("SELECT * FROM users WHERE id = ?", (user['id'],))
-    user = cursor.fetchone()
     conn.close()
     
+    # Send login success notification to Telegram
+    try:
+        from backend.telegram import send_telegram_message, get_telegram_config
+    except ImportError:
+        from api.telegram import send_telegram_message, get_telegram_config
+    now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    success_msg = (
+        f"✅ <b>ការចូលគណនីជោគជ័យ (Login Verified)</b>\n\n"
+        f"👤 <b>គណនី:</b> <code>{user['username']}</code> ({user['full_name'] or 'Staff'})\n"
+        f"🌐 <b>IP Address:</b> <code>{client_ip}</code>\n"
+        f"⏰ <b>កាលបរិច្ឆេទ:</b> {now_str}\n"
+        f"🛡️ <b>ស្ថានភាព:</b> 2FA Verified by Telegram"
+    )
+    bot_token, default_chat_id = get_telegram_config()
+    target_chats = []
+    if user['telegram_chat_id']:
+        target_chats.append(str(user['telegram_chat_id']).strip())
+    if default_chat_id and str(default_chat_id).strip() not in target_chats:
+        target_chats.append(str(default_chat_id).strip())
+    for cid in target_chats:
+        send_telegram_message(success_msg, chat_id=cid)
+
     perms = {}
     if user['permissions']:
         try:
@@ -2587,13 +2748,66 @@ def auth_login(payload: UserLoginPayload, request: Request):
             "timezone": user['timezone'] or '(GMT+07:00) Bangkok',
             "date_format": user['date_format'] or 'dd/mm/yyyy',
             "theme": user['theme'] or 'Light',
-            "client_ip": user['client_ip'],
-            "last_login": user['last_login'],
+            "client_ip": client_ip,
+            "last_login": last_login,
             "telegram_chat_id": user['telegram_chat_id'],
             "telegram_username": user['telegram_username'],
             "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1'
         }
     }
+
+@app.post("/api/auth/resend_2fa")
+def auth_resend_2fa(payload: Resend2FAPayload, request: Request):
+    import random
+    import datetime
+    
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM two_fa_sessions WHERE token = ?", (payload.two_fa_token,))
+    session = cursor.fetchone()
+    if not session:
+        conn.close()
+        raise HTTPException(status_code=400, detail="សម័យកាល 2FA បានផុតកំណត់ សូម Login សារជាថ្មី")
+        
+    cursor.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],))
+    user = cursor.fetchone()
+    if not user:
+        conn.close()
+        raise HTTPException(status_code=404, detail="User not found")
+        
+    new_otp = str(random.randint(100000, 999999))
+    cursor.execute("UPDATE two_fa_sessions SET otp_code = ?, created_at = CURRENT_TIMESTAMP WHERE token = ?", (new_otp, payload.two_fa_token))
+    conn.commit()
+    conn.close()
+    
+    client_ip = request.client.host if request.client else '127.0.0.1'
+    now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+    tg_message = (
+        f"🔄 <b>NSSF SOC Portal — ផ្ញើកូដ 2FA សារជាថ្មី (Resend Code)</b>\n\n"
+        f"👤 <b>គណនី:</b> <code>{user['username']}</code> ({user['full_name'] or 'Staff'})\n"
+        f"🌐 <b>IP Address:</b> <code>{client_ip}</code>\n"
+        f"⏰ <b>កាលបរិច្ឆេទ:</b> {now_str}\n\n"
+        f"🔑 <b>លេខកូដសម្ងាត់ថ្មី (New 2FA OTP):</b>\n"
+        f"👉 <code><b>{new_otp}</b></code> 👈\n\n"
+        f"⚠️ <i>លេខកូដនេះមានសុពលភាព ៥ នាទី។</i>"
+    )
+    
+    try:
+        from backend.telegram import send_telegram_message, get_telegram_config
+    except ImportError:
+        from api.telegram import send_telegram_message, get_telegram_config
+
+    bot_token, default_chat_id = get_telegram_config()
+    target_chats = []
+    if user['telegram_chat_id']:
+        target_chats.append(str(user['telegram_chat_id']).strip())
+    if default_chat_id and str(default_chat_id).strip() not in target_chats:
+        target_chats.append(str(default_chat_id).strip())
+
+    for cid in target_chats:
+        send_telegram_message(tg_message, chat_id=cid)
+
+    return {"status": "success", "message": "លេខកូដ 2FA ថ្មីត្រូវបានផ្ញើទៅកាន់ Telegram Bot រួចរាល់ហើយ"}
 
 @app.get("/api/users")
 def get_users():

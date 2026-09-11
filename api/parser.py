@@ -232,6 +232,20 @@ def create_tables(conn):
         updated_at TEXT,
         completed_at TEXT
     )
+    """)
+
+    # 13.1 Two-Factor Authentication (2FA) Sessions Table
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS two_fa_sessions (
+        token TEXT PRIMARY KEY,
+        user_id INTEGER,
+        username TEXT,
+        otp_code TEXT,
+        client_ip TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+    """)
+
     # 14. Approval Profiles Table
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS approval_profiles (

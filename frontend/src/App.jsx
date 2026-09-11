@@ -199,6 +199,25 @@ export default function App() {
   const [activeLoginTab, setActiveLoginTab] = useState('credentials');
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
+  // 2FA states
+  const [is2FARequired, setIs2FARequired] = useState(false);
+  const [twoFAToken, setTwoFAToken] = useState('');
+  const [twoFATarget, setTwoFATarget] = useState('Telegram Bot');
+  const [twoFAOtpInput, setTwoFAOtpInput] = useState('');
+  const [twoFALoading, setTwoFALoading] = useState(false);
+  const [twoFAError, setTwoFAError] = useState(null);
+  const [twoFAResendCooldown, setTwoFAResendCooldown] = useState(0);
+
+  useEffect(() => {
+    let timer;
+    if (twoFAResendCooldown > 0) {
+      timer = setTimeout(() => {
+        setTwoFAResendCooldown((c) => c - 1);
+      }, 1000);
+    }
+    return () => clearTimeout(timer);
+  }, [twoFAResendCooldown]);
+
   // User management states (Admin only)
   const [usersList, setUsersList] = useState([]);
   const [userForm, setUserForm] = useState({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'បុគ្គលិក', permissions: {} });
@@ -782,6 +801,15 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
+        if (data.status === '2fa_required') {
+          setIs2FARequired(true);
+          setTwoFAToken(data.two_fa_token);
+          setTwoFATarget(data.telegram_target || 'Telegram Bot');
+          setTwoFAOtpInput('');
+          setTwoFAError(null);
+          setTwoFAResendCooldown(30);
+          return;
+        }
         setCurrentLoginUser(data.user);
         localStorage.setItem('currentLoginUser', JSON.stringify(data.user));
         // Retrieve and restore user's signature if it exists
@@ -804,9 +832,93 @@ export default function App() {
     }
   };
 
+  const handleVerify2FA = async (e) => {
+    if (e) e.preventDefault();
+    if (!twoFAOtpInput.trim()) {
+      setTwoFAError('សូមបញ្ចូលលេខកូដ 6 ខ្ទង់ដែលបានផ្ញើទៅ Telegram');
+      return;
+    }
+    setTwoFAError(null);
+    setTwoFALoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/verify_2fa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          two_fa_token: twoFAToken,
+          otp_code: twoFAOtpInput.trim()
+        })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCurrentLoginUser(data.user);
+        localStorage.setItem('currentLoginUser', JSON.stringify(data.user));
+        const savedSig = localStorage.getItem('sig_' + data.user.username);
+        if (savedSig) {
+          setSignatureImage(savedSig);
+        } else {
+          setSignatureImage('');
+        }
+        setIs2FARequired(false);
+        setTwoFAToken('');
+        setTwoFAOtpInput('');
+        setLoginUsername('');
+        setLoginPassword('');
+      } else {
+        const err = await res.json();
+        setTwoFAError(err.detail || 'លេខកូដផ្ទៀងផ្ទាត់ 2FA មិនត្រឹមត្រូវឡើយ! សូមពិនិត្យមើល Telegram ម្តងទៀត');
+      }
+    } catch (err) {
+      setTwoFAError('មិនអាចភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ (Server Connection Error)');
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleResend2FA = async () => {
+    if (twoFAResendCooldown > 0 || twoFALoading) return;
+    setTwoFAError(null);
+    setTwoFALoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/resend_2fa`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          two_fa_token: twoFAToken
+        })
+      });
+      if (res.ok) {
+        setTwoFAResendCooldown(45);
+        setTwoFAOtpInput('');
+      } else {
+        const err = await res.json();
+        setTwoFAError(err.detail || 'មិនអាចផ្ញើកូដឡើងវិញបានទេ');
+      }
+    } catch (err) {
+      setTwoFAError('មិនអាចភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ (Server Connection Error)');
+    } finally {
+      setTwoFALoading(false);
+    }
+  };
+
+  const handleCancel2FA = () => {
+    setIs2FARequired(false);
+    setTwoFAToken('');
+    setTwoFAOtpInput('');
+    setTwoFAError(null);
+  };
+
   const handleLogout = () => {
     setCurrentLoginUser(null);
     localStorage.removeItem('currentLoginUser');
+    setIs2FARequired(false);
+    setTwoFAToken('');
+    setTwoFAOtpInput('');
+    setTwoFAError(null);
     setActiveTab('dashboard');
   };
 
@@ -7228,16 +7340,170 @@ export default function App() {
             Security Operations Center (SOC)
           </p>
 
-          {/* Login Tabs */}
-          <div style={{
-            display: 'flex',
-            background: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
-            padding: '4px',
-            borderRadius: '10px',
-            marginBottom: '24px',
-            border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.05)'
-          }}>
-            <button
+          {is2FARequired ? (
+            <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'center' }}>
+              <div style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                width: '64px',
+                height: '64px',
+                margin: '0 auto 16px auto',
+                backgroundColor: isDarkMode ? 'rgba(37, 99, 235, 0.15)' : '#eff6ff',
+                border: '2px solid #3b82f6',
+                borderRadius: '20px',
+                boxShadow: '0 8px 16px -4px rgba(59, 130, 246, 0.25)',
+                fontSize: '28px'
+              }}>
+                🔐
+              </div>
+              <h3 style={{ fontSize: '18px', fontWeight: '800', color: isDarkMode ? '#f8fafc' : '#0f172a', margin: '0 0 6px 0' }}>
+                ផ្ទៀងផ្ទាត់សុវត្ថិភាព 2FA
+              </h3>
+              <p style={{ fontSize: '13px', color: isDarkMode ? '#94a3b8' : '#64748b', margin: '0 0 18px 0', lineHeight: '1.5' }}>
+                លេខកូដសម្ងាត់ ៦ ខ្ទង់ ត្រូវបានផ្ញើទៅកាន់ <strong style={{ color: isDarkMode ? '#60a5fa' : '#2563eb' }}>{twoFATarget}</strong> រួចរាល់ហើយ
+              </p>
+
+              <div style={{
+                backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : '#f0f9ff',
+                border: isDarkMode ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #bae6fd',
+                borderRadius: '12px',
+                padding: '12px 14px',
+                marginBottom: '20px',
+                textAlign: 'left',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: '10px'
+              }}>
+                <span style={{ fontSize: '20px', lineHeight: 1 }}>✈️</span>
+                <div style={{ fontSize: '12.5px', color: isDarkMode ? '#93c5fd' : '#0369a1', lineHeight: '1.5' }}>
+                  សូមបើកមើលសារនៅលើ <strong>Telegram</strong> របស់អ្នក រួចយកលេខកូដសម្ងាត់ <strong>6 ខ្ទង់</strong> មកបំពេញខាងក្រោម ដើម្បីចូលប្រព័ន្ធ។
+                </div>
+              </div>
+
+              <form onSubmit={handleVerify2FA} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
+                <div className="form-group" style={{ margin: 0, textAlign: 'center' }}>
+                  <label style={{ display: 'block', fontWeight: '700', color: isDarkMode ? '#cbd5e1' : '#475569', fontSize: '13px', marginBottom: '8px' }}>
+                    លេខកូដ OTP (6-Digit Code)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    maxLength={6}
+                    autoFocus
+                    required
+                    value={twoFAOtpInput}
+                    onChange={(e) => setTwoFAOtpInput(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    style={{
+                      width: '100%',
+                      padding: '14px 16px',
+                      textAlign: 'center',
+                      letterSpacing: '10px',
+                      fontSize: '26px',
+                      fontWeight: '800',
+                      fontFamily: 'monospace',
+                      backgroundColor: isDarkMode ? 'rgba(15, 23, 42, 0.6)' : '#fff',
+                      border: isDarkMode ? '2px solid #3b82f6' : '2px solid #2563eb',
+                      borderRadius: '14px',
+                      color: isDarkMode ? '#60a5fa' : '#1d4ed8',
+                      outline: 'none',
+                      boxShadow: '0 4px 12px rgba(37, 99, 235, 0.15)'
+                    }}
+                    placeholder="••••••"
+                  />
+                </div>
+
+                {twoFAError && (
+                  <div style={{
+                    color: '#f87171',
+                    fontSize: '12.5px',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    padding: '10px 14px',
+                    borderRadius: '8px',
+                    border: '1px solid rgba(239, 68, 68, 0.15)',
+                    fontWeight: '600',
+                    lineHeight: '1.4'
+                  }}>
+                    ⚠️ {twoFAError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={twoFALoading || twoFAOtpInput.length < 6}
+                  style={{
+                    width: '100%',
+                    padding: '13px',
+                    backgroundColor: (twoFALoading || twoFAOtpInput.length < 6) ? '#94a3b8' : '#2563eb',
+                    color: '#ffffff',
+                    border: 'none',
+                    borderRadius: '12px',
+                    fontSize: '14px',
+                    fontWeight: '700',
+                    cursor: (twoFALoading || twoFAOtpInput.length < 6) ? 'not-allowed' : 'pointer',
+                    transition: 'background-color 0.2s, transform 0.1s',
+                    marginTop: '4px',
+                    boxShadow: (twoFALoading || twoFAOtpInput.length < 6) ? 'none' : '0 4px 10px rgba(37, 99, 235, 0.25)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  {twoFALoading ? '⏳ កំពុងផ្ទៀងផ្ទាត់...' : '✓ ផ្ទៀងផ្ទាត់ និងចូលគណនី (Verify OTP)'}
+                </button>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    onClick={handleResend2FA}
+                    disabled={twoFAResendCooldown > 0 || twoFALoading}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '12.5px',
+                      fontWeight: '700',
+                      color: twoFAResendCooldown > 0 ? (isDarkMode ? '#64748b' : '#94a3b8') : (isDarkMode ? '#60a5fa' : '#2563eb'),
+                      cursor: twoFAResendCooldown > 0 ? 'default' : 'pointer',
+                      padding: '6px 8px',
+                      borderRadius: '6px'
+                    }}
+                  >
+                    🔄 ផ្ញើកូដឡើងវិញ {twoFAResendCooldown > 0 ? `(${twoFAResendCooldown}s)` : ''}
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={handleCancel2FA}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      fontSize: '12.5px',
+                      fontWeight: '600',
+                      color: isDarkMode ? '#94a3b8' : '#64748b',
+                      cursor: 'pointer',
+                      padding: '6px 8px',
+                      borderRadius: '6px'
+                    }}
+                  >
+                    ← ត្រឡប់ក្រោយ (Back)
+                  </button>
+                </div>
+              </form>
+            </div>
+          ) : (
+            <>
+              {/* Login Tabs */}
+              <div style={{
+                display: 'flex',
+                background: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+                padding: '4px',
+                borderRadius: '10px',
+                marginBottom: '24px',
+                border: isDarkMode ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid rgba(0, 0, 0, 0.05)'
+              }}>
+                <button
               type="button"
               onClick={() => { setActiveLoginTab('credentials'); setLoginError(null); }}
               style={{
@@ -7576,6 +7842,8 @@ export default function App() {
               មិនបាច់ប្រើលេខសម្ងាត់ ដើម្បីពិនិត្យមើលកាលវិភាគវេនប្រចាំការ
             </div>
           </div>
+            </>
+          )}
         </div>
       </div>
     );

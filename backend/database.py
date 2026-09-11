@@ -70,6 +70,9 @@ class PostgresCursorWrapper:
                 sql += " ON CONFLICT (token) DO UPDATE SET status = EXCLUDED.status, username = EXCLUDED.username"
             else:
                 sql += " ON CONFLICT (token) DO UPDATE SET status = EXCLUDED.status"
+        elif 'INSERT OR REPLACE INTO two_fa_sessions' in sql:
+            sql = sql.replace('INSERT OR REPLACE INTO two_fa_sessions', 'INSERT INTO two_fa_sessions')
+            sql += " ON CONFLICT (token) DO UPDATE SET otp_code = EXCLUDED.otp_code, client_ip = EXCLUDED.client_ip, created_at = CURRENT_TIMESTAMP"
         elif 'INSERT OR REPLACE INTO' in sql:
             sql = sql.replace('INSERT OR REPLACE INTO', 'INSERT INTO')
             if 'branch_ips' in sql:
