@@ -7420,10 +7420,7 @@ export default function App() {
             <img src={nssfLogo} alt="NSSF Logo" style={{ width: '46px', height: '46px', objectFit: 'contain' }} />
           </div>
 
-          <h2 style={{ fontSize: '18px', fontWeight: '800', color: isDarkMode ? '#f8fafc' : '#0f172a', margin: '0 0 4px 0', letterSpacing: '0.5px' }}>មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)</h2>
-          <p style={{ fontSize: '12px', color: isDarkMode ? '#94a3b8' : '#475569', margin: '0 0 24px 0', fontWeight: '600' }}>
-            Security Operations Center (SOC)
-          </p>
+          <h2 style={{ fontSize: '18px', fontWeight: '800', color: isDarkMode ? '#f8fafc' : '#0f172a', margin: '0 0 24px 0', letterSpacing: '0.5px' }}>មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)</h2>
 
           {is2FARequired ? (
             <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'center' }}>
@@ -10238,7 +10235,6 @@ export default function App() {
               {activeTab === 'shift_generator' && 'ប្រព័ន្ធ Random & គ្រប់គ្រងកាលវិភាគប្រចាំការ (Shift Schedule Generator)'}
             </h1>
             <p>
-              {activeTab === 'dashboard' && 'Security Operations Center (SOC) & Electronic Request Management System'}
               {activeTab === 'kanban' && 'Bitrix-Style Task Pipeline, Visual Stages, Assignees & Deadlines'}
               {activeTab === 'dev_requests' && 'ទិន្នន័យស្នើសុំផ្ទាល់ពី Google Sheet "Firewall" — អាចបង្កើត កែប្រែ និង Sync ស្វ័យប្រវត្តិក្នងពេលជាក់ស្តែង'}
               {activeTab === 'workflow' && 'Bitrix24-Style Enterprise Drag & Drop Node Designer, Condition Engine & Multi-Level Approvals'}
