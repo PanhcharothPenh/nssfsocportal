@@ -44,6 +44,56 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+def ensure_user_columns_exist(conn=None):
+    should_close = False
+    if conn is None:
+        conn = get_db_connection()
+        should_close = True
+    try:
+        cursor = conn.cursor()
+        is_postgres = (conn.__class__.__name__ == 'PostgresConnectionWrapper')
+        user_cols = [
+            ("email", "TEXT"),
+            ("phone", "TEXT"),
+            ("department", "TEXT"),
+            ("position", "TEXT"),
+            ("language", "TEXT"),
+            ("timezone", "TEXT"),
+            ("date_format", "TEXT"),
+            ("theme", "TEXT"),
+            ("client_ip", "TEXT"),
+            ("last_login", "TEXT"),
+            ("telegram_chat_id", "TEXT"),
+            ("telegram_username", "TEXT"),
+            ("notify_telegram", "TEXT"),
+            ("must_change_password", "INTEGER DEFAULT 0"),
+            ("permissions", "TEXT")
+        ]
+        for col_name, col_type in user_cols:
+            try:
+                if is_postgres:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+                    conn.commit()
+                else:
+                    cursor.execute("PRAGMA table_info(users)")
+                    existing = [row[1] for row in cursor.fetchall()]
+                    if col_name not in existing:
+                        cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
+                        conn.commit()
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+    except Exception as e:
+        print("ensure_user_columns_exist warning:", e)
+    finally:
+        if should_close:
+            try:
+                conn.close()
+            except Exception:
+                pass
+
 def init_db_migrations():
     try:
         conn = get_db_connection()
@@ -74,6 +124,8 @@ def init_db_migrations():
         except Exception as e_k:
             print("Kanban table migration warning:", e_k)
             conn.rollback()
+
+        ensure_user_columns_exist(conn)
 
         conn.close()
     except Exception as e:
@@ -2830,7 +2882,18 @@ def auth_change_password(payload: ChangePasswordPayload):
             raise HTTPException(status_code=400, detail="លេខសម្ងាត់ថ្មីត្រូវតែមានយ៉ាងតិច 6 ខ្ទង់ (Password must be at least 6 characters)")
         
         hashed_pass = hash_password(payload.new_password.strip())
-        cursor.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?", (hashed_pass, payload.user_id))
+        try:
+            cursor.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?", (hashed_pass, payload.user_id))
+        except Exception as e_pass:
+            if any(k in str(e_pass).lower() for k in ["column", "exist", "must_change_password"]):
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                ensure_user_columns_exist(conn)
+                cursor.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?", (hashed_pass, payload.user_id))
+            else:
+                raise e_pass
         conn.commit()
         conn.close()
 
@@ -2907,10 +2970,11 @@ def create_user(payload: UserCreatePayload):
         perms_str = json.dumps(perms)
         
         must_change = payload.must_change_password if payload.must_change_password is not None else (0 if payload.role == 'admin' else 1)
-        cursor.execute("""
+        insert_sql = """
         INSERT INTO users (username, password_hash, role, full_name, permissions, telegram_username, email, position, must_change_password)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        """
+        insert_params = (
             payload.username.strip(), 
             hashed_pass, 
             payload.role, 
@@ -2920,7 +2984,19 @@ def create_user(payload: UserCreatePayload):
             payload.email.strip() if payload.email and payload.email.strip() else None,
             payload.position.strip() if payload.position else "មន្ត្រី",
             must_change
-        ))
+        )
+        try:
+            cursor.execute(insert_sql, insert_params)
+        except Exception as e_ins:
+            if any(k in str(e_ins).lower() for k in ["column", "exist", "must_change_password"]):
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                ensure_user_columns_exist(conn)
+                cursor.execute(insert_sql, insert_params)
+            else:
+                raise e_ins
         conn.commit()
         new_id = cursor.lastrowid
         if not new_id:
@@ -3008,7 +3084,18 @@ def update_user(user_id: int, payload: UserUpdatePayload):
             
         params.append(user_id)
         sql = f"UPDATE users SET {', '.join(fields)} WHERE id = ?"
-        cursor.execute(sql, tuple(params))
+        try:
+            cursor.execute(sql, tuple(params))
+        except Exception as e_up:
+            if any(k in str(e_up).lower() for k in ["column", "exist", "relation"]):
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                ensure_user_columns_exist(conn)
+                cursor.execute(sql, tuple(params))
+            else:
+                raise e_up
         conn.commit()
         conn.close()
         return {"status": "success"}
@@ -3039,31 +3126,43 @@ def update_user_profile(user_id: int, payload: UserProfileUpdatePayload):
         if fields:
             params.append(user_id)
             sql = f"UPDATE users SET {', '.join(fields)} WHERE id = ?"
-            cursor.execute(sql, tuple(params))
+            try:
+                cursor.execute(sql, tuple(params))
+            except Exception as e_up:
+                if any(k in str(e_up).lower() for k in ["column", "exist", "relation"]):
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    ensure_user_columns_exist(conn)
+                    cursor.execute(sql, tuple(params))
+                else:
+                    raise e_up
             conn.commit()
             
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         updated_user = cursor.fetchone()
         conn.close()
         
+        u_dict = dict(updated_user) if updated_user else {}
         return {
             "status": "success",
             "user": {
-                "id": updated_user['id'],
-                "username": updated_user['username'],
-                "role": updated_user['role'],
-                "full_name": updated_user['full_name'],
-                "email": updated_user['email'],
-                "phone": updated_user['phone'],
-                "department": updated_user['department'],
-                "language": updated_user['language'] or 'English',
-                "timezone": updated_user['timezone'] or '(GMT+07:00) Bangkok',
-                "date_format": updated_user['date_format'] or 'dd/mm/yyyy',
-                "theme": updated_user['theme'] or 'Light',
-                "client_ip": updated_user['client_ip'],
-                "last_login": updated_user['last_login'],
-                "telegram_chat_id": updated_user['telegram_chat_id'],
-                "telegram_username": updated_user['telegram_username']
+                "id": u_dict.get('id'),
+                "username": u_dict.get('username'),
+                "role": u_dict.get('role'),
+                "full_name": u_dict.get('full_name'),
+                "email": u_dict.get('email'),
+                "phone": u_dict.get('phone'),
+                "department": u_dict.get('department'),
+                "language": u_dict.get('language') or 'English',
+                "timezone": u_dict.get('timezone') or '(GMT+07:00) Bangkok',
+                "date_format": u_dict.get('date_format') or 'dd/mm/yyyy',
+                "theme": u_dict.get('theme') or 'Light',
+                "client_ip": u_dict.get('client_ip'),
+                "last_login": u_dict.get('last_login'),
+                "telegram_chat_id": u_dict.get('telegram_chat_id'),
+                "telegram_username": u_dict.get('telegram_username')
             }
         }
     except Exception as e:
