@@ -9396,23 +9396,22 @@ export default function App() {
           </div>
         </div>
 
-        {/* Clean, Easy Controls Toolbar */}
+        {/* Simple, Easy 1-Row Toolbar */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
-          {/* Left: Search input + Status Tabs + Form Filter (All in 1 clean group) */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '1 1 auto' }}>
-            <div style={{ position: 'relative', width: '260px', minWidth: '200px' }}>
+          {/* Left: Search input + Status Tabs */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <div style={{ position: 'relative', width: '220px' }}>
               <input
                 type="text"
-                className="form-input"
                 placeholder="🔍 ស្វែងរកក្នុងតារាង..."
                 value={devRequestSearch}
                 onChange={(e) => setDevRequestSearch(e.target.value)}
-                style={{ padding: '8px 28px 8px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '12.5px', width: '100%', background: '#fff' }}
+                style={{ padding: '7px 28px 7px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '12.5px', width: '100%', background: '#fff', outline: 'none' }}
               />
               {devRequestSearch && (
                 <button
                   onClick={() => setDevRequestSearch('')}
-                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '13px' }}
+                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '12px' }}
                 >
                   ✕
                 </button>
@@ -9420,12 +9419,13 @@ export default function App() {
             </div>
 
             {/* Status Filter Tabs */}
-            <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', gap: '3px' }}>
+            <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', gap: '2px' }}>
               <button
+                type="button"
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('all')}
                 style={{
-                  borderRadius: '8px', padding: '6px 12px', fontWeight: '800', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 12px', fontWeight: '700', fontSize: '12px',
                   background: devRequestStatusFilter === 'all' ? '#ffffff' : 'transparent',
                   color: devRequestStatusFilter === 'all' ? '#1e293b' : '#64748b',
                   boxShadow: devRequestStatusFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
@@ -9435,10 +9435,11 @@ export default function App() {
                 ទាំងអស់ ({totalCount})
               </button>
               <button
+                type="button"
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('pending')}
                 style={{
-                  borderRadius: '8px', padding: '6px 12px', fontWeight: '800', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 12px', fontWeight: '700', fontSize: '12px',
                   background: devRequestStatusFilter === 'pending' ? '#f59e0b' : 'transparent',
                   color: devRequestStatusFilter === 'pending' ? '#ffffff' : '#64748b',
                   boxShadow: devRequestStatusFilter === 'pending' ? '0 1px 3px rgba(245,158,11,0.25)' : 'none',
@@ -9448,10 +9449,11 @@ export default function App() {
                 ⏳ រង់ចាំ ({pendingCount})
               </button>
               <button
+                type="button"
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('done')}
                 style={{
-                  borderRadius: '8px', padding: '6px 12px', fontWeight: '800', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 12px', fontWeight: '700', fontSize: '12px',
                   background: devRequestStatusFilter === 'done' ? '#10b981' : 'transparent',
                   color: devRequestStatusFilter === 'done' ? '#ffffff' : '#64748b',
                   boxShadow: devRequestStatusFilter === 'done' ? '0 1px 3px rgba(16,185,129,0.25)' : 'none',
@@ -9461,33 +9463,21 @@ export default function App() {
                 ✅ រួចរាល់ ({doneCount})
               </button>
             </div>
-
-            {/* Form status dropdown */}
-            <select
-              className="form-input"
-              value={devRequestFormFilter}
-              onChange={(e) => setDevRequestFormFilter(e.target.value)}
-              style={{ borderRadius: '10px', padding: '7px 10px', fontSize: '12px', fontWeight: '700', border: '1.5px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
-            >
-              <option value="all">📑 ទម្រង់៖ ទាំងអស់</option>
-              <option value="pending">⚠️ មិនទាន់បំពេញទម្រង់</option>
-              <option value="done">✓ បានបំពេញទម្រង់រួច</option>
-            </select>
           </div>
 
-          {/* Right: Actions (Export PDF, Google Sheet, Refresh, New Request) */}
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Right: Actions */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
             <button
               type="button"
               className="btn"
               onClick={() => handleExportDevRequestsPDF(filtered)}
               style={{
-                borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px',
+                borderRadius: '10px', padding: '7px 14px', fontWeight: '700', fontSize: '12px',
                 display: 'flex', alignItems: 'center', gap: '6px',
                 background: '#ffffff', color: '#0b45b5', border: '1.5px solid #bfdbfe',
                 boxShadow: '0 1px 3px rgba(11,69,181,0.08)', cursor: 'pointer'
               }}
-              title="ទាញយក ឬ បោះពុម្ពជាឯកសារ PDF ផ្លូវការ"
+              title="ទាញយកជារបាយការណ៍ PDF"
             >
               📥 Export PDF
             </button>
@@ -9496,23 +9486,39 @@ export default function App() {
               target="_blank"
               rel="noreferrer"
               className="btn btn-secondary"
-              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', textDecoration: 'none' }}
+              style={{
+                borderRadius: '10px', padding: '7px 12px', fontWeight: '700', fontSize: '12px',
+                display: 'flex', alignItems: 'center', gap: '5px',
+                backgroundColor: '#f0fdf4', color: '#15803d', border: '1.5px solid #bbf7d0',
+                textDecoration: 'none'
+              }}
               title="បើកមើល Google Sheet ផ្ទាល់"
             >
-              📊 Google Sheet ↗
+              📊 Sheet ↗
             </a>
             <button
+              type="button"
               className="btn btn-secondary"
               onClick={fetchDevRequests}
               disabled={devRequestsLoading}
-              style={{ borderRadius: '10px', padding: '8px 12px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
+              style={{
+                borderRadius: '10px', padding: '7px 11px', fontWeight: '700', fontSize: '12px',
+                display: 'flex', alignItems: 'center',
+                backgroundColor: '#f8fafc', color: '#475569', border: '1.5px solid #cbd5e1', cursor: 'pointer'
+              }}
+              title="Refresh Data"
             >
-              🔄 {devRequestsLoading ? '...' : 'Refresh'}
+              🔄
             </button>
             <button
+              type="button"
               className="btn btn-primary"
               onClick={handleOpenAddDevRequest}
-              style={{ borderRadius: '10px', padding: '8px 18px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 3px 10px rgba(37,99,235,0.25)', border: 'none' }}
+              style={{
+                borderRadius: '10px', padding: '8px 18px', fontWeight: '800', fontSize: '12.5px',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 3px 10px rgba(37,99,235,0.25)', border: 'none', cursor: 'pointer'
+              }}
             >
               ➕ បង្កើតការស្នើសុំថ្មី
             </button>
