@@ -9109,6 +9109,255 @@ export default function App() {
     const commonAssignees = ['Mr.Samach', 'Mr.Panhcharoth', 'Mr.Bunthon'];
     const commonStatuses = ['done', 'pending', 'Verify Web Filter', 'in_progress'];
 
+    const handleExportDevRequestsPDF = (requestsToPrint) => {
+      const list = requestsToPrint || devRequests;
+      if (!list || list.length === 0) {
+        alert('មិនមានទិន្នន័យដើម្បី Export ជា PDF ឡើយ (No data to export)');
+        return;
+      }
+
+      const digitsKhmer = ['០', '១', '២', '៣', '៤', '៥', '៦', '៧', '៨', '៩'];
+      const monthsKhmer = ['មករា', 'កុម្ភៈ', 'មីនា', 'មេសា', 'ឧសភា', 'មិថុនា', 'កក្កដា', 'សីហា', 'កញ្ញា', 'តុលា', 'វិច្ឆិកា', 'ធ្នូ'];
+      const toKhmerDigits = (num) => String(num).split('').map(d => digitsKhmer[d] || d).join('');
+      
+      const now = new Date();
+      const day = now.getDate();
+      const month = monthsKhmer[now.getMonth()];
+      const year = now.getFullYear();
+      const solarDate = `រាជធានីភ្នំពេញ ថ្ងៃទី${toKhmerDigits(day)} ខែ${month} ឆ្នាំ${toKhmerDigits(year)}`;
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert("សូមអនុញ្ញាត Popup ក្នុង Browser ដើម្បីទាញយក PDF (Please allow popups)");
+        return;
+      }
+
+      const rowsHtml = list.map((item, index) => {
+        const isDone = (item.status || '').toLowerCase().includes('done');
+        const isPending = (item.status || '').toLowerCase().includes('pending') || !(item.status || '').trim();
+        const statusColor = isDone ? '#047857' : (isPending ? '#b45309' : '#3730a3');
+        const statusBg = isDone ? '#ecfdf5' : (isPending ? '#fef3c7' : '#e0e7ff');
+        const isFormDone = (item.form_status || '').trim() === 'រួចរាល់';
+
+        return `
+          <tr>
+            <td style="text-align: center; font-weight: 700; width: 35px;">${toKhmerDigits(index + 1)}</td>
+            <td style="white-space: nowrap; text-align: center; width: 75px;">${item.request_date || '-'}</td>
+            <td style="font-weight: 700; color: #0f172a; max-width: 250px;">
+              ${item.purpose_kh || item.purpose_en || '-'}
+              ${item.purpose_kh && item.purpose_en ? `<div style="font-size: 9px; color: #475569; font-family: monospace; margin-top: 2px;">${item.purpose_en}</div>` : ''}
+            </td>
+            <td style="font-family: monospace; font-size: 9.5px; color: #1e3a8a; max-width: 170px; word-break: break-all;">
+              ${(!item.purpose_kh && item.purpose_en) ? '-' : (item.purpose_en || '-')}
+            </td>
+            <td style="font-weight: 700; color: #1e293b; width: 85px;">${item.requester || '-'}</td>
+            <td style="font-weight: 700; color: #2563eb; width: 85px;">${item.assignee || '-'}</td>
+            <td style="text-align: center; width: 80px;">
+              <span style="display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 9.5px; font-weight: 700; background: ${statusBg}; color: ${statusColor};">
+                ${item.status || 'pending'}
+              </span>
+            </td>
+            <td style="text-align: center; width: 65px;">
+              <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; background: ${isFormDone ? '#dcfce7' : '#fee2e2'}; color: ${isFormDone ? '#166534' : '#991b1b'};">
+                ${item.form_status || 'មិនទាន់'}
+              </span>
+            </td>
+            <td style="font-size: 9.5px; color: #64748b; max-width: 130px;">${item.notes || '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      const htmlContent = `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <title>របាយការណ៍ស្នើសុំ Firewall / Developer Requests</title>
+            <meta charset="utf-8" />
+            <style>
+              @page {
+                size: A4 landscape;
+                margin: 12mm 12mm 15mm 12mm;
+              }
+              body {
+                font-family: 'MiSans Khmer', 'Segoe UI', Arial, sans-serif;
+                margin: 0;
+                padding: 10px;
+                color: #1e293b;
+                font-size: 10.5px;
+                line-height: 1.4;
+              }
+              .header-container {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 12px;
+                border-bottom: 2px solid #0b45b5;
+                padding-bottom: 8px;
+              }
+              .header-left-primary {
+                font-size: 13px;
+                font-weight: 800;
+                color: #0b45b5;
+              }
+              .header-left-secondary {
+                font-size: 10.5px;
+                font-weight: 700;
+                color: #334155;
+                margin-top: 2px;
+              }
+              .header-right {
+                text-align: right;
+              }
+              .header-right-title {
+                font-size: 13px;
+                font-weight: 800;
+                color: #1e293b;
+              }
+              .header-right-subtitle {
+                font-size: 10.5px;
+                font-weight: 700;
+                color: #1e293b;
+                margin-top: 2px;
+              }
+              .report-title {
+                text-align: center;
+                font-size: 14.5px;
+                font-weight: 800;
+                color: #0b45b5;
+                margin: 10px 0 3px 0;
+              }
+              .report-subtitle {
+                text-align: center;
+                font-size: 10.5px;
+                color: #64748b;
+                margin-bottom: 12px;
+              }
+              .stats-bar {
+                display: flex;
+                gap: 14px;
+                justify-content: center;
+                margin-bottom: 10px;
+                font-size: 10.5px;
+                font-weight: 700;
+              }
+              .stats-pill {
+                padding: 2px 9px;
+                border-radius: 10px;
+                background: #f1f5f9;
+                border: 1px solid #e2e8f0;
+              }
+              table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 6px;
+              }
+              th {
+                background-color: #0b45b5;
+                color: white;
+                border: 1px solid #0b45b5;
+                padding: 7px 6px;
+                font-weight: 800;
+                font-size: 10px;
+                text-align: left;
+              }
+              td {
+                border: 1px solid #cbd5e1;
+                padding: 5px 7px;
+                font-size: 9.5px;
+                vertical-align: top;
+              }
+              tr:nth-child(even) {
+                background-color: #f8fafc;
+              }
+              .signatures-container {
+                display: flex;
+                justify-content: space-between;
+                margin-top: 28px;
+                page-break-inside: avoid;
+              }
+              .sig-block {
+                text-align: center;
+                width: 200px;
+              }
+              .sig-title {
+                font-weight: 800;
+                font-size: 11px;
+                margin-bottom: 50px;
+              }
+              .sig-name {
+                font-weight: 800;
+                font-size: 10.5px;
+                border-top: 1px dotted #94a3b8;
+                padding-top: 4px;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="header-container">
+              <div>
+                <div class="header-left-primary">បេឡាជាតិសន្តិសុខសង្គម (NSSF)</div>
+                <div class="header-left-secondary">នាយកដ្ឋានបច្ចេកវិទ្យាព័ត៌មាន — មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)</div>
+              </div>
+              <div class="header-right">
+                <div class="header-right-title">ព្រះរាជាណាចក្រកម្ពុជា</div>
+                <div class="header-right-subtitle">ជាតិ សាសនា ព្រះមហាក្សត្រ</div>
+              </div>
+            </div>
+
+            <div class="report-title">តារាងតាមដានការស្នើសុំកែសម្រួលប្រព័ន្ធ Firewall / Developer</div>
+            <div class="report-subtitle">Google Sheet Worksheet "Firewall" • កាលបរិច្ឆេទចេញរបាយការណ៍៖ ${solarDate}</div>
+
+            <div class="stats-bar">
+              <span class="stats-pill">សំណើសរុប៖ <b>${toKhmerDigits(list.length)}</b></span>
+              <span class="stats-pill" style="color: #047857;">រួចរាល់ (Done)៖ <b>${toKhmerDigits(list.filter(r => (r.status || '').toLowerCase().includes('done')).length)}</b></span>
+              <span class="stats-pill" style="color: #b45309;">រង់ចាំ (Pending)៖ <b>${toKhmerDigits(list.filter(r => (r.status || '').toLowerCase().includes('pending') || !(r.status || '').trim()).length)}</b></span>
+            </div>
+
+            <table>
+              <thead>
+                <tr>
+                  <th style="text-align: center; width: 32px;">ល.រ</th>
+                  <th style="text-align: center; width: 70px;">កាលបរិច្ឆេទ</th>
+                  <th>គោលបំណងស្នើសុំ (Purpose)</th>
+                  <th>Domain / IP / Port Spec</th>
+                  <th style="width: 80px;">អ្នកស្នើ</th>
+                  <th style="width: 80px;">អ្នកទទួល</th>
+                  <th style="text-align: center; width: 75px;">ស្ថានភាព</th>
+                  <th style="text-align: center; width: 60px;">ទម្រង់</th>
+                  <th style="width: 110px;">ផ្សេងៗ</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${rowsHtml}
+              </tbody>
+            </table>
+
+            <div class="signatures-container">
+              <div class="sig-block">
+                <div class="sig-title">បានឃើញ និងឯកភាព<br/>ប្រធានការិយាល័យ / នាយកដ្ឋាន</div>
+                <div class="sig-name">...................................................</div>
+              </div>
+              <div class="sig-block">
+                <div class="sig-title">${solarDate}<br/>អ្នករៀបចំរបាយការណ៍</div>
+                <div class="sig-name">${currentLoginUser?.full_name || currentLoginUser?.username || 'មន្ត្រីទទួលបន្ទុក'}</div>
+              </div>
+            </div>
+
+            <script>
+              window.onload = function() {
+                window.focus();
+                window.print();
+              };
+            </script>
+          </body>
+        </html>
+      `;
+
+      printWindow.document.open();
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+    };
+
     return (
       <div className="tab-container fade-in" style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {/* Top Summary Metrics */}
@@ -9147,32 +9396,52 @@ export default function App() {
           </div>
         </div>
 
-        {/* Action Controls & Filters */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
-            {/* Status Filter Buttons */}
-            <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '4px', borderRadius: '14px', gap: '4px' }}>
+        {/* Clean, Easy Controls Toolbar */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '10px' }}>
+          {/* Left: Search input + Status Tabs + Form Filter (All in 1 clean group) */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: '1 1 auto' }}>
+            <div style={{ position: 'relative', width: '260px', minWidth: '200px' }}>
+              <input
+                type="text"
+                className="form-input"
+                placeholder="🔍 ស្វែងរកក្នុងតារាង..."
+                value={devRequestSearch}
+                onChange={(e) => setDevRequestSearch(e.target.value)}
+                style={{ padding: '8px 28px 8px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '12.5px', width: '100%', background: '#fff' }}
+              />
+              {devRequestSearch && (
+                <button
+                  onClick={() => setDevRequestSearch('')}
+                  style={{ position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '13px' }}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            {/* Status Filter Tabs */}
+            <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '3px', borderRadius: '10px', gap: '3px' }}>
               <button
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('all')}
                 style={{
-                  borderRadius: '10px', padding: '7px 14px', fontWeight: '800', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 12px', fontWeight: '800', fontSize: '12px',
                   background: devRequestStatusFilter === 'all' ? '#ffffff' : 'transparent',
                   color: devRequestStatusFilter === 'all' ? '#1e293b' : '#64748b',
-                  boxShadow: devRequestStatusFilter === 'all' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                  boxShadow: devRequestStatusFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
                   border: 'none', cursor: 'pointer'
                 }}
               >
-                📋 ទាំងអស់ ({totalCount})
+                ទាំងអស់ ({totalCount})
               </button>
               <button
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('pending')}
                 style={{
-                  borderRadius: '10px', padding: '7px 14px', fontWeight: '800', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 12px', fontWeight: '800', fontSize: '12px',
                   background: devRequestStatusFilter === 'pending' ? '#f59e0b' : 'transparent',
                   color: devRequestStatusFilter === 'pending' ? '#ffffff' : '#64748b',
-                  boxShadow: devRequestStatusFilter === 'pending' ? '0 2px 6px rgba(245,158,11,0.25)' : 'none',
+                  boxShadow: devRequestStatusFilter === 'pending' ? '0 1px 3px rgba(245,158,11,0.25)' : 'none',
                   border: 'none', cursor: 'pointer'
                 }}
               >
@@ -9182,10 +9451,10 @@ export default function App() {
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('done')}
                 style={{
-                  borderRadius: '10px', padding: '7px 14px', fontWeight: '800', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 12px', fontWeight: '800', fontSize: '12px',
                   background: devRequestStatusFilter === 'done' ? '#10b981' : 'transparent',
                   color: devRequestStatusFilter === 'done' ? '#ffffff' : '#64748b',
-                  boxShadow: devRequestStatusFilter === 'done' ? '0 2px 6px rgba(16,185,129,0.25)' : 'none',
+                  boxShadow: devRequestStatusFilter === 'done' ? '0 1px 3px rgba(16,185,129,0.25)' : 'none',
                   border: 'none', cursor: 'pointer'
                 }}
               >
@@ -9198,7 +9467,7 @@ export default function App() {
               className="form-input"
               value={devRequestFormFilter}
               onChange={(e) => setDevRequestFormFilter(e.target.value)}
-              style={{ borderRadius: '12px', padding: '8px 14px', fontSize: '12px', fontWeight: '700', border: '1.5px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
+              style={{ borderRadius: '10px', padding: '7px 10px', fontSize: '12px', fontWeight: '700', border: '1.5px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
             >
               <option value="all">📑 ទម្រង់៖ ទាំងអស់</option>
               <option value="pending">⚠️ មិនទាន់បំពេញទម្រង់</option>
@@ -9206,54 +9475,47 @@ export default function App() {
             </select>
           </div>
 
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          {/* Right: Actions (Export PDF, Google Sheet, Refresh, New Request) */}
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => handleExportDevRequestsPDF(filtered)}
+              style={{
+                borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px',
+                display: 'flex', alignItems: 'center', gap: '6px',
+                background: '#ffffff', color: '#0b45b5', border: '1.5px solid #bfdbfe',
+                boxShadow: '0 1px 3px rgba(11,69,181,0.08)', cursor: 'pointer'
+              }}
+              title="ទាញយក ឬ បោះពុម្ពជាឯកសារ PDF ផ្លូវការ"
+            >
+              📥 Export PDF
+            </button>
             <a
               href="https://docs.google.com/spreadsheets/d/1YZKou8qC7_C8JbAIKr7cG2wm7QHc_I_YmwD8YAH7hH4/edit?gid=0#gid=0"
               target="_blank"
               rel="noreferrer"
               className="btn btn-secondary"
-              style={{ borderRadius: '12px', padding: '8px 16px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', textDecoration: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
+              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', textDecoration: 'none' }}
               title="បើកមើល Google Sheet ផ្ទាល់"
             >
-              📊 បើកក្នុង Google Sheet ↗
+              📊 Google Sheet ↗
             </a>
             <button
               className="btn btn-secondary"
               onClick={fetchDevRequests}
               disabled={devRequestsLoading}
-              style={{ borderRadius: '12px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ borderRadius: '10px', padding: '8px 12px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '5px' }}
             >
-              🔄 {devRequestsLoading ? 'កំពុងផ្ទុក...' : 'Refresh'}
+              🔄 {devRequestsLoading ? '...' : 'Refresh'}
             </button>
             <button
               className="btn btn-primary"
               onClick={handleOpenAddDevRequest}
-              style={{ borderRadius: '12px', padding: '9px 20px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 4px 14px rgba(37,99,235,0.3)', border: 'none' }}
+              style={{ borderRadius: '10px', padding: '8px 18px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '6px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 3px 10px rgba(37,99,235,0.25)', border: 'none' }}
             >
               ➕ បង្កើតការស្នើសុំថ្មី
             </button>
-          </div>
-        </div>
-
-        {/* Search Field */}
-        <div style={{ marginBottom: '18px' }}>
-          <div style={{ position: 'relative', maxWidth: '540px' }}>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="🔍 ស្វែងរកតាម គោលបំណង, អ្នកស្នើ, អ្នកទទួល, ស្ថានភាព ឬ កំណត់សម្គាល់..."
-              value={devRequestSearch}
-              onChange={(e) => setDevRequestSearch(e.target.value)}
-              style={{ padding: '11px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', fontSize: '13px', width: '100%', background: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}
-            />
-            {devRequestSearch && (
-              <button
-                onClick={() => setDevRequestSearch('')}
-                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}
-              >
-                ✕
-              </button>
-            )}
           </div>
         </div>
 
