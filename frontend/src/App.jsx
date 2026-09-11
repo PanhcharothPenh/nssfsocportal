@@ -8759,87 +8759,135 @@ export default function App() {
     const getDevStatusBadge = (status) => {
       const s = (status || '').toLowerCase().trim();
       if (!s) {
-        return <span style={{ backgroundColor: '#f1f5f9', color: '#64748b', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⚪ មិនទាន់កំណត់</span>;
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#f1f5f9', color: '#64748b', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+            ⚪ មិនទាន់កំណត់
+          </span>
+        );
       }
       if (s.includes('done')) {
-        return <span style={{ backgroundColor: '#dcfce7', color: '#166534', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>✅ {status}</span>;
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#dcfce7', color: '#15803d', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #86efac', boxShadow: '0 1px 2px rgba(22,163,74,0.1)' }}>
+            ✅ {status}
+          </span>
+        );
       }
       if (s.includes('pending')) {
-        return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ {status}</span>;
+        return (
+          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #fde68a', boxShadow: '0 1px 2px rgba(245,158,11,0.1)' }}>
+            ⏳ {status}
+          </span>
+        );
       }
-      return <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>🔄 {status}</span>;
+      return (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #c7d2fe' }}>
+          🛡️ {status}
+        </span>
+      );
     };
 
+    const getTodayFormatted = () => {
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, '0');
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const yyyy = today.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    };
+
+    const commonRequesters = ['បង ផល', 'បង ធីតា', 'PROXY Solutions', 'LIM SOU'];
+    const commonAssignees = ['Mr.Samach', 'Mr.Panhcharoth', 'Mr.Bunthon'];
+    const commonStatuses = ['done', 'pending', 'Verify Web Filter', 'in_progress'];
+
     return (
-      <div className="tab-container fade-in">
+      <div className="tab-container fade-in" style={{ maxWidth: '1400px', margin: '0 auto' }}>
         {/* Top Summary Metrics */}
-        <div className="dashboard-grid" style={{ marginBottom: '16px' }}>
-          <div className="stat-card stat-card-blue">
-            <div className="stat-icon">💻</div>
+        <div className="dashboard-grid" style={{ marginBottom: '20px', gap: '16px' }}>
+          <div className="stat-card stat-card-blue" style={{ borderRadius: '18px', padding: '18px 20px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
+            <div className="stat-icon" style={{ fontSize: '24px' }}>💻</div>
             <div className="stat-info">
               <span className="stat-value">{totalCount}</span>
-              <span className="stat-label">សំណើសរុប (Total Requests)</span>
-              <span className="stat-sublabel">GOOGLE SHEET FIREWALL</span>
+              <span className="stat-label" style={{ fontWeight: '800', fontSize: '12px' }}>សំណើសរុប (Total Requests)</span>
+              <span className="stat-sublabel" style={{ color: '#64748b', fontSize: '10px' }}>GOOGLE SHEET FIREWALL</span>
             </div>
           </div>
-          <div className="stat-card stat-card-green">
-            <div className="stat-icon">✅</div>
+          <div className="stat-card stat-card-green" style={{ borderRadius: '18px', padding: '18px 20px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
+            <div className="stat-icon" style={{ fontSize: '24px' }}>✅</div>
             <div className="stat-info">
               <span className="stat-value">{doneCount}</span>
-              <span className="stat-label">ធ្វើរួចរាល់ (Completed)</span>
-              <span className="stat-sublabel">STATUS = DONE</span>
+              <span className="stat-label" style={{ fontWeight: '800', fontSize: '12px' }}>ធ្វើរួចរាល់ (Completed)</span>
+              <span className="stat-sublabel" style={{ color: '#16a34a', fontSize: '10px' }}>STATUS = DONE</span>
             </div>
           </div>
-          <div className="stat-card stat-card-red">
-            <div className="stat-icon">⏳</div>
+          <div className="stat-card stat-card-red" style={{ borderRadius: '18px', padding: '18px 20px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
+            <div className="stat-icon" style={{ fontSize: '24px' }}>⏳</div>
             <div className="stat-info">
               <span className="stat-value">{pendingCount}</span>
-              <span className="stat-label">កំពុងរង់ចាំ (Pending)</span>
-              <span className="stat-sublabel">IN-PROGRESS / PENDING</span>
+              <span className="stat-label" style={{ fontWeight: '800', fontSize: '12px' }}>កំពុងរង់ចាំ (Pending)</span>
+              <span className="stat-sublabel" style={{ color: '#ea580c', fontSize: '10px' }}>IN-PROGRESS / PENDING</span>
             </div>
           </div>
-          <div className="stat-card stat-card-purple">
-            <div className="stat-icon">📝</div>
+          <div className="stat-card stat-card-purple" style={{ borderRadius: '18px', padding: '18px 20px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
+            <div className="stat-icon" style={{ fontSize: '24px' }}>📝</div>
             <div className="stat-info">
               <span className="stat-value">{pendingFormCount}</span>
-              <span className="stat-label">មិនទាន់បំពេញទម្រង់</span>
-              <span className="stat-sublabel">NEED PAPERWORK</span>
+              <span className="stat-label" style={{ fontWeight: '800', fontSize: '12px' }}>មិនទាន់បំពេញទម្រង់</span>
+              <span className="stat-sublabel" style={{ color: '#9333ea', fontSize: '10px' }}>NEED PAPERWORK</span>
             </div>
           </div>
         </div>
 
         {/* Action Controls & Filters */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '12px' }}>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
             {/* Status Filter Buttons */}
-            <button
-              className={`btn ${devRequestStatusFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setDevRequestStatusFilter('all')}
-              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px' }}
-            >
-              📋 ទាំងអស់ ({totalCount})
-            </button>
-            <button
-              className={`btn ${devRequestStatusFilter === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setDevRequestStatusFilter('pending')}
-              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', backgroundColor: devRequestStatusFilter === 'pending' ? '#f59e0b' : '#f8fafc', borderColor: devRequestStatusFilter === 'pending' ? '#f59e0b' : '#cbd5e1' }}
-            >
-              ⏳ រង់ចាំ ({pendingCount})
-            </button>
-            <button
-              className={`btn ${devRequestStatusFilter === 'done' ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setDevRequestStatusFilter('done')}
-              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', backgroundColor: devRequestStatusFilter === 'done' ? '#10b981' : '#f8fafc', borderColor: devRequestStatusFilter === 'done' ? '#10b981' : '#cbd5e1' }}
-            >
-              ✅ រួចរាល់ ({doneCount})
-            </button>
+            <div style={{ display: 'inline-flex', background: '#f1f5f9', padding: '4px', borderRadius: '14px', gap: '4px' }}>
+              <button
+                className="btn"
+                onClick={() => setDevRequestStatusFilter('all')}
+                style={{
+                  borderRadius: '10px', padding: '7px 14px', fontWeight: '800', fontSize: '12px',
+                  background: devRequestStatusFilter === 'all' ? '#ffffff' : 'transparent',
+                  color: devRequestStatusFilter === 'all' ? '#1e293b' : '#64748b',
+                  boxShadow: devRequestStatusFilter === 'all' ? '0 2px 6px rgba(0,0,0,0.08)' : 'none',
+                  border: 'none', cursor: 'pointer'
+                }}
+              >
+                📋 ទាំងអស់ ({totalCount})
+              </button>
+              <button
+                className="btn"
+                onClick={() => setDevRequestStatusFilter('pending')}
+                style={{
+                  borderRadius: '10px', padding: '7px 14px', fontWeight: '800', fontSize: '12px',
+                  background: devRequestStatusFilter === 'pending' ? '#f59e0b' : 'transparent',
+                  color: devRequestStatusFilter === 'pending' ? '#ffffff' : '#64748b',
+                  boxShadow: devRequestStatusFilter === 'pending' ? '0 2px 6px rgba(245,158,11,0.25)' : 'none',
+                  border: 'none', cursor: 'pointer'
+                }}
+              >
+                ⏳ រង់ចាំ ({pendingCount})
+              </button>
+              <button
+                className="btn"
+                onClick={() => setDevRequestStatusFilter('done')}
+                style={{
+                  borderRadius: '10px', padding: '7px 14px', fontWeight: '800', fontSize: '12px',
+                  background: devRequestStatusFilter === 'done' ? '#10b981' : 'transparent',
+                  color: devRequestStatusFilter === 'done' ? '#ffffff' : '#64748b',
+                  boxShadow: devRequestStatusFilter === 'done' ? '0 2px 6px rgba(16,185,129,0.25)' : 'none',
+                  border: 'none', cursor: 'pointer'
+                }}
+              >
+                ✅ រួចរាល់ ({doneCount})
+              </button>
+            </div>
 
             {/* Form status dropdown */}
             <select
               className="form-input"
               value={devRequestFormFilter}
               onChange={(e) => setDevRequestFormFilter(e.target.value)}
-              style={{ borderRadius: '10px', padding: '7px 12px', fontSize: '12px', fontWeight: '700', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+              style={{ borderRadius: '12px', padding: '8px 14px', fontSize: '12px', fontWeight: '700', border: '1.5px solid #cbd5e1', background: '#fff', cursor: 'pointer' }}
             >
               <option value="all">📑 ទម្រង់៖ ទាំងអស់</option>
               <option value="pending">⚠️ មិនទាន់បំពេញទម្រង់</option>
@@ -8853,7 +8901,7 @@ export default function App() {
               target="_blank"
               rel="noreferrer"
               className="btn btn-secondary"
-              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', textDecoration: 'none' }}
+              style={{ borderRadius: '12px', padding: '8px 16px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', textDecoration: 'none', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}
               title="បើកមើល Google Sheet ផ្ទាល់"
             >
               📊 បើកក្នុង Google Sheet ↗
@@ -8862,14 +8910,14 @@ export default function App() {
               className="btn btn-secondary"
               onClick={fetchDevRequests}
               disabled={devRequestsLoading}
-              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+              style={{ borderRadius: '12px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
             >
               🔄 {devRequestsLoading ? 'កំពុងផ្ទុក...' : 'Refresh'}
             </button>
             <button
               className="btn btn-primary"
               onClick={handleOpenAddDevRequest}
-              style={{ borderRadius: '10px', padding: '8px 18px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(37,99,235,0.2)' }}
+              style={{ borderRadius: '12px', padding: '9px 20px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px', background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 4px 14px rgba(37,99,235,0.3)', border: 'none' }}
             >
               ➕ បង្កើតការស្នើសុំថ្មី
             </button>
@@ -8877,114 +8925,156 @@ export default function App() {
         </div>
 
         {/* Search Field */}
-        <div style={{ marginBottom: '16px' }}>
-          <input
-            type="text"
-            className="form-input"
-            placeholder="🔍 ស្វែងរកតាម គោលបំណង, អ្នកស្នើ, អ្នកទទួល, ស្ថានភាព ឬ កំណត់សម្គាល់..."
-            value={devRequestSearch}
-            onChange={(e) => setDevRequestSearch(e.target.value)}
-            style={{ padding: '10px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '13px', width: '100%', maxWidth: '520px' }}
-          />
+        <div style={{ marginBottom: '18px' }}>
+          <div style={{ position: 'relative', maxWidth: '540px' }}>
+            <input
+              type="text"
+              className="form-input"
+              placeholder="🔍 ស្វែងរកតាម គោលបំណង, អ្នកស្នើ, អ្នកទទួល, ស្ថានភាព ឬ កំណត់សម្គាល់..."
+              value={devRequestSearch}
+              onChange={(e) => setDevRequestSearch(e.target.value)}
+              style={{ padding: '11px 18px', borderRadius: '14px', border: '1.5px solid #cbd5e1', fontSize: '13px', width: '100%', background: '#fff', boxShadow: '0 2px 6px rgba(0,0,0,0.03)' }}
+            />
+            {devRequestSearch && (
+              <button
+                onClick={() => setDevRequestSearch('')}
+                style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: '14px' }}
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Table View */}
-        <div className="table-card">
+        <div className="table-card" style={{ borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 4px 20px -2px rgba(0,0,0,0.05)', overflow: 'hidden', background: '#ffffff' }}>
           <div className="table-responsive">
-            <table className="data-table">
+            <table className="data-table" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr>
-                  <th style={{ width: '50px', textAlign: 'center' }}>ល.រ</th>
-                  <th style={{ minWidth: '260px' }}>គោលបំណងស្នើសុំ (Purpose)</th>
-                  <th style={{ width: '130px', textAlign: 'center' }}>ទម្រង់ស្នើសុំ</th>
-                  <th style={{ width: '120px' }}>កាលបរិច្ឆេទស្នើ</th>
-                  <th style={{ width: '130px' }}>អ្នកស្នើ</th>
-                  <th style={{ width: '140px' }}>អ្នកទទួលបន្ទុក</th>
-                  <th style={{ width: '120px' }}>កាលបរិច្ឆេទរួច</th>
-                  <th style={{ width: '130px', textAlign: 'center' }}>ស្ថានភាព</th>
-                  <th style={{ minWidth: '140px' }}>ផ្សេងៗ (Notes)</th>
-                  <th style={{ width: '130px', textAlign: 'center' }}>សកម្មភាព</th>
+                <tr style={{ background: '#f8fafc', borderBottom: '1.5px solid #e2e8f0' }}>
+                  <th style={{ width: '56px', textAlign: 'center', padding: '14px 10px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ល.រ</th>
+                  <th style={{ minWidth: '300px', padding: '14px 16px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>គោលបំណងស្នើសុំ (Purpose)</th>
+                  <th style={{ width: '135px', textAlign: 'center', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ទម្រង់ស្នើសុំ</th>
+                  <th style={{ width: '120px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>កាលបរិច្ឆេទស្នើ</th>
+                  <th style={{ width: '130px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>អ្នកស្នើ</th>
+                  <th style={{ width: '140px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>អ្នកទទួលបន្ទុក</th>
+                  <th style={{ width: '120px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>កាលបរិច្ឆេទរួច</th>
+                  <th style={{ width: '135px', textAlign: 'center', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ស្ថានភាព</th>
+                  <th style={{ minWidth: '130px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ផ្សេងៗ (Notes)</th>
+                  <th style={{ width: '110px', textAlign: 'center', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>សកម្មភាព</th>
                 </tr>
               </thead>
               <tbody>
                 {devRequestsLoading ? (
                   <tr>
-                    <td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                      <div style={{ display: 'inline-block', fontSize: '20px', marginBottom: '8px' }}>⏳</div>
-                      <div>កំពុងទាញយកទិន្នន័យពី Google Sheets...</div>
+                    <td colSpan="10" style={{ textAlign: 'center', padding: '48px', color: '#64748b' }}>
+                      <div style={{ display: 'inline-block', fontSize: '24px', marginBottom: '8px', animation: 'spin 1s infinite linear' }}>⏳</div>
+                      <div style={{ fontWeight: '700', fontSize: '13px' }}>កំពុងទាញយកទិន្នន័យពី Google Sheets...</div>
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
-                    <td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
-                      មិនមានទិន្នន័យត្រូវគ្នានឹងការស្វែងរកឡើយ
+                    <td colSpan="10" style={{ textAlign: 'center', padding: '48px', color: '#64748b' }}>
+                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
+                      <div style={{ fontWeight: '700' }}>មិនមានទិន្នន័យត្រូវគ្នានឹងការស្វែងរកឡើយ</div>
                     </td>
                   </tr>
                 ) : (
                   filtered.map((item) => (
-                    <tr key={item.row_index || item.id}>
-                      <td style={{ textAlign: 'center', fontWeight: '800', color: '#2563eb' }}>
-                        #{item.id}
+                    <tr
+                      key={item.row_index || item.id}
+                      style={{ borderBottom: '1px solid #f1f5f9', transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8fafc'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <td style={{ textAlign: 'center', padding: '14px 10px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                          width: '32px', height: '32px', borderRadius: '10px',
+                          background: '#eff6ff', color: '#1d4ed8', fontWeight: '800', fontSize: '12px', fontFamily: 'monospace'
+                        }}>
+                          #{item.id}
+                        </span>
                       </td>
-                      <td>
-                        <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '13px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>
+                      <td style={{ padding: '14px 16px' }}>
+                        <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '13px', lineHeight: '1.6', whiteSpace: 'pre-line' }}>
                           {item.purpose_kh || item.purpose_en || '-'}
                         </div>
                         {item.purpose_kh && item.purpose_en && (
-                          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', whiteSpace: 'pre-line', fontFamily: 'monospace' }}>
+                          <div style={{
+                            marginTop: '6px', padding: '6px 10px', borderRadius: '8px',
+                            background: '#f8fafc', border: '1px solid #e2e8f0',
+                            fontSize: '11px', color: '#475569', fontFamily: 'var(--font-mono, monospace)',
+                            lineHeight: '1.5', whiteSpace: 'pre-line'
+                          }}>
                             {item.purpose_en}
                           </div>
                         )}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td style={{ textAlign: 'center', padding: '14px 12px' }}>
                         {(item.form_status || '').trim() === 'រួចរាល់' ? (
-                          <span style={{ backgroundColor: '#dcfce7', color: '#166534', fontWeight: '800', fontSize: '11px', padding: '3px 8px', borderRadius: '10px' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0',
+                            fontWeight: '700', fontSize: '11.5px', padding: '4px 10px', borderRadius: '16px'
+                          }}>
                             ✓ រួចរាល់
                           </span>
                         ) : (
-                          <span style={{ backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: '800', fontSize: '11px', padding: '3px 8px', borderRadius: '10px' }}>
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            backgroundColor: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3',
+                            fontWeight: '700', fontSize: '11.5px', padding: '4px 10px', borderRadius: '16px'
+                          }}>
                             ⚠️ មិនទាន់
                           </span>
                         )}
                       </td>
-                      <td style={{ fontSize: '12px', color: '#475569', fontWeight: '600' }}>
+                      <td style={{ fontSize: '12px', color: '#475569', fontWeight: '600', padding: '14px 12px' }}>
                         {item.request_date || '-'}
                       </td>
-                      <td>
-                        <span style={{ fontWeight: '700', fontSize: '12px', color: '#1e293b' }}>
-                          {item.requester || '-'}
+                      <td style={{ padding: '14px 12px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: '700', fontSize: '12px', color: '#1e293b', background: '#f1f5f9', padding: '3px 9px', borderRadius: '8px' }}>
+                          👤 {item.requester || '-'}
                         </span>
                       </td>
-                      <td>
-                        <span style={{ fontWeight: '700', fontSize: '12px', color: '#2563eb' }}>
-                          {item.assignee || '-'}
+                      <td style={{ padding: '14px 12px' }}>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: '700', fontSize: '12px', color: '#1d4ed8', background: '#eff6ff', padding: '3px 9px', borderRadius: '8px', border: '1px solid #dbeafe' }}>
+                          🛠️ {item.assignee || '-'}
                         </span>
                       </td>
-                      <td style={{ fontSize: '12px', color: '#475569' }}>
+                      <td style={{ fontSize: '12px', color: '#475569', padding: '14px 12px' }}>
                         {item.completed_date || <span style={{ color: '#94a3b8' }}>-</span>}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
+                      <td style={{ textAlign: 'center', padding: '14px 12px' }}>
                         {getDevStatusBadge(item.status)}
                       </td>
-                      <td style={{ fontSize: '11.5px', color: '#64748b', whiteSpace: 'pre-line' }}>
+                      <td style={{ fontSize: '11.5px', color: '#64748b', whiteSpace: 'pre-line', padding: '14px 12px' }}>
                         {item.notes || '-'}
                       </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                      <td style={{ textAlign: 'center', padding: '14px 12px' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
                           <button
-                            className="btn btn-secondary"
+                            className="btn"
                             onClick={() => handleOpenEditDevRequest(item)}
-                            title="កែប្រែ"
-                            style={{ padding: '4px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '800' }}
+                            title="កែប្រែទិន្នន័យ"
+                            style={{
+                              padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '700',
+                              background: '#ffffff', color: '#334155', border: '1.5px solid #cbd5e1', cursor: 'pointer',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '4px'
+                            }}
                           >
                             ✏️
                           </button>
                           {!(item.status || '').toLowerCase().includes('done') && (
                             <button
-                              className="btn btn-secondary"
+                              className="btn"
                               onClick={() => handleQuickUpdateDevStatus(item.row_index, 'done')}
                               title="សម្គាល់ថាបានធ្វើរួច (Mark Done)"
-                              style={{ padding: '4px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', backgroundColor: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }}
+                              style={{
+                                padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '800',
+                                backgroundColor: '#f0fdf4', color: '#15803d', border: '1.5px solid #bbf7d0', cursor: 'pointer'
+                              }}
                             >
                               ✓
                             </button>
@@ -8999,181 +9089,407 @@ export default function App() {
           </div>
         </div>
 
-        {/* Add/Edit Modal */}
+        {/* Add/Edit Modal with Ultra-Modern Interface */}
         {showDevRequestModal && (
-          <div className="modal-backdrop" onClick={() => setShowDevRequestModal(false)}>
+          <div
+            className="modal-backdrop"
+            onClick={() => setShowDevRequestModal(false)}
+            style={{
+              position: 'fixed', inset: 0,
+              backgroundColor: 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(8px)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              zIndex: 9999, padding: '16px'
+            }}
+          >
             <div
               className="modal-content"
               onClick={(e) => e.stopPropagation()}
-              style={{ maxWidth: '650px', width: '95%', maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px', padding: '24px' }}
+              style={{
+                maxWidth: '800px', width: '100%',
+                maxHeight: '92vh', overflowY: 'auto',
+                borderRadius: '24px', padding: '0',
+                backgroundColor: '#ffffff',
+                border: '1px solid rgba(226, 232, 240, 0.9)',
+                boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(255, 255, 255, 0.1)',
+                display: 'flex', flexDirection: 'column'
+              }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
-                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {editingDevRequest ? `✏️ កែប្រែការស្នើសុំ #${editingDevRequest.id}` : '➕ បង្កើតការស្នើសុំថ្មី (New Request)'}
-                </h3>
+              {/* Top Accent Gradient Bar */}
+              <div style={{ height: '5px', background: 'linear-gradient(90deg, #3b82f6, #6366f1, #a855f7, #ec4899)' }}></div>
+
+              {/* Modal Header */}
+              <div style={{ padding: '20px 24px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <div style={{
+                    width: '44px', height: '44px', borderRadius: '14px',
+                    background: editingDevRequest ? 'linear-gradient(135deg, #eff6ff, #dbeafe)' : 'linear-gradient(135deg, #f0fdf4, #dcfce7)',
+                    color: editingDevRequest ? '#1d4ed8' : '#15803d',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '22px', boxShadow: '0 2px 8px rgba(0,0,0,0.05)'
+                  }}>
+                    {editingDevRequest ? '✏️' : '➕'}
+                  </div>
+                  <div>
+                    <h3 style={{ margin: 0, fontSize: '18px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {editingDevRequest ? `កែប្រែការស្នើសុំ #${editingDevRequest.id}` : 'បង្កើតការស្នើសុំថ្មី (New Request)'}
+                      {editingDevRequest && (
+                        <span style={{ fontSize: '11.5px', background: '#eff6ff', color: '#1d4ed8', padding: '2px 8px', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
+                          Row {editingDevRequest.row_index}
+                        </span>
+                      )}
+                    </h3>
+                    <p style={{ margin: '2px 0 0', fontSize: '12px', color: '#64748b' }}>
+                      ទិន្នន័យនឹងត្រូវ Sync ស្វ័យប្រវត្តិចូលទៅ Google Sheet Worksheet <strong>Firewall</strong>
+                    </p>
+                  </div>
+                </div>
+
                 <button
                   onClick={() => setShowDevRequestModal(false)}
-                  style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
+                  style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    background: '#f1f5f9', border: 'none',
+                    fontSize: '16px', color: '#64748b', cursor: 'pointer',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#e2e8f0'; e.currentTarget.style.color = '#0f172a'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = '#f1f5f9'; e.currentTarget.style.color = '#64748b'; }}
                 >
                   ✕
                 </button>
               </div>
 
-              <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span>⚡</span>
-                <span>ទិន្នន័យនឹងត្រូវ Sync ស្វ័យប្រវត្តិចូលទៅក្នុង Google Sheet <strong>Firewall</strong> ភ្លាមៗ</span>
-              </div>
-
-              <form onSubmit={handleSaveDevRequest} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                    គោលបំណងស្នើសុំ KH (Khmer Purpose) <span style={{ color: '#ef4444' }}>*</span>
-                  </label>
-                  <textarea
-                    rows="2"
-                    className="form-input"
-                    placeholder="ឧ. ស្នើសុំបង្កើត VM Prod DC (Dashboard MLVT)..."
-                    value={devRequestForm.purpose_kh}
-                    onChange={(e) => setDevRequestForm({ ...devRequestForm, purpose_kh: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                  />
+              {/* Form Content */}
+              <div style={{ padding: '20px 24px', overflowY: 'auto' }}>
+                {/* Live Sync Status Banner */}
+                <div style={{
+                  background: 'linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)',
+                  border: '1px solid #bbf7d0', borderRadius: '14px',
+                  padding: '10px 16px', marginBottom: '18px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  fontSize: '12px'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: '#22c55e', boxShadow: '0 0 8px #22c55e' }}></span>
+                    <strong style={{ color: '#166534' }}>Google Sheets Live Sync:</strong>
+                    <span style={{ color: '#15803d' }}>Worksheet "Firewall" (ID: 0)</span>
+                  </div>
+                  <a
+                    href="https://docs.google.com/spreadsheets/d/1YZKou8qC7_C8JbAIKr7cG2wm7QHc_I_YmwD8YAH7hH4/edit?gid=0#gid=0"
+                    target="_blank"
+                    rel="noreferrer"
+                    style={{ color: '#15803d', textDecoration: 'none', fontWeight: '700', fontSize: '11.5px', display: 'flex', alignItems: 'center', gap: '3px' }}
+                  >
+                    មើល Sheet ↗
+                  </a>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                    គោលបំណងស្នើសុំ EN (English Purpose / Domain / IP)
-                  </label>
-                  <textarea
-                    rows="2"
-                    className="form-input"
-                    placeholder="ឧ. dc-nssf.gov.kh | dc-admin.nssf.gov.kh | 192.168.10.20..."
-                    value={devRequestForm.purpose_en}
-                    onChange={(e) => setDevRequestForm({ ...devRequestForm, purpose_en: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace' }}
-                  />
-                </div>
+                <form onSubmit={handleSaveDevRequest} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {/* Purpose Fields */}
+                  <div style={{ background: '#f8fafc', padding: '16px', borderRadius: '16px', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ fontSize: '12.5px', fontWeight: '800', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        🇰🇭 គោលបំណងស្នើសុំ (Khmer Purpose) <span style={{ color: '#ef4444' }}>*</span>
+                      </label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const temp = devRequestForm.purpose_kh;
+                          setDevRequestForm({
+                            ...devRequestForm,
+                            purpose_kh: devRequestForm.purpose_en,
+                            purpose_en: temp
+                          });
+                        }}
+                        title="ដោះដូរអត្ថបទរវាង KH និង EN (Swap text)"
+                        style={{
+                          background: '#ffffff', border: '1px solid #cbd5e1', borderRadius: '8px',
+                          padding: '3px 8px', fontSize: '11px', fontWeight: '700', color: '#475569',
+                          cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px'
+                        }}
+                      >
+                        ⇄ ដោះដូរ KH / EN
+                      </button>
+                    </div>
+                    <textarea
+                      rows={3}
+                      className="form-input"
+                      placeholder="ឧ. ស្នើសុំបើកប្រើប្រាស់ពីមន្ទីរពេទ្យ... ទៅកាន់ប្រព័ន្ធ HSPIS ថ្មី..."
+                      value={devRequestForm.purpose_kh}
+                      onChange={(e) => setDevRequestForm({ ...devRequestForm, purpose_kh: e.target.value })}
+                      style={{
+                        width: '100%', minHeight: '90px', padding: '12px 14px', borderRadius: '12px',
+                        border: '1.5px solid #cbd5e1', fontSize: '13.5px', lineHeight: '1.6',
+                        background: '#ffffff', resize: 'vertical'
+                      }}
+                    />
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                      ឈ្មោះអ្នកស្នើ (Requester)
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="ឧ. បង ធីតា, LIM SOU..."
-                      value={devRequestForm.requester}
-                      onChange={(e) => setDevRequestForm({ ...devRequestForm, requester: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                    />
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '800', color: '#1e293b', marginBottom: '6px' }}>
+                        🌐 គោលបំណងជាភាសាអង់គ្លេស / Domain / IP / VM (English Specification)
+                      </label>
+                      <textarea
+                        rows={3}
+                        className="form-input"
+                        placeholder="ឧ. dc-nssf.gov.kh | hspis-api.nssf.gov.kh | 192.168.10.20..."
+                        value={devRequestForm.purpose_en}
+                        onChange={(e) => setDevRequestForm({ ...devRequestForm, purpose_en: e.target.value })}
+                        style={{
+                          width: '100%', minHeight: '80px', padding: '12px 14px', borderRadius: '12px',
+                          border: '1.5px solid #cbd5e1', fontSize: '13px', lineHeight: '1.5',
+                          fontFamily: 'var(--font-mono, monospace)', background: '#ffffff', resize: 'vertical'
+                        }}
+                      />
+                    </div>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                      ឈ្មោះអ្នកទទួល (Assignee)
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="ឧ. Mr.Samach, Mr.Panhcharoth..."
-                      value={devRequestForm.assignee}
-                      onChange={(e) => setDevRequestForm({ ...devRequestForm, assignee: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                    />
-                  </div>
-                </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                      កាលបរិច្ឆេទស្នើសុំ (Request Date)
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="DD/MM/YYYY"
-                      value={devRequestForm.request_date}
-                      onChange={(e) => setDevRequestForm({ ...devRequestForm, request_date: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                    />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                      កាលបរិច្ឆេទធ្វើរួច (Completed Date)
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="DD/MM/YYYY (បើមិនទាន់រួច ទុកទទេ)"
-                      value={devRequestForm.completed_date}
-                      onChange={(e) => setDevRequestForm({ ...devRequestForm, completed_date: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                    />
-                  </div>
-                </div>
+                  {/* Requester & Assignee Row with Fast Selection Pills */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '800', color: '#1e293b', marginBottom: '6px' }}>
+                        👤 ឈ្មោះអ្នកស្នើ (Requester)
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="ឧ. បង ផល, បង ធីតា..."
+                        value={devRequestForm.requester}
+                        onChange={(e) => setDevRequestForm({ ...devRequestForm, requester: e.target.value })}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '13px', background: '#ffffff' }}
+                      />
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                        {commonRequesters.map((reqName) => (
+                          <button
+                            key={reqName}
+                            type="button"
+                            onClick={() => setDevRequestForm({ ...devRequestForm, requester: reqName })}
+                            style={{
+                              background: devRequestForm.requester === reqName ? '#eff6ff' : '#f1f5f9',
+                              color: devRequestForm.requester === reqName ? '#1d4ed8' : '#475569',
+                              border: devRequestForm.requester === reqName ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                              borderRadius: '8px', padding: '2px 8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer'
+                            }}
+                          >
+                            + {reqName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '800', color: '#1e293b', marginBottom: '6px' }}>
+                        🛠️ ឈ្មោះអ្នកទទួល (Assignee)
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="ឧ. Mr.Samach, Mr.Panhcharoth..."
+                        value={devRequestForm.assignee}
+                        onChange={(e) => setDevRequestForm({ ...devRequestForm, assignee: e.target.value })}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '13px', background: '#ffffff' }}
+                      />
+                      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+                        {commonAssignees.map((asgName) => (
+                          <button
+                            key={asgName}
+                            type="button"
+                            onClick={() => setDevRequestForm({ ...devRequestForm, assignee: asgName })}
+                            style={{
+                              background: devRequestForm.assignee === asgName ? '#eff6ff' : '#f1f5f9',
+                              color: devRequestForm.assignee === asgName ? '#1d4ed8' : '#475569',
+                              border: devRequestForm.assignee === asgName ? '1px solid #bfdbfe' : '1px solid #e2e8f0',
+                              borderRadius: '8px', padding: '2px 8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer'
+                            }}
+                          >
+                            + {asgName}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Dates Row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <label style={{ fontSize: '12.5px', fontWeight: '800', color: '#1e293b' }}>
+                          📅 កាលបរិច្ឆេទស្នើសុំ (Request Date)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setDevRequestForm({ ...devRequestForm, request_date: getTodayFormatted() })}
+                          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          ថ្ងៃនេះ (Today)
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="DD/MM/YYYY"
+                        value={devRequestForm.request_date}
+                        onChange={(e) => setDevRequestForm({ ...devRequestForm, request_date: e.target.value })}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '13px', background: '#ffffff' }}
+                      />
+                    </div>
+
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                        <label style={{ fontSize: '12.5px', fontWeight: '800', color: '#1e293b' }}>
+                          🏁 កាលបរិច្ឆេទធ្វើរួច (Completed Date)
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => setDevRequestForm({ ...devRequestForm, completed_date: getTodayFormatted() })}
+                          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
+                        >
+                          ថ្ងៃនេះ (Today)
+                        </button>
+                      </div>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="DD/MM/YYYY (បើមិនទាន់រួច ទុកទទេ)"
+                        value={devRequestForm.completed_date}
+                        onChange={(e) => setDevRequestForm({ ...devRequestForm, completed_date: e.target.value })}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '13px', background: '#ffffff' }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Form Status & Request Status Cards */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                    {/* Form Status Toggle Cards */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>
+                        📑 បំពេញទម្រង់ស្នើសុំ (Paperwork Status)
+                      </label>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                        <button
+                          type="button"
+                          onClick={() => setDevRequestForm({ ...devRequestForm, form_status: 'រួចរាល់' })}
+                          style={{
+                            padding: '10px 12px', borderRadius: '12px',
+                            border: devRequestForm.form_status === 'រួចរាល់' ? '2px solid #10b981' : '1.5px solid #e2e8f0',
+                            background: devRequestForm.form_status === 'រួចរាល់' ? '#ecfdf5' : '#ffffff',
+                            color: devRequestForm.form_status === 'រួចរាល់' ? '#047857' : '#64748b',
+                            fontWeight: '800', fontSize: '12.5px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                            boxShadow: devRequestForm.form_status === 'រួចរាល់' ? '0 2px 8px rgba(16,185,129,0.2)' : 'none'
+                          }}
+                        >
+                          ✓ រួចរាល់
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDevRequestForm({ ...devRequestForm, form_status: 'មិនទាន់' })}
+                          style={{
+                            padding: '10px 12px', borderRadius: '12px',
+                            border: devRequestForm.form_status === 'មិនទាន់' ? '2px solid #f59e0b' : '1.5px solid #e2e8f0',
+                            background: devRequestForm.form_status === 'មិនទាន់' ? '#fffbeb' : '#ffffff',
+                            color: devRequestForm.form_status === 'មិនទាន់' ? '#b45309' : '#64748b',
+                            fontWeight: '800', fontSize: '12.5px', cursor: 'pointer',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
+                            boxShadow: devRequestForm.form_status === 'មិនទាន់' ? '0 2px 8px rgba(245,158,11,0.2)' : 'none'
+                          }}
+                        >
+                          ⚠️ មិនទាន់
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Status Field with Preset Buttons */}
+                    <div>
+                      <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '800', color: '#1e293b', marginBottom: '8px' }}>
+                        ⚡ ស្ថានភាព (Execution Status)
+                      </label>
+                      <input
+                        type="text"
+                        className="form-input"
+                        placeholder="done, pending, in_progress..."
+                        value={devRequestForm.status}
+                        onChange={(e) => setDevRequestForm({ ...devRequestForm, status: e.target.value })}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '13px', background: '#ffffff', marginBottom: '6px' }}
+                      />
+                      <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                        {commonStatuses.map((st) => (
+                          <button
+                            key={st}
+                            type="button"
+                            onClick={() => {
+                              const newVals = { ...devRequestForm, status: st };
+                              if (st === 'done' && !devRequestForm.completed_date) {
+                                newVals.completed_date = getTodayFormatted();
+                              }
+                              setDevRequestForm(newVals);
+                            }}
+                            style={{
+                              background: devRequestForm.status === st ? '#1e293b' : '#f1f5f9',
+                              color: devRequestForm.status === st ? '#ffffff' : '#475569',
+                              border: 'none', borderRadius: '6px', padding: '3px 8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer'
+                            }}
+                          >
+                            {st}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Notes Field */}
                   <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                      បំពេញទម្រង់ស្នើសុំ (Form Status)
+                    <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '800', color: '#1e293b', marginBottom: '6px' }}>
+                      📝 ផ្សេងៗ (Notes / Details)
                     </label>
-                    <select
+                    <textarea
+                      rows={2}
                       className="form-input"
-                      value={devRequestForm.form_status}
-                      onChange={(e) => setDevRequestForm({ ...devRequestForm, form_status: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                      placeholder="កំណត់សម្គាល់បន្ថែម..."
+                      value={devRequestForm.notes}
+                      onChange={(e) => setDevRequestForm({ ...devRequestForm, notes: e.target.value })}
+                      style={{ width: '100%', minHeight: '65px', padding: '10px 14px', borderRadius: '12px', border: '1.5px solid #cbd5e1', fontSize: '13px', background: '#ffffff' }}
+                    />
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '10px', paddingTop: '16px', borderTop: '1px solid #f1f5f9' }}>
+                    <button
+                      type="button"
+                      className="btn"
+                      onClick={() => setShowDevRequestModal(false)}
+                      style={{
+                        borderRadius: '12px', padding: '11px 22px', fontWeight: '700', fontSize: '13px',
+                        background: '#f8fafc', color: '#475569', border: '1.5px solid #cbd5e1', cursor: 'pointer'
+                      }}
                     >
-                      <option value="មិនទាន់">⚠️ មិនទាន់</option>
-                      <option value="រួចរាល់">✓ រួចរាល់</option>
-                    </select>
+                      បោះបង់
+                    </button>
+                    <button
+                      type="submit"
+                      className="btn"
+                      disabled={submittingDevRequest}
+                      style={{
+                        borderRadius: '12px', padding: '11px 28px', fontWeight: '800', fontSize: '13px',
+                        background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', color: '#ffffff',
+                        border: 'none', cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(37, 99, 235, 0.35)',
+                        display: 'flex', alignItems: 'center', gap: '8px'
+                      }}
+                    >
+                      {submittingDevRequest ? (
+                        <>
+                          <span style={{ display: 'inline-block', animation: 'spin 1s infinite linear' }}>⏳</span>
+                          <span>កំពុងរក្សាទុក...</span>
+                        </>
+                      ) : (
+                        editingDevRequest ? '💾 រក្សាទុកការកែប្រែ' : '➕ បញ្ជូនសំណើ'
+                      )}
+                    </button>
                   </div>
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                      ស្ថានភាព (Status)
-                    </label>
-                    <input
-                      type="text"
-                      className="form-input"
-                      placeholder="pending, done, in_progress..."
-                      value={devRequestForm.status}
-                      onChange={(e) => setDevRequestForm({ ...devRequestForm, status: e.target.value })}
-                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
-                    ផ្សេងៗ (Notes / Details)
-                  </label>
-                  <textarea
-                    rows="2"
-                    className="form-input"
-                    placeholder="កំណត់សម្គាល់បន្ថែម..."
-                    value={devRequestForm.notes}
-                    onChange={(e) => setDevRequestForm({ ...devRequestForm, notes: e.target.value })}
-                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
-                  />
-                </div>
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={() => setShowDevRequestModal(false)}
-                    style={{ borderRadius: '10px', padding: '10px 18px', fontWeight: '700' }}
-                  >
-                    បោះបង់
-                  </button>
-                  <button
-                    type="submit"
-                    className="btn btn-primary"
-                    disabled={submittingDevRequest}
-                    style={{ borderRadius: '10px', padding: '10px 22px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}
-                  >
-                    {submittingDevRequest ? 'កំពុងរក្សាទុក...' : (editingDevRequest ? '💾 រក្សាទុកការកែប្រែ' : '➕ បញ្ជូនសំណើ')}
-                  </button>
-                </div>
-              </form>
+                </form>
+              </div>
             </div>
           </div>
         )}
