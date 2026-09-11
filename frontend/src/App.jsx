@@ -316,7 +316,6 @@ export default function App() {
   const [devRequestsLoading, setDevRequestsLoading] = useState(false);
   const [devRequestSearch, setDevRequestSearch] = useState('');
   const [devRequestStatusFilter, setDevRequestStatusFilter] = useState('all');
-  const [devRequestFormFilter, setDevRequestFormFilter] = useState('all');
   const [showDevRequestModal, setShowDevRequestModal] = useState(false);
   const [editingDevRequest, setEditingDevRequest] = useState(null);
   const [submittingDevRequest, setSubmittingDevRequest] = useState(false);
@@ -9054,11 +9053,6 @@ export default function App() {
         if (devRequestStatusFilter === 'pending' && (!st.includes('pending') && st !== '')) return false;
         if (devRequestStatusFilter === 'other' && (st.includes('done') || st.includes('pending') || st === '')) return false;
       }
-      if (devRequestFormFilter !== 'all') {
-        const fst = (item.form_status || '').trim();
-        if (devRequestFormFilter === 'done' && fst !== 'រួចរាល់') return false;
-        if (devRequestFormFilter === 'pending' && fst !== 'មិនទាន់') return false;
-      }
       return true;
     });
 
@@ -9071,28 +9065,28 @@ export default function App() {
       const s = (status || '').toLowerCase().trim();
       if (!s) {
         return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#f1f5f9', color: '#64748b', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
-            ⚪ មិនទាន់កំណត់
+          <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#f1f5f9', color: '#64748b', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '20px', border: '1px solid #e2e8f0' }}>
+            មិនទាន់កំណត់
           </span>
         );
       }
       if (s.includes('done')) {
         return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#dcfce7', color: '#15803d', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #86efac', boxShadow: '0 1px 2px rgba(22,163,74,0.1)' }}>
-            ✅ {status}
+          <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#dcfce7', color: '#15803d', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #86efac', boxShadow: '0 1px 2px rgba(22,163,74,0.1)' }}>
+            {status}
           </span>
         );
       }
       if (s.includes('pending')) {
         return (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #fde68a', boxShadow: '0 1px 2px rgba(245,158,11,0.1)' }}>
-            ⏳ {status}
+          <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#fef3c7', color: '#b45309', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #fde68a', boxShadow: '0 1px 2px rgba(245,158,11,0.1)' }}>
+            {status}
           </span>
         );
       }
       return (
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #c7d2fe' }}>
-          🛡️ {status}
+        <span style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '800', fontSize: '11px', padding: '4px 11px', borderRadius: '20px', border: '1px solid #c7d2fe' }}>
+          {status}
         </span>
       );
     };
@@ -9133,32 +9127,22 @@ export default function App() {
       }
 
       const rowsHtml = list.map((item, index) => {
-        const isDone = (item.status || '').toLowerCase().includes('done');
-        const isPending = (item.status || '').toLowerCase().includes('pending') || !(item.status || '').trim();
-        const statusColor = isDone ? '#047857' : (isPending ? '#b45309' : '#3730a3');
-        const statusBg = isDone ? '#ecfdf5' : (isPending ? '#fef3c7' : '#e0e7ff');
-        const isFormDone = (item.form_status || '').trim() === 'រួចរាល់';
-
         return `
           <tr>
-            <td style="text-align: center; font-weight: 700; width: 35px;">${toKhmerDigits(index + 1)}</td>
-            <td style="white-space: nowrap; text-align: center; width: 75px;">${item.request_date || '-'}</td>
-            <td style="font-weight: 700; color: #0f172a; max-width: 320px;">
+            <td style="text-align: center; font-weight: 700; width: 35px; color: #000;">${toKhmerDigits(index + 1)}</td>
+            <td style="white-space: nowrap; text-align: center; width: 75px; color: #000;">${item.request_date || '-'}</td>
+            <td style="color: #000; max-width: 320px; font-weight: 600; line-height: 1.4;">
               ${item.purpose_kh || item.purpose_en || '-'}
             </td>
-            <td style="font-weight: 700; color: #1e293b; width: 85px;">${item.requester || '-'}</td>
-            <td style="font-weight: 700; color: #2563eb; width: 85px;">${item.assignee || '-'}</td>
-            <td style="text-align: center; width: 80px;">
-              <span style="display: inline-block; padding: 2px 7px; border-radius: 5px; font-size: 9.5px; font-weight: 700; background: ${statusBg}; color: ${statusColor};">
-                ${item.status || 'pending'}
-              </span>
+            <td style="color: #000; width: 85px;">${item.requester || '-'}</td>
+            <td style="color: #000; width: 85px;">${item.assignee || '-'}</td>
+            <td style="text-align: center; width: 80px; color: #000;">
+              ${item.status || 'pending'}
             </td>
-            <td style="text-align: center; width: 65px;">
-              <span style="display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 9.5px; font-weight: 700; background: ${isFormDone ? '#dcfce7' : '#fee2e2'}; color: ${isFormDone ? '#166534' : '#991b1b'};">
-                ${item.form_status || 'មិនទាន់'}
-              </span>
+            <td style="text-align: center; width: 65px; color: #000;">
+              ${item.form_status || 'មិនទាន់'}
             </td>
-            <td style="font-size: 9.5px; color: #64748b; max-width: 130px;">${item.notes || '-'}</td>
+            <td style="font-size: 8.5px; color: #000; max-width: 130px;">${item.notes || '-'}</td>
           </tr>
         `;
       }).join('');
@@ -9172,33 +9156,37 @@ export default function App() {
             <style>
               @page {
                 size: A4 landscape;
-                margin: 12mm 12mm 15mm 12mm;
+                margin: 8mm 10mm 10mm 10mm;
               }
-              body {
-                font-family: 'MiSans Khmer', 'Segoe UI', Arial, sans-serif;
+              html, body {
+                width: 100%;
+                height: auto !important;
+                overflow: visible !important;
                 margin: 0;
-                padding: 10px;
-                color: #1e293b;
-                font-size: 10.5px;
-                line-height: 1.4;
+                padding: 0;
+                color: #000;
+                background: #fff;
+                font-family: 'MiSans Khmer', 'Segoe UI', Arial, sans-serif;
+                font-size: 9.5px;
+                line-height: 1.3;
               }
               .header-container {
                 display: flex;
                 justify-content: space-between;
                 align-items: flex-start;
-                margin-bottom: 12px;
-                border-bottom: 2px solid #0b45b5;
-                padding-bottom: 8px;
+                margin-bottom: 10px;
+                border-bottom: 1.5px solid #000;
+                padding-bottom: 6px;
               }
               .header-left-primary {
                 font-size: 13px;
                 font-weight: 800;
-                color: #0b45b5;
+                color: #000;
               }
               .header-left-secondary {
-                font-size: 10.5px;
+                font-size: 10px;
                 font-weight: 700;
-                color: #334155;
+                color: #000;
                 margin-top: 2px;
               }
               .header-right {
@@ -9207,68 +9195,78 @@ export default function App() {
               .header-right-title {
                 font-size: 13px;
                 font-weight: 800;
-                color: #1e293b;
+                color: #000;
               }
               .header-right-subtitle {
-                font-size: 10.5px;
+                font-size: 10px;
                 font-weight: 700;
-                color: #1e293b;
+                color: #000;
                 margin-top: 2px;
               }
               .report-title {
                 text-align: center;
-                font-size: 14.5px;
+                font-size: 14px;
                 font-weight: 800;
-                color: #0b45b5;
-                margin: 10px 0 3px 0;
+                color: #000;
+                margin: 8px 0 2px 0;
               }
               .report-subtitle {
                 text-align: center;
-                font-size: 10.5px;
-                color: #64748b;
-                margin-bottom: 12px;
+                font-size: 10px;
+                color: #000;
+                margin-bottom: 8px;
               }
               .stats-bar {
                 display: flex;
-                gap: 14px;
+                gap: 12px;
                 justify-content: center;
-                margin-bottom: 10px;
-                font-size: 10.5px;
+                margin-bottom: 8px;
+                font-size: 10px;
                 font-weight: 700;
               }
               .stats-pill {
-                padding: 2px 9px;
-                border-radius: 10px;
-                background: #f1f5f9;
-                border: 1px solid #e2e8f0;
+                padding: 2px 8px;
+                border-radius: 4px;
+                background: #fff;
+                border: 1px solid #000;
+                color: #000;
               }
               table {
                 width: 100%;
                 border-collapse: collapse;
-                margin-top: 6px;
+                margin-top: 4px;
+                page-break-after: auto;
+              }
+              thead {
+                display: table-header-group;
+              }
+              tr {
+                page-break-inside: avoid;
+                page-break-after: auto;
               }
               th {
-                background-color: #0b45b5;
-                color: white;
-                border: 1px solid #0b45b5;
-                padding: 7px 6px;
+                background-color: #f1f5f9;
+                color: #000;
+                border: 1px solid #000;
+                padding: 5px 6px;
                 font-weight: 800;
-                font-size: 10px;
+                font-size: 9.5px;
                 text-align: left;
               }
               td {
-                border: 1px solid #cbd5e1;
-                padding: 5px 7px;
-                font-size: 9.5px;
+                border: 1px solid #000;
+                padding: 4px 6px;
+                font-size: 9px;
                 vertical-align: top;
+                color: #000;
               }
               tr:nth-child(even) {
-                background-color: #f8fafc;
+                background-color: #fcfcfc;
               }
               .signatures-container {
                 display: flex;
                 justify-content: space-between;
-                margin-top: 28px;
+                margin-top: 22px;
                 page-break-inside: avoid;
               }
               .sig-block {
@@ -9277,13 +9275,15 @@ export default function App() {
               }
               .sig-title {
                 font-weight: 800;
-                font-size: 11px;
-                margin-bottom: 50px;
+                font-size: 10.5px;
+                color: #000;
+                margin-bottom: 45px;
               }
               .sig-name {
                 font-weight: 800;
-                font-size: 10.5px;
-                border-top: 1px dotted #94a3b8;
+                font-size: 10px;
+                color: #000;
+                border-top: 1px dotted #000;
                 padding-top: 4px;
               }
             </style>
@@ -9305,8 +9305,8 @@ export default function App() {
 
             <div class="stats-bar">
               <span class="stats-pill">សំណើសរុប៖ <b>${toKhmerDigits(list.length)}</b></span>
-              <span class="stats-pill" style="color: #047857;">រួចរាល់ (Done)៖ <b>${toKhmerDigits(list.filter(r => (r.status || '').toLowerCase().includes('done')).length)}</b></span>
-              <span class="stats-pill" style="color: #b45309;">រង់ចាំ (Pending)៖ <b>${toKhmerDigits(list.filter(r => (r.status || '').toLowerCase().includes('pending') || !(r.status || '').trim()).length)}</b></span>
+              <span class="stats-pill">រួចរាល់៖ <b>${toKhmerDigits(list.filter(r => (r.status || '').toLowerCase().includes('done')).length)}</b></span>
+              <span class="stats-pill">រង់ចាំ៖ <b>${toKhmerDigits(list.filter(r => (r.status || '').toLowerCase().includes('pending') || !(r.status || '').trim()).length)}</b></span>
             </div>
 
             <table>
@@ -9340,8 +9340,10 @@ export default function App() {
 
             <script>
               window.onload = function() {
-                window.focus();
-                window.print();
+                setTimeout(function() {
+                  window.focus();
+                  window.print();
+                }, 300);
               };
             </script>
           </body>
@@ -9358,35 +9360,27 @@ export default function App() {
         {/* Top Summary Metrics */}
         <div className="dashboard-grid" style={{ marginBottom: '20px', gap: '16px' }}>
           <div className="stat-card stat-card-blue" style={{ borderRadius: '18px', padding: '18px 20px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
-            <div className="stat-icon" style={{ fontSize: '24px' }}>💻</div>
             <div className="stat-info">
               <span className="stat-value">{totalCount}</span>
-              <span className="stat-label" style={{ fontWeight: '800', fontSize: '12px' }}>សំណើសរុប (Total Requests)</span>
-              <span className="stat-sublabel" style={{ color: '#64748b', fontSize: '10px' }}>GOOGLE SHEET FIREWALL</span>
+              <span className="stat-label" style={{ fontWeight: '800', fontSize: '13px' }}>សំណើសរុប</span>
             </div>
           </div>
           <div className="stat-card stat-card-green" style={{ borderRadius: '18px', padding: '18px 20px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
-            <div className="stat-icon" style={{ fontSize: '24px' }}>✅</div>
             <div className="stat-info">
               <span className="stat-value">{doneCount}</span>
-              <span className="stat-label" style={{ fontWeight: '800', fontSize: '12px' }}>ធ្វើរួចរាល់ (Completed)</span>
-              <span className="stat-sublabel" style={{ color: '#16a34a', fontSize: '10px' }}>STATUS = DONE</span>
+              <span className="stat-label" style={{ fontWeight: '800', fontSize: '13px' }}>ធ្វើរួចរាល់</span>
             </div>
           </div>
           <div className="stat-card stat-card-red" style={{ borderRadius: '18px', padding: '18px 20px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
-            <div className="stat-icon" style={{ fontSize: '24px' }}>⏳</div>
             <div className="stat-info">
               <span className="stat-value">{pendingCount}</span>
-              <span className="stat-label" style={{ fontWeight: '800', fontSize: '12px' }}>កំពុងរង់ចាំ (Pending)</span>
-              <span className="stat-sublabel" style={{ color: '#ea580c', fontSize: '10px' }}>IN-PROGRESS / PENDING</span>
+              <span className="stat-label" style={{ fontWeight: '800', fontSize: '13px' }}>កំពុងរង់ចាំ</span>
             </div>
           </div>
           <div className="stat-card stat-card-purple" style={{ borderRadius: '18px', padding: '18px 20px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)' }}>
-            <div className="stat-icon" style={{ fontSize: '24px' }}>📝</div>
             <div className="stat-info">
               <span className="stat-value">{pendingFormCount}</span>
-              <span className="stat-label" style={{ fontWeight: '800', fontSize: '12px' }}>មិនទាន់បំពេញទម្រង់</span>
-              <span className="stat-sublabel" style={{ color: '#9333ea', fontSize: '10px' }}>NEED PAPERWORK</span>
+              <span className="stat-label" style={{ fontWeight: '800', fontSize: '13px' }}>មិនទាន់បំពេញទម្រង់</span>
             </div>
           </div>
         </div>
@@ -9398,7 +9392,7 @@ export default function App() {
             <div style={{ position: 'relative', width: '220px' }}>
               <input
                 type="text"
-                placeholder="🔍 ស្វែងរកក្នុងតារាង..."
+                placeholder="ស្វែងរកក្នុងតារាង..."
                 value={devRequestSearch}
                 onChange={(e) => setDevRequestSearch(e.target.value)}
                 style={{ padding: '7px 28px 7px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '12.5px', width: '100%', background: '#fff', outline: 'none' }}
@@ -9420,7 +9414,7 @@ export default function App() {
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('all')}
                 style={{
-                  borderRadius: '8px', padding: '6px 12px', fontWeight: '700', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 14px', fontWeight: '700', fontSize: '12px',
                   background: devRequestStatusFilter === 'all' ? '#ffffff' : 'transparent',
                   color: devRequestStatusFilter === 'all' ? '#1e293b' : '#64748b',
                   boxShadow: devRequestStatusFilter === 'all' ? '0 1px 3px rgba(0,0,0,0.08)' : 'none',
@@ -9434,28 +9428,28 @@ export default function App() {
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('pending')}
                 style={{
-                  borderRadius: '8px', padding: '6px 12px', fontWeight: '700', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 14px', fontWeight: '700', fontSize: '12px',
                   background: devRequestStatusFilter === 'pending' ? '#f59e0b' : 'transparent',
                   color: devRequestStatusFilter === 'pending' ? '#ffffff' : '#64748b',
                   boxShadow: devRequestStatusFilter === 'pending' ? '0 1px 3px rgba(245,158,11,0.25)' : 'none',
                   border: 'none', cursor: 'pointer'
                 }}
               >
-                ⏳ រង់ចាំ ({pendingCount})
+                រង់ចាំ ({pendingCount})
               </button>
               <button
                 type="button"
                 className="btn"
                 onClick={() => setDevRequestStatusFilter('done')}
                 style={{
-                  borderRadius: '8px', padding: '6px 12px', fontWeight: '700', fontSize: '12px',
+                  borderRadius: '8px', padding: '6px 14px', fontWeight: '700', fontSize: '12px',
                   background: devRequestStatusFilter === 'done' ? '#10b981' : 'transparent',
                   color: devRequestStatusFilter === 'done' ? '#ffffff' : '#64748b',
                   boxShadow: devRequestStatusFilter === 'done' ? '0 1px 3px rgba(16,185,129,0.25)' : 'none',
                   border: 'none', cursor: 'pointer'
                 }}
               >
-                ✅ រួចរាល់ ({doneCount})
+                រួចរាល់ ({doneCount})
               </button>
             </div>
           </div>
@@ -9465,16 +9459,16 @@ export default function App() {
             <button
               type="button"
               className="btn"
-              onClick={() => handleExportDevRequestsPDF(filtered)}
+              onClick={() => handleExportDevRequestsPDF(devRequests)}
               style={{
                 borderRadius: '10px', padding: '7px 14px', fontWeight: '700', fontSize: '12px',
                 display: 'flex', alignItems: 'center', gap: '6px',
                 background: '#ffffff', color: '#0b45b5', border: '1.5px solid #bfdbfe',
                 boxShadow: '0 1px 3px rgba(11,69,181,0.08)', cursor: 'pointer'
               }}
-              title="ទាញយកជារបាយការណ៍ PDF"
+              title="ទាញយកជារបាយការណ៍ PDF (ទិន្នន័យទាំងអស់)"
             >
-              📥 Export PDF
+              Export PDF
             </button>
             <a
               href="https://docs.google.com/spreadsheets/d/1YZKou8qC7_C8JbAIKr7cG2wm7QHc_I_YmwD8YAH7hH4/edit?gid=0#gid=0"
@@ -9489,7 +9483,7 @@ export default function App() {
               }}
               title="បើកមើល Google Sheet ផ្ទាល់"
             >
-              📊 Sheet ↗
+              Sheet ↗
             </a>
             <button
               type="button"
@@ -9497,13 +9491,16 @@ export default function App() {
               onClick={fetchDevRequests}
               disabled={devRequestsLoading}
               style={{
-                borderRadius: '10px', padding: '7px 11px', fontWeight: '700', fontSize: '12px',
-                display: 'flex', alignItems: 'center',
+                borderRadius: '10px', padding: '7px 12px', fontWeight: '700', fontSize: '12px',
+                display: 'flex', alignItems: 'center', gap: '4px',
                 backgroundColor: '#f8fafc', color: '#475569', border: '1.5px solid #cbd5e1', cursor: 'pointer'
               }}
               title="Refresh Data"
             >
-              🔄
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+              </svg>
+              <span>Refresh</span>
             </button>
             <button
               type="button"
@@ -9515,7 +9512,7 @@ export default function App() {
                 background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', boxShadow: '0 3px 10px rgba(37,99,235,0.25)', border: 'none', cursor: 'pointer'
               }}
             >
-              ➕ បង្កើតការស្នើសុំថ្មី
+              បង្កើតការស្នើសុំថ្មី
             </button>
           </div>
         </div>
@@ -9534,7 +9531,7 @@ export default function App() {
                   <th style={{ width: '140px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>អ្នកទទួលបន្ទុក</th>
                   <th style={{ width: '120px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>កាលបរិច្ឆេទរួច</th>
                   <th style={{ width: '135px', textAlign: 'center', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ស្ថានភាព</th>
-                  <th style={{ minWidth: '130px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ផ្សេងៗ (Notes)</th>
+                  <th style={{ minWidth: '130px', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>ផ្សេងៗ</th>
                   <th style={{ width: '110px', textAlign: 'center', padding: '14px 12px', fontSize: '11.5px', color: '#475569', fontWeight: '800' }}>សកម្មភាព</th>
                 </tr>
               </thead>
@@ -9542,14 +9539,13 @@ export default function App() {
                 {devRequestsLoading ? (
                   <tr>
                     <td colSpan="10" style={{ textAlign: 'center', padding: '48px', color: '#64748b' }}>
-                      <div style={{ display: 'inline-block', fontSize: '24px', marginBottom: '8px', animation: 'spin 1s infinite linear' }}>⏳</div>
+                      <div style={{ display: 'inline-block', fontSize: '14px', marginBottom: '8px', fontWeight: '700' }}>កំពុងទាញយក...</div>
                       <div style={{ fontWeight: '700', fontSize: '13px' }}>កំពុងទាញយកទិន្នន័យពី Google Sheets...</div>
                     </td>
                   </tr>
                 ) : filtered.length === 0 ? (
                   <tr>
                     <td colSpan="10" style={{ textAlign: 'center', padding: '48px', color: '#64748b' }}>
-                      <div style={{ fontSize: '24px', marginBottom: '8px' }}>🔍</div>
                       <div style={{ fontWeight: '700' }}>មិនមានទិន្នន័យត្រូវគ្នានឹងការស្វែងរកឡើយ</div>
                     </td>
                   </tr>
@@ -9578,19 +9574,19 @@ export default function App() {
                       <td style={{ textAlign: 'center', padding: '14px 12px' }}>
                         {(item.form_status || '').trim() === 'រួចរាល់' ? (
                           <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            display: 'inline-flex', alignItems: 'center',
                             backgroundColor: '#ecfdf5', color: '#047857', border: '1px solid #a7f3d0',
                             fontWeight: '700', fontSize: '11.5px', padding: '4px 10px', borderRadius: '16px'
                           }}>
-                            ✓ រួចរាល់
+                            រួចរាល់
                           </span>
                         ) : (
                           <span style={{
-                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            display: 'inline-flex', alignItems: 'center',
                             backgroundColor: '#fff1f2', color: '#be123c', border: '1px solid #fecdd3',
                             fontWeight: '700', fontSize: '11.5px', padding: '4px 10px', borderRadius: '16px'
                           }}>
-                            ⚠️ មិនទាន់
+                            មិនទាន់
                           </span>
                         )}
                       </td>
@@ -9598,13 +9594,13 @@ export default function App() {
                         {item.request_date || '-'}
                       </td>
                       <td style={{ padding: '14px 12px' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: '700', fontSize: '12px', color: '#1e293b', background: '#f1f5f9', padding: '3px 9px', borderRadius: '8px' }}>
-                          👤 {item.requester || '-'}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', fontWeight: '700', fontSize: '12px', color: '#1e293b', background: '#f1f5f9', padding: '3px 9px', borderRadius: '8px' }}>
+                          {item.requester || '-'}
                         </span>
                       </td>
                       <td style={{ padding: '14px 12px' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', fontWeight: '700', fontSize: '12px', color: '#1d4ed8', background: '#eff6ff', padding: '3px 9px', borderRadius: '8px', border: '1px solid #dbeafe' }}>
-                          🛠️ {item.assignee || '-'}
+                        <span style={{ display: 'inline-flex', alignItems: 'center', fontWeight: '700', fontSize: '12px', color: '#1d4ed8', background: '#eff6ff', padding: '3px 9px', borderRadius: '8px', border: '1px solid #dbeafe' }}>
+                          {item.assignee || '-'}
                         </span>
                       </td>
                       <td style={{ fontSize: '12px', color: '#475569', padding: '14px 12px' }}>
@@ -9623,24 +9619,24 @@ export default function App() {
                             onClick={() => handleOpenEditDevRequest(item)}
                             title="កែប្រែទិន្នន័យ"
                             style={{
-                              padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '700',
+                              padding: '5px 9px', borderRadius: '8px', fontSize: '11.5px', fontWeight: '700',
                               background: '#ffffff', color: '#334155', border: '1.5px solid #cbd5e1', cursor: 'pointer',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '4px'
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.04)'
                             }}
                           >
-                            ✏️
+                            កែប្រែ
                           </button>
                           {!(item.status || '').toLowerCase().includes('done') && (
                             <button
                               className="btn"
                               onClick={() => handleQuickUpdateDevStatus(item.row_index, 'done')}
-                              title="សម្គាល់ថាបានធ្វើរួច (Mark Done)"
+                              title="សម្គាល់ថាបានធ្វើរួច"
                               style={{
-                                padding: '6px 10px', borderRadius: '10px', fontSize: '12px', fontWeight: '800',
+                                padding: '5px 9px', borderRadius: '8px', fontSize: '11.5px', fontWeight: '800',
                                 backgroundColor: '#f0fdf4', color: '#15803d', border: '1.5px solid #bbf7d0', cursor: 'pointer'
                               }}
                             >
-                              ✓
+                              រួចរាល់
                             </button>
                           )}
                         </div>
@@ -9686,17 +9682,17 @@ export default function App() {
               <div style={{ padding: '18px 22px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{
-                    width: '40px', height: '40px', borderRadius: '12px',
+                    width: '36px', height: '36px', borderRadius: '10px',
                     background: editingDevRequest ? '#eff6ff' : '#f0fdf4',
                     color: editingDevRequest ? '#1d4ed8' : '#15803d',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '20px'
+                    fontSize: '14px', fontWeight: '800'
                   }}>
-                    {editingDevRequest ? '✏️' : '➕'}
+                    {editingDevRequest ? '✎' : '+'}
                   </div>
                   <div>
-                    <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      {editingDevRequest ? `កែប្រែការស្នើសុំ #${editingDevRequest.id}` : 'បង្កើតការស្នើសុំថ្មី (New Request)'}
+                    <h3 style={{ margin: 0, fontSize: '16px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {editingDevRequest ? `កែប្រែការស្នើសុំ #${editingDevRequest.id}` : 'បង្កើតការស្នើសុំថ្មី'}
                       {editingDevRequest && (
                         <span style={{ fontSize: '11px', background: '#eff6ff', color: '#1d4ed8', padding: '1px 6px', borderRadius: '6px' }}>
                           Row {editingDevRequest.row_index}
@@ -9757,7 +9753,7 @@ export default function App() {
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                        👤 ឈ្មោះអ្នកស្នើ (Requester)
+                        ឈ្មោះអ្នកស្នើ
                       </label>
                       <input
                         type="text"
@@ -9788,7 +9784,7 @@ export default function App() {
 
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                        🛠️ ឈ្មោះអ្នកទទួល (Assignee)
+                        ឈ្មោះអ្នកទទួល
                       </label>
                       <input
                         type="text"
@@ -9822,7 +9818,7 @@ export default function App() {
                   <div style={{ display: 'grid', gridTemplateColumns: (editingDevRequest || devRequestForm.status === 'done') ? '1fr 1fr 1fr 1fr' : '1fr 1fr 1fr', gap: '12px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                        📅 កាលបរិច្ឆេទ (Date)
+                        កាលបរិច្ឆេទ
                       </label>
                       <input
                         type="text"
@@ -9836,7 +9832,7 @@ export default function App() {
 
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                        ⚡ ស្ថានភាព (Status)
+                        ស្ថានភាព
                       </label>
                       <select
                         className="form-input"
@@ -9851,16 +9847,16 @@ export default function App() {
                         }}
                         style={{ width: '100%', padding: '9px 12px', borderRadius: '10px', border: '1.5px solid #cbd5e1', fontSize: '12.5px', background: '#ffffff', fontWeight: '700' }}
                       >
-                        <option value="pending">⏳ pending</option>
-                        <option value="in_progress">🔄 in_progress</option>
-                        <option value="done">✅ done</option>
-                        <option value="Verify Web Filter">🛡️ Verify Web Filter</option>
+                        <option value="pending">pending</option>
+                        <option value="in_progress">in_progress</option>
+                        <option value="done">done</option>
+                        <option value="Verify Web Filter">Verify Web Filter</option>
                       </select>
                     </div>
 
                     <div>
                       <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                        📑 ទម្រង់ស្នើសុំ (Form)
+                        ទម្រង់ស្នើសុំ
                       </label>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px', height: '37px' }}>
                         <button
@@ -9893,7 +9889,7 @@ export default function App() {
                     {(editingDevRequest || devRequestForm.status === 'done') && (
                       <div>
                         <label style={{ display: 'block', fontSize: '12.5px', fontWeight: '700', color: '#1e293b', marginBottom: '6px' }}>
-                          🏁 ថ្ងៃរួច (Done)
+                          ថ្ងៃរួច
                         </label>
                         <input
                           type="text"
@@ -9910,7 +9906,7 @@ export default function App() {
                   {/* 5. Notes */}
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: '#64748b', marginBottom: '4px' }}>
-                      📝 កំណត់សម្គាល់ (Notes - Optional)
+                      កំណត់សម្គាល់
                     </label>
                     <input
                       type="text"
@@ -9947,7 +9943,7 @@ export default function App() {
                         display: 'flex', alignItems: 'center', gap: '8px'
                       }}
                     >
-                      {submittingDevRequest ? '⏳ កំពុងរក្សាទុក...' : (editingDevRequest ? '💾 រក្សាទុកការកែប្រែ' : '➕ បញ្ជូនសំណើ')}
+                      {submittingDevRequest ? 'កំពុងរក្សាទុក...' : (editingDevRequest ? 'រក្សាទុកការកែប្រែ' : 'បញ្ជូនសំណើ')}
                     </button>
                   </div>
                 </form>
@@ -10387,7 +10383,6 @@ export default function App() {
             </h1>
             <p>
               {activeTab === 'kanban' && 'Bitrix-Style Task Pipeline, Visual Stages, Assignees & Deadlines'}
-              {activeTab === 'dev_requests' && 'ទិន្នន័យស្នើសុំផ្ទាល់ពី Google Sheet "Firewall" — អាចបង្កើត កែប្រែ និង Sync ស្វ័យប្រវត្តិក្នងពេលជាក់ស្តែង'}
               {activeTab === 'workflow' && 'Bitrix24-Style Enterprise Drag & Drop Node Designer, Condition Engine & Multi-Level Approvals'}
               {activeTab === 'ipam' && (
                 ipamCategory === 'branches'
