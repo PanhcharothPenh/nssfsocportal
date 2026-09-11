@@ -335,7 +335,7 @@ def create_tables(conn):
     add_column_if_not_exists("users", "permissions", "TEXT")
 
     # Migration: add profile columns to users if they do not exist
-    for col in ["email", "phone", "department", "language", "timezone", "date_format", "theme", "client_ip", "last_login", "telegram_chat_id", "telegram_username", "notify_telegram"]:
+    for col in ["email", "phone", "department", "language", "timezone", "date_format", "theme", "client_ip", "last_login", "telegram_chat_id", "telegram_username", "notify_telegram", "must_change_password"]:
         add_column_if_not_exists("users", col, "TEXT")
 
     # Ensure admin has permissions seeded if not set

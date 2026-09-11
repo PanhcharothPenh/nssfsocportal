@@ -218,9 +218,24 @@ export default function App() {
     return () => clearTimeout(timer);
   }, [twoFAResendCooldown]);
 
+  // First Login Password Setup Modal states
+  const [showFirstLoginPasswordModal, setShowFirstLoginPasswordModal] = useState(false);
+  const [firstLoginNewPassword, setFirstLoginNewPassword] = useState('');
+  const [firstLoginConfirmPassword, setFirstLoginConfirmPassword] = useState('');
+  const [firstLoginShowPass, setFirstLoginShowPass] = useState(false);
+  const [firstLoginLoading, setFirstLoginLoading] = useState(false);
+  const [firstLoginError, setFirstLoginError] = useState(null);
+  const [firstLoginSuccess, setFirstLoginSuccess] = useState(false);
+
+  useEffect(() => {
+    if (currentLoginUser && (currentLoginUser.must_change_password === 1 || currentLoginUser.must_change_password === '1')) {
+      setShowFirstLoginPasswordModal(true);
+    }
+  }, [currentLoginUser]);
+
   // User management states (Admin only)
   const [usersList, setUsersList] = useState([]);
-  const [userForm, setUserForm] = useState({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'បុគ្គលិក', permissions: {} });
+  const [userForm, setUserForm] = useState({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {}, must_change_password: 1 });
   const [editingUser, setEditingUser] = useState(null); // { id, username, role, full_name }
   const [userModalOpen, setUserModalOpen] = useState(false);
   const [userFormError, setUserFormError] = useState(null);
@@ -821,6 +836,9 @@ export default function App() {
         }
         setLoginUsername('');
         setLoginPassword('');
+        if (data.user.must_change_password === 1 || data.user.must_change_password === '1') {
+          setShowFirstLoginPasswordModal(true);
+        }
       } else {
         const err = await res.json();
         setLoginError(err.detail || 'ឈ្មោះអ្នកប្រើប្រាស់ ឬលេខសម្ងាត់មិនត្រឹមត្រូវ!');
@@ -866,6 +884,9 @@ export default function App() {
         setTwoFAOtpInput('');
         setLoginUsername('');
         setLoginPassword('');
+        if (data.user.must_change_password === 1 || data.user.must_change_password === '1') {
+          setShowFirstLoginPasswordModal(true);
+        }
       } else {
         const err = await res.json();
         setTwoFAError(err.detail || 'លេខកូដផ្ទៀងផ្ទាត់ 2FA មិនត្រឹមត្រូវឡើយ! សូមពិនិត្យមើល Telegram ម្តងទៀត');
@@ -874,6 +895,50 @@ export default function App() {
       setTwoFAError('មិនអាចភ្ជាប់ទៅកាន់ម៉ាស៊ីនបម្រើ (Server Connection Error)');
     } finally {
       setTwoFALoading(false);
+    }
+  };
+
+  const handleFirstLoginChangePassword = async (e) => {
+    if (e) e.preventDefault();
+    if (!currentLoginUser) return;
+    setFirstLoginError(null);
+    if (!firstLoginNewPassword || firstLoginNewPassword.length < 6) {
+      setFirstLoginError('លេខសម្ងាត់ថ្មីត្រូវតែមានយ៉ាងតិច ៦ ខ្ទង់ (Minimum 6 characters)');
+      return;
+    }
+    if (firstLoginNewPassword !== firstLoginConfirmPassword) {
+      setFirstLoginError('លេខសម្ងាត់ថ្មី និងការបញ្ជាក់លេខសម្ងាត់មិនត្រូវគ្នាទេ (Passwords do not match)');
+      return;
+    }
+    setFirstLoginLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/auth/change_password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: currentLoginUser.id,
+          new_password: firstLoginNewPassword
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setFirstLoginSuccess(true);
+        const updated = { ...currentLoginUser, must_change_password: 0 };
+        setCurrentLoginUser(updated);
+        localStorage.setItem('currentLoginUser', JSON.stringify(updated));
+        setTimeout(() => {
+          setShowFirstLoginPasswordModal(false);
+          setFirstLoginSuccess(false);
+          setFirstLoginNewPassword('');
+          setFirstLoginConfirmPassword('');
+        }, 1200);
+      } else {
+        setFirstLoginError(data.detail || 'មិនអាចផ្លាស់ប្តូរលេខសម្ងាត់បានទេ');
+      }
+    } catch (err) {
+      setFirstLoginError('Server connection error');
+    } finally {
+      setFirstLoginLoading(false);
     }
   };
 
@@ -968,6 +1033,9 @@ export default function App() {
                   setSignatureImage(savedSig);
                 } else {
                   setSignatureImage('');
+                }
+                if (statusData.user.must_change_password === 1 || statusData.user.must_change_password === '1') {
+                  setShowFirstLoginPasswordModal(true);
                 }
                 setActiveTab('dashboard');
                 fetchDashboardStats();
@@ -2131,12 +2199,13 @@ export default function App() {
           telegram_username: userForm.telegram_username,
           notify_telegram: userForm.notify_telegram || '1',
           position: userForm.position || 'មន្ត្រី',
-          permissions: userForm.permissions
+          permissions: userForm.permissions,
+          must_change_password: userForm.must_change_password !== undefined ? userForm.must_change_password : 1
         }),
       });
       if (res.ok) {
         fetchUsersList();
-        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {} });
+        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {}, must_change_password: 1 });
         setUserModalOpen(false);
       } else {
         const err = await res.json();
@@ -2173,13 +2242,14 @@ export default function App() {
           telegram_username: userForm.telegram_username,
           notify_telegram: userForm.notify_telegram || '1',
           position: userForm.position || 'មន្ត្រី',
-          permissions: userForm.permissions
+          permissions: userForm.permissions,
+          must_change_password: userForm.must_change_password
         }),
       });
       if (res.ok) {
         fetchUsersList();
         setEditingUser(null);
-        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {} });
+        setUserForm({ username: '', password: '', confirmPassword: '', role: 'viewer', full_name: '', email: '', telegram_username: '', notify_telegram: '1', position: 'មន្ត្រី', permissions: {}, must_change_password: 1 });
         setUserModalOpen(false);
       } else {
         const err = await res.json();
@@ -2348,8 +2418,8 @@ export default function App() {
     setProfileModalError(null);
     setProfileModalSuccess(false);
     
-    if (!profileNewPassword) {
-      setProfileModalError('សូមបញ្ចូលលេខសម្ងាត់ថ្មី (Please enter a new password)');
+    if (!profileNewPassword || profileNewPassword.length < 6) {
+      setProfileModalError('សូមបញ្ចូលលេខសម្ងាត់ថ្មីយ៉ាងតិច ៦ ខ្ទង់ (Please enter a new password min 6 chars)');
       return;
     }
     if (profileNewPassword !== profileConfirmPassword) {
@@ -2359,29 +2429,30 @@ export default function App() {
     
     setProfileModalLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/users/${currentLoginUser.id}`, {
-        method: 'PUT',
+      const res = await fetch(`${API_BASE}/auth/change_password`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          username: currentLoginUser.username,
-          password: profileNewPassword,
-          role: currentLoginUser.role,
-          full_name: currentLoginUser.full_name,
-          permissions: currentLoginUser.permissions
+          user_id: currentLoginUser.id,
+          old_password: profileOldPassword,
+          new_password: profileNewPassword
         })
       });
       
+      const data = await res.json();
       if (res.ok) {
         setProfileModalSuccess(true);
         setProfileOldPassword('');
         setProfileNewPassword('');
         setProfileConfirmPassword('');
+        const updated = { ...currentLoginUser, must_change_password: 0 };
+        setCurrentLoginUser(updated);
+        localStorage.setItem('currentLoginUser', JSON.stringify(updated));
         setTimeout(() => setProfileModalSuccess(false), 3000);
       } else {
-        const err = await res.json();
-        setProfileModalError(err.detail || 'ធ្វើបច្ចុប្បន្នភាពលេខសម្ងាត់មិនបានសម្រេច');
+        setProfileModalError(data.detail || 'ធ្វើបច្ចុប្បន្នភាពលេខសម្ងាត់មិនបានសម្រេច');
       }
     } catch (err) {
       setProfileModalError('Connection error');
@@ -6825,6 +6896,20 @@ export default function App() {
                         {showConfirmPass ? '👁️' : '🙈'}
                       </button>
                     </div>
+                  </div>
+
+                  {/* Must Change Password Checkbox */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', userSelect: 'none', padding: '4px 2px' }}
+                       onClick={() => setUserForm({ ...userForm, must_change_password: userForm.must_change_password === 1 ? 0 : 1 })}>
+                    <input 
+                      type="checkbox" 
+                      checked={userForm.must_change_password === 1}
+                      onChange={() => {}}
+                      style={{ cursor: 'pointer', width: '16px', height: '16px', accentColor: '#2563eb' }}
+                    />
+                    <span style={{ fontSize: '12px', fontWeight: '700', color: isDarkMode ? '#cbd5e1' : '#475569' }}>
+                      តម្រូវឱ្យប្តូរលេខសម្ងាត់ពេល Login លើកដំបូង (Require password change on first login)
+                    </span>
                   </div>
 
                   {/* Full Name Input */}
@@ -15246,6 +15331,63 @@ export default function App() {
                 Logout
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* First-Login Initial Password Setup Modal */}
+      {showFirstLoginPasswordModal && (
+        <div className="modal-overlay" style={{ zIndex: 1200 }}>
+          <div className="modal-content" style={{ maxWidth: '440px', width: '100%', padding: '32px 28px', borderRadius: '20px', textAlign: 'center' }}>
+            <div style={{ width: '56px', height: '56px', borderRadius: '18px', backgroundColor: 'rgba(37, 99, 235, 0.1)', border: '2px solid #3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto', fontSize: '24px' }}>
+              🔑
+            </div>
+            <h3 style={{ margin: '0 0 6px 0', fontSize: '18px', fontWeight: '800' }}>
+              កំណត់លេខសម្ងាត់ថ្មី (Initial Password Setup)
+            </h3>
+            <p style={{ margin: '0 0 20px 0', fontSize: '12.5px', color: '#64748b', lineHeight: '1.5' }}>
+              ដោយសារនេះជាការចូលប្រើប្រាស់លើកដំបូងរបស់អ្នក សូមកំណត់លេខសម្ងាត់ថ្មីផ្ទាល់ខ្លួន ដើម្បីសុវត្ថិភាព។
+            </p>
+            <form onSubmit={handleFirstLoginChangePassword} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ display: 'block', fontWeight: '700', fontSize: '12.5px', marginBottom: '6px' }}>លេខសម្ងាត់ថ្មី (New Password)</label>
+                <input
+                  type={firstLoginShowPass ? 'text' : 'password'}
+                  required
+                  className="form-control"
+                  value={firstLoginNewPassword}
+                  onChange={(e) => setFirstLoginNewPassword(e.target.value)}
+                  placeholder="•••••••• (យ៉ាងតិច ៦ ខ្ទង់)"
+                  style={{ padding: '10px 14px', borderRadius: '10px', fontSize: '13.5px', border: '1px solid #cbd5e1', width: '100%' }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ display: 'block', fontWeight: '700', fontSize: '12.5px', marginBottom: '6px' }}>បញ្ជាក់លេខសម្ងាត់ថ្មី (Confirm New Password)</label>
+                <input
+                  type={firstLoginShowPass ? 'text' : 'password'}
+                  required
+                  className="form-control"
+                  value={firstLoginConfirmPassword}
+                  onChange={(e) => setFirstLoginConfirmPassword(e.target.value)}
+                  placeholder="••••••••"
+                  style={{ padding: '10px 14px', borderRadius: '10px', fontSize: '13.5px', border: '1px solid #cbd5e1', width: '100%' }}
+                />
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} onClick={() => setFirstLoginShowPass(!firstLoginShowPass)}>
+                <input type="checkbox" checked={firstLoginShowPass} onChange={() => {}} style={{ cursor: 'pointer' }} />
+                <span style={{ fontSize: '12px', color: '#64748b' }}>បង្ហាញលេខសម្ងាត់ (Show password)</span>
+              </div>
+              {firstLoginError && <div style={{ color: '#ef4444', fontSize: '12px', fontWeight: '700' }}>⚠️ {firstLoginError}</div>}
+              {firstLoginSuccess && <div style={{ color: '#10b981', fontSize: '12px', fontWeight: '700' }}>✓ រក្សាទុកលេខសម្ងាត់ថ្មីរួចរាល់!</div>}
+              <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+                <button type="submit" disabled={firstLoginLoading} className="btn btn-primary" style={{ flex: 1, padding: '12px', borderRadius: '10px', fontWeight: '800' }}>
+                  {firstLoginLoading ? 'Saving...' : '✓ រក្សាទុកលេខសម្ងាត់'}
+                </button>
+                <button type="button" onClick={() => setShowFirstLoginPasswordModal(false)} className="btn btn-secondary" style={{ padding: '12px 16px', borderRadius: '10px', fontWeight: '700' }}>
+                  ពេលក្រោយ
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

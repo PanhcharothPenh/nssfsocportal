@@ -2190,6 +2190,11 @@ class Verify2FAPayload(BaseModel):
 class Resend2FAPayload(BaseModel):
     two_fa_token: str
 
+class ChangePasswordPayload(BaseModel):
+    user_id: int
+    old_password: Optional[str] = None
+    new_password: str
+
 class UserCreatePayload(BaseModel):
     username: str
     password: str
@@ -2200,6 +2205,7 @@ class UserCreatePayload(BaseModel):
     notify_telegram: Optional[str] = '1'
     position: Optional[str] = "មន្ត្រី"
     permissions: Optional[Dict[str, str]] = None
+    must_change_password: Optional[int] = 1
 
 class UserUpdatePayload(BaseModel):
     username: Optional[str] = None
@@ -2211,6 +2217,7 @@ class UserUpdatePayload(BaseModel):
     notify_telegram: Optional[str] = None
     position: Optional[str] = None
     permissions: Optional[Dict[str, str]] = None
+    must_change_password: Optional[int] = None
 
 class UserProfileUpdatePayload(BaseModel):
     full_name: Optional[str] = None
@@ -2326,7 +2333,8 @@ def telegram_session_status(token: str, request: Request):
             "client_ip": client_ip,
             "last_login": last_login,
             "telegram_chat_id": user['telegram_chat_id'],
-            "telegram_username": user['telegram_username']
+            "telegram_username": user['telegram_username'],
+            "must_change_password": int(user['must_change_password']) if ('must_change_password' in user.keys() and user['must_change_password'] is not None) else (1 if user['username'].lower() != 'admin' and not user['last_login'] else 0)
         }
         conn.close()
         return {"status": "authorized", "user": user_data}
@@ -2403,7 +2411,8 @@ def telegram_login(payload: TelegramLoginPayload, request: Request):
             "client_ip": user['client_ip'],
             "last_login": user['last_login'],
             "telegram_chat_id": user['telegram_chat_id'],
-            "telegram_username": user['telegram_username']
+            "telegram_username": user['telegram_username'],
+            "must_change_password": int(user['must_change_password']) if ('must_change_password' in user.keys() and user['must_change_password'] is not None) else (1 if user['username'].lower() != 'admin' and not user['last_login'] else 0)
         }
     }
 
@@ -2599,7 +2608,8 @@ def auth_login(payload: UserLoginPayload, request: Request):
                 "last_login": user['last_login'],
                 "telegram_chat_id": user['telegram_chat_id'],
                 "telegram_username": user['telegram_username'],
-                "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1'
+                "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1',
+                "must_change_password": 0
             }
         }
 
@@ -2634,27 +2644,18 @@ def auth_login(payload: UserLoginPayload, request: Request):
     except ImportError:
         from api.telegram import send_telegram_message, get_telegram_config
 
-    now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-    tg_message = (
-        f"🔐 <b>NSSF SOC Portal — លេខកូដផ្ទៀងផ្ទាត់ 2FA (Login Verification)</b>\n\n"
-        f"👤 <b>គណនី (Account):</b> <code>{user['username']}</code> ({user['full_name'] or 'Staff'})\n"
-        f"🌐 <b>IP Address:</b> <code>{client_ip}</code>\n"
-        f"⏰ <b>កាលបរិច្ឆេទ:</b> {now_str}\n\n"
-        f"🔑 <b>លេខកូដសម្ងាត់ 2FA OTP:</b>\n"
-        f"👉 <code><b>{otp_code}</b></code> 👈\n\n"
-        f"⚠️ <i>លេខកូដនេះមានសុពលភាព ៥ នាទី។ សូមកុំប្រាប់លេខកូដនេះទៅកាន់អ្នកដទៃ!</i>"
-    )
+    tg_message = f"Your 2FA login verification code is: {otp_code}"
 
     bot_token, default_chat_id = get_telegram_config()
-    target_chats = []
-    if user['telegram_chat_id']:
-        target_chats.append(str(user['telegram_chat_id']).strip())
-    if default_chat_id and str(default_chat_id).strip() not in target_chats:
-        target_chats.append(str(default_chat_id).strip())
+    target_chat = None
+    if user['telegram_chat_id'] and str(user['telegram_chat_id']).strip():
+        target_chat = str(user['telegram_chat_id']).strip()
+    elif default_chat_id and str(default_chat_id).strip():
+        target_chat = str(default_chat_id).strip()
 
     sent_any = False
-    for cid in target_chats:
-        ok, _ = send_telegram_message(tg_message, chat_id=cid)
+    if target_chat:
+        ok, _ = send_telegram_message(tg_message, chat_id=target_chat)
         if ok:
             sent_any = True
 
@@ -2704,7 +2705,7 @@ def auth_verify_2fa(payload: Verify2FAPayload, request: Request):
     conn.commit()
     conn.close()
     
-    # Send login success notification to Telegram
+    # Send login success notification to Telegram (only to target person if configured)
     try:
         from backend.telegram import send_telegram_message, get_telegram_config
     except ImportError:
@@ -2718,13 +2719,13 @@ def auth_verify_2fa(payload: Verify2FAPayload, request: Request):
         f"🛡️ <b>ស្ថានភាព:</b> 2FA Verified by Telegram"
     )
     bot_token, default_chat_id = get_telegram_config()
-    target_chats = []
-    if user['telegram_chat_id']:
-        target_chats.append(str(user['telegram_chat_id']).strip())
-    if default_chat_id and str(default_chat_id).strip() not in target_chats:
-        target_chats.append(str(default_chat_id).strip())
-    for cid in target_chats:
-        send_telegram_message(success_msg, chat_id=cid)
+    target_chat = None
+    if user['telegram_chat_id'] and str(user['telegram_chat_id']).strip():
+        target_chat = str(user['telegram_chat_id']).strip()
+    elif default_chat_id and str(default_chat_id).strip():
+        target_chat = str(default_chat_id).strip()
+    if target_chat:
+        send_telegram_message(success_msg, chat_id=target_chat)
 
     perms = {}
     if user['permissions']:
@@ -2732,6 +2733,15 @@ def auth_verify_2fa(payload: Verify2FAPayload, request: Request):
             perms = json.loads(user['permissions'])
         except Exception:
             pass
+
+    must_change = 0
+    if 'must_change_password' in user.keys() and user['must_change_password'] is not None:
+        try:
+            must_change = int(user['must_change_password'])
+        except Exception:
+            must_change = 1 if user['username'].lower() != 'admin' else 0
+    elif user['username'].lower() != 'admin' and not user['last_login']:
+        must_change = 1
 
     return {
         "status": "success",
@@ -2752,7 +2762,8 @@ def auth_verify_2fa(payload: Verify2FAPayload, request: Request):
             "last_login": last_login,
             "telegram_chat_id": user['telegram_chat_id'],
             "telegram_username": user['telegram_username'],
-            "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1'
+            "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1',
+            "must_change_password": must_change
         }
     }
 
@@ -2780,17 +2791,7 @@ def auth_resend_2fa(payload: Resend2FAPayload, request: Request):
     conn.commit()
     conn.close()
     
-    client_ip = request.client.host if request.client else '127.0.0.1'
-    now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
-    tg_message = (
-        f"🔄 <b>NSSF SOC Portal — ផ្ញើកូដ 2FA សារជាថ្មី (Resend Code)</b>\n\n"
-        f"👤 <b>គណនី:</b> <code>{user['username']}</code> ({user['full_name'] or 'Staff'})\n"
-        f"🌐 <b>IP Address:</b> <code>{client_ip}</code>\n"
-        f"⏰ <b>កាលបរិច្ឆេទ:</b> {now_str}\n\n"
-        f"🔑 <b>លេខកូដសម្ងាត់ថ្មី (New 2FA OTP):</b>\n"
-        f"👉 <code><b>{new_otp}</b></code> 👈\n\n"
-        f"⚠️ <i>លេខកូដនេះមានសុពលភាព ៥ នាទី។</i>"
-    )
+    tg_message = f"Your 2FA login verification code is: {new_otp}"
     
     try:
         from backend.telegram import send_telegram_message, get_telegram_config
@@ -2798,16 +2799,64 @@ def auth_resend_2fa(payload: Resend2FAPayload, request: Request):
         from api.telegram import send_telegram_message, get_telegram_config
 
     bot_token, default_chat_id = get_telegram_config()
-    target_chats = []
-    if user['telegram_chat_id']:
-        target_chats.append(str(user['telegram_chat_id']).strip())
-    if default_chat_id and str(default_chat_id).strip() not in target_chats:
-        target_chats.append(str(default_chat_id).strip())
+    target_chat = None
+    if user['telegram_chat_id'] and str(user['telegram_chat_id']).strip():
+        target_chat = str(user['telegram_chat_id']).strip()
+    elif default_chat_id and str(default_chat_id).strip():
+        target_chat = str(default_chat_id).strip()
 
-    for cid in target_chats:
-        send_telegram_message(tg_message, chat_id=cid)
+    if target_chat:
+        send_telegram_message(tg_message, chat_id=target_chat)
 
     return {"status": "success", "message": "លេខកូដ 2FA ថ្មីត្រូវបានផ្ញើទៅកាន់ Telegram Bot រួចរាល់ហើយ"}
+
+@app.post("/api/auth/change_password")
+def auth_change_password(payload: ChangePasswordPayload):
+    from auth_utils import verify_password, hash_password
+    import datetime
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT * FROM users WHERE id = ?", (payload.user_id,))
+        user = cursor.fetchone()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        
+        if payload.old_password:
+            if not verify_password(payload.old_password, user['password_hash']):
+                raise HTTPException(status_code=400, detail="លេខសម្ងាត់ចាស់មិនត្រឹមត្រូវឡើយ (Incorrect current password)")
+        
+        if len(payload.new_password.strip()) < 6:
+            raise HTTPException(status_code=400, detail="លេខសម្ងាត់ថ្មីត្រូវតែមានយ៉ាងតិច 6 ខ្ទង់ (Password must be at least 6 characters)")
+        
+        hashed_pass = hash_password(payload.new_password.strip())
+        cursor.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?", (hashed_pass, payload.user_id))
+        conn.commit()
+        conn.close()
+
+        # Send Telegram security notice
+        try:
+            from backend.telegram import send_telegram_message, get_telegram_config
+        except ImportError:
+            from api.telegram import send_telegram_message, get_telegram_config
+
+        now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
+        sec_msg = f"🔐 <b>NSSF SOC Portal — បានប្តូរលេខសម្ងាត់ជោគជ័យ (Password Changed)</b>\n\n👤 <b>គណនី:</b> <code>{user['username']}</code>\n⏰ <b>កាលបរិច្ឆេទ:</b> {now_str}"
+        bot_token, default_chat_id = get_telegram_config()
+        target_chat = str(user['telegram_chat_id']).strip() if user['telegram_chat_id'] else default_chat_id
+        if target_chat:
+            send_telegram_message(sec_msg, chat_id=target_chat)
+
+        return {
+            "status": "success",
+            "message": "បានផ្លាស់ប្តូរលេខសម្ងាត់ថ្មីដោយជោគជ័យ!",
+            "must_change_password": 0
+        }
+    except Exception as e:
+        conn.close()
+        if isinstance(e, HTTPException):
+            raise
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/users")
 def get_users():
@@ -2857,9 +2906,10 @@ def create_user(payload: UserCreatePayload):
                 
         perms_str = json.dumps(perms)
         
+        must_change = payload.must_change_password if payload.must_change_password is not None else (0 if payload.role == 'admin' else 1)
         cursor.execute("""
-        INSERT INTO users (username, password_hash, role, full_name, permissions, telegram_username, email, position)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO users (username, password_hash, role, full_name, permissions, telegram_username, email, position, must_change_password)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             payload.username.strip(), 
             hashed_pass, 
@@ -2868,7 +2918,8 @@ def create_user(payload: UserCreatePayload):
             perms_str, 
             payload.telegram_username.strip() if payload.telegram_username and payload.telegram_username.strip() else None,
             payload.email.strip() if payload.email and payload.email.strip() else None,
-            payload.position.strip() if payload.position else "មន្ត្រី"
+            payload.position.strip() if payload.position else "មន្ត្រី",
+            must_change
         ))
         conn.commit()
         new_id = cursor.lastrowid
@@ -2915,7 +2966,14 @@ def update_user(user_id: int, payload: UserUpdatePayload):
             hashed_pass = hash_password(payload.password)
             fields.append("password_hash = ?")
             params.append(hashed_pass)
-            
+            if payload.must_change_password is None:
+                fields.append("must_change_password = ?")
+                params.append(1)
+
+        if payload.must_change_password is not None:
+            fields.append("must_change_password = ?")
+            params.append(payload.must_change_password)
+
         if payload.role is not None:
             fields.append("role = ?")
             params.append(payload.role)
