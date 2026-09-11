@@ -7445,26 +7445,9 @@ export default function App() {
               <h3 style={{ fontSize: '18px', fontWeight: '800', color: isDarkMode ? '#f8fafc' : '#0f172a', margin: '0 0 6px 0' }}>
                 ផ្ទៀងផ្ទាត់សុវត្ថិភាព 2FA
               </h3>
-              <p style={{ fontSize: '13px', color: isDarkMode ? '#94a3b8' : '#64748b', margin: '0 0 18px 0', lineHeight: '1.5' }}>
+              <p style={{ fontSize: '13px', color: isDarkMode ? '#94a3b8' : '#64748b', margin: '0 0 20px 0', lineHeight: '1.5' }}>
                 លេខកូដសម្ងាត់ ៦ ខ្ទង់ ត្រូវបានផ្ញើទៅកាន់ <strong style={{ color: isDarkMode ? '#60a5fa' : '#2563eb' }}>{twoFATarget}</strong> រួចរាល់ហើយ
               </p>
-
-              <div style={{
-                backgroundColor: isDarkMode ? 'rgba(59, 130, 246, 0.1)' : '#f0f9ff',
-                border: isDarkMode ? '1px solid rgba(59, 130, 246, 0.25)' : '1px solid #bae6fd',
-                borderRadius: '12px',
-                padding: '12px 14px',
-                marginBottom: '20px',
-                textAlign: 'left',
-                display: 'flex',
-                alignItems: 'flex-start',
-                gap: '10px'
-              }}>
-                <span style={{ fontSize: '20px', lineHeight: 1 }}>✈️</span>
-                <div style={{ fontSize: '12.5px', color: isDarkMode ? '#93c5fd' : '#0369a1', lineHeight: '1.5' }}>
-                  សូមបើកមើលសារនៅលើ <strong>Telegram</strong> របស់អ្នក រួចយកលេខកូដសម្ងាត់ <strong>6 ខ្ទង់</strong> មកបំពេញខាងក្រោម ដើម្បីចូលប្រព័ន្ធ។
-                </div>
-              </div>
 
               <form onSubmit={handleVerify2FA} style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left' }}>
                 <div className="form-group" style={{ margin: 0, textAlign: 'center' }}>
