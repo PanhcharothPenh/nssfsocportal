@@ -277,6 +277,27 @@ export default function App() {
   const [profileNewPassword, setProfileNewPassword] = useState('');
   const [profileConfirmPassword, setProfileConfirmPassword] = useState('');
 
+  // Developer Requests (Google Sheet Integration)
+  const [devRequests, setDevRequests] = useState([]);
+  const [devRequestsLoading, setDevRequestsLoading] = useState(false);
+  const [devRequestSearch, setDevRequestSearch] = useState('');
+  const [devRequestStatusFilter, setDevRequestStatusFilter] = useState('all');
+  const [devRequestFormFilter, setDevRequestFormFilter] = useState('all');
+  const [showDevRequestModal, setShowDevRequestModal] = useState(false);
+  const [editingDevRequest, setEditingDevRequest] = useState(null);
+  const [submittingDevRequest, setSubmittingDevRequest] = useState(false);
+  const [devRequestForm, setDevRequestForm] = useState({
+    purpose_en: '',
+    purpose_kh: '',
+    form_status: 'មិនទាន់',
+    request_date: '',
+    requester: '',
+    assignee: 'Mr.Samach',
+    completed_date: '',
+    status: 'pending',
+    notes: ''
+  });
+
   // Official Tickets State
   const [tickets, setTickets] = useState([]);
   const [ticketsLoading, setTicketsLoading] = useState(false);
@@ -1050,6 +1071,121 @@ export default function App() {
     }
   };
 
+  // Developer Requests Fetch & Actions (Google Sheet Integration)
+  async function fetchDevRequests() {
+    setDevRequestsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/dev-requests`);
+      if (res.ok) {
+        const json = await res.json();
+        setDevRequests(Array.isArray(json.data) ? json.data : []);
+      }
+    } catch (err) {
+      console.error("Error fetching dev requests:", err);
+    } finally {
+      setDevRequestsLoading(false);
+    }
+  }
+
+  function handleOpenAddDevRequest() {
+    const today = new Date();
+    const dd = String(today.getDate()).padStart(2, '0');
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const yyyy = today.getFullYear();
+    const formattedToday = `${dd}/${mm}/${yyyy}`;
+
+    setEditingDevRequest(null);
+    setDevRequestForm({
+      purpose_en: '',
+      purpose_kh: '',
+      form_status: 'មិនទាន់',
+      request_date: formattedToday,
+      requester: currentLoginUser?.full_name || currentLoginUser?.username || '',
+      assignee: 'Mr.Samach',
+      completed_date: '',
+      status: 'pending',
+      notes: ''
+    });
+    setShowDevRequestModal(true);
+  }
+
+  function handleOpenEditDevRequest(req) {
+    setEditingDevRequest(req);
+    setDevRequestForm({
+      purpose_en: req.purpose_en || '',
+      purpose_kh: req.purpose_kh || '',
+      form_status: req.form_status || 'មិនទាន់',
+      request_date: req.request_date || '',
+      requester: req.requester || '',
+      assignee: req.assignee || '',
+      completed_date: req.completed_date || '',
+      status: req.status || '',
+      notes: req.notes || ''
+    });
+    setShowDevRequestModal(true);
+  }
+
+  async function handleSaveDevRequest(e) {
+    if (e) e.preventDefault();
+    if (!devRequestForm.purpose_kh && !devRequestForm.purpose_en) {
+      alert('សូមបញ្ចូលគោលបំណងស្នើសុំ (Purpose)');
+      return;
+    }
+    setSubmittingDevRequest(true);
+    try {
+      let res;
+      if (editingDevRequest && editingDevRequest.row_index) {
+        res = await fetch(`${API_BASE}/dev-requests/${editingDevRequest.row_index}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(devRequestForm)
+        });
+      } else {
+        res = await fetch(`${API_BASE}/dev-requests`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(devRequestForm)
+        });
+      }
+      if (res.ok) {
+        setShowDevRequestModal(false);
+        await fetchDevRequests();
+      } else {
+        const errJson = await res.json().catch(() => ({}));
+        alert(`បរាជ័យក្នុងការរក្សាទុកទិន្នន័យ៖ ${errJson.detail || 'Error'}`);
+      }
+    } catch (err) {
+      console.error("Error saving dev request:", err);
+      alert('មានបញ្ហាក្នុងការតភ្ជាប់ទៅ Google Sheets');
+    } finally {
+      setSubmittingDevRequest(false);
+    }
+  }
+
+  async function handleQuickUpdateDevStatus(row_index, newStatus) {
+    try {
+      const today = new Date();
+      const dd = String(today.getDate()).padStart(2, '0');
+      const mm = String(today.getMonth() + 1).padStart(2, '0');
+      const yyyy = today.getFullYear();
+      const formattedToday = `${dd}/${mm}/${yyyy}`;
+
+      const payload = { status: newStatus };
+      if (newStatus === 'done') {
+        payload.completed_date = formattedToday;
+      }
+      const res = await fetch(`${API_BASE}/dev-requests/${row_index}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if (res.ok) {
+        await fetchDevRequests();
+      }
+    } catch (err) {
+      console.error("Error updating dev status:", err);
+    }
+  }
 
   // Tickets Fetch & Actions
   async function fetchTickets() {
@@ -1207,6 +1343,8 @@ export default function App() {
       fetchUsersList();
     } else if (activeTab === 'dashboard') {
       fetchKanbanTasks();
+    } else if (activeTab === 'dev_requests') {
+      fetchDevRequests();
     }
   }, [activeTab]);
 
@@ -2469,6 +2607,7 @@ export default function App() {
     else if (activeTab === 'storage') fetchDriveFiles();
     else if (activeTab === 'users' && hasPermission('user_management', 'read')) fetchUsersList();
     else if (activeTab === 'shift' || activeTab === 'shift_generator') fetchShiftSchedule();
+    else if (activeTab === 'dev_requests') fetchDevRequests();
     else fetchDashboardStats();
   };
 
@@ -2553,6 +2692,8 @@ export default function App() {
     } else if (activeTab === 'shift_generator') {
       fetchShiftSchedule();
       fetchCustomShiftSchedule();
+    } else if (activeTab === 'dev_requests') {
+      fetchDevRequests();
     }
     // reset inner filters
     setSubnetSearch('');
@@ -8581,6 +8722,464 @@ export default function App() {
     );
   }
 
+  // Render Developer Requests Tab (Google Sheet Integration)
+  function renderDevRequestsTab() {
+    const q = devRequestSearch.toLowerCase();
+    const filtered = devRequests.filter(item => {
+      if (q) {
+        const matchSearch =
+          (item.id || '').toString().toLowerCase().includes(q) ||
+          (item.purpose_en || '').toLowerCase().includes(q) ||
+          (item.purpose_kh || '').toLowerCase().includes(q) ||
+          (item.requester || '').toLowerCase().includes(q) ||
+          (item.assignee || '').toLowerCase().includes(q) ||
+          (item.notes || '').toLowerCase().includes(q) ||
+          (item.status || '').toLowerCase().includes(q);
+        if (!matchSearch) return false;
+      }
+      if (devRequestStatusFilter !== 'all') {
+        const st = (item.status || '').toLowerCase().trim();
+        if (devRequestStatusFilter === 'done' && !st.includes('done')) return false;
+        if (devRequestStatusFilter === 'pending' && (!st.includes('pending') && st !== '')) return false;
+        if (devRequestStatusFilter === 'other' && (st.includes('done') || st.includes('pending') || st === '')) return false;
+      }
+      if (devRequestFormFilter !== 'all') {
+        const fst = (item.form_status || '').trim();
+        if (devRequestFormFilter === 'done' && fst !== 'រួចរាល់') return false;
+        if (devRequestFormFilter === 'pending' && fst !== 'មិនទាន់') return false;
+      }
+      return true;
+    });
+
+    const totalCount = devRequests.length;
+    const doneCount = devRequests.filter(r => (r.status || '').toLowerCase().includes('done')).length;
+    const pendingCount = devRequests.filter(r => (r.status || '').toLowerCase().includes('pending') || !(r.status || '').trim()).length;
+    const pendingFormCount = devRequests.filter(r => (r.form_status || '').trim() === 'មិនទាន់').length;
+
+    const getDevStatusBadge = (status) => {
+      const s = (status || '').toLowerCase().trim();
+      if (!s) {
+        return <span style={{ backgroundColor: '#f1f5f9', color: '#64748b', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⚪ មិនទាន់កំណត់</span>;
+      }
+      if (s.includes('done')) {
+        return <span style={{ backgroundColor: '#dcfce7', color: '#166534', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>✅ {status}</span>;
+      }
+      if (s.includes('pending')) {
+        return <span style={{ backgroundColor: '#fef3c7', color: '#92400e', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>⏳ {status}</span>;
+      }
+      return <span style={{ backgroundColor: '#e0e7ff', color: '#3730a3', fontWeight: '800', fontSize: '11px', padding: '4px 10px', borderRadius: '12px' }}>🔄 {status}</span>;
+    };
+
+    return (
+      <div className="tab-container fade-in">
+        {/* Top Summary Metrics */}
+        <div className="dashboard-grid" style={{ marginBottom: '16px' }}>
+          <div className="stat-card stat-card-blue">
+            <div className="stat-icon">💻</div>
+            <div className="stat-info">
+              <span className="stat-value">{totalCount}</span>
+              <span className="stat-label">សំណើសរុប (Total Requests)</span>
+              <span className="stat-sublabel">GOOGLE SHEET FIREWALL</span>
+            </div>
+          </div>
+          <div className="stat-card stat-card-green">
+            <div className="stat-icon">✅</div>
+            <div className="stat-info">
+              <span className="stat-value">{doneCount}</span>
+              <span className="stat-label">ធ្វើរួចរាល់ (Completed)</span>
+              <span className="stat-sublabel">STATUS = DONE</span>
+            </div>
+          </div>
+          <div className="stat-card stat-card-red">
+            <div className="stat-icon">⏳</div>
+            <div className="stat-info">
+              <span className="stat-value">{pendingCount}</span>
+              <span className="stat-label">កំពុងរង់ចាំ (Pending)</span>
+              <span className="stat-sublabel">IN-PROGRESS / PENDING</span>
+            </div>
+          </div>
+          <div className="stat-card stat-card-purple">
+            <div className="stat-icon">📝</div>
+            <div className="stat-info">
+              <span className="stat-value">{pendingFormCount}</span>
+              <span className="stat-label">មិនទាន់បំពេញទម្រង់</span>
+              <span className="stat-sublabel">NEED PAPERWORK</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Controls & Filters */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+            {/* Status Filter Buttons */}
+            <button
+              className={`btn ${devRequestStatusFilter === 'all' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setDevRequestStatusFilter('all')}
+              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px' }}
+            >
+              📋 ទាំងអស់ ({totalCount})
+            </button>
+            <button
+              className={`btn ${devRequestStatusFilter === 'pending' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setDevRequestStatusFilter('pending')}
+              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', backgroundColor: devRequestStatusFilter === 'pending' ? '#f59e0b' : '#f8fafc', borderColor: devRequestStatusFilter === 'pending' ? '#f59e0b' : '#cbd5e1' }}
+            >
+              ⏳ រង់ចាំ ({pendingCount})
+            </button>
+            <button
+              className={`btn ${devRequestStatusFilter === 'done' ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setDevRequestStatusFilter('done')}
+              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', backgroundColor: devRequestStatusFilter === 'done' ? '#10b981' : '#f8fafc', borderColor: devRequestStatusFilter === 'done' ? '#10b981' : '#cbd5e1' }}
+            >
+              ✅ រួចរាល់ ({doneCount})
+            </button>
+
+            {/* Form status dropdown */}
+            <select
+              className="form-input"
+              value={devRequestFormFilter}
+              onChange={(e) => setDevRequestFormFilter(e.target.value)}
+              style={{ borderRadius: '10px', padding: '7px 12px', fontSize: '12px', fontWeight: '700', border: '1px solid #cbd5e1', cursor: 'pointer' }}
+            >
+              <option value="all">📑 ទម្រង់៖ ទាំងអស់</option>
+              <option value="pending">⚠️ មិនទាន់បំពេញទម្រង់</option>
+              <option value="done">✓ បានបំពេញទម្រង់រួច</option>
+            </select>
+          </div>
+
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <a
+              href="https://docs.google.com/spreadsheets/d/1YZKou8qC7_C8JbAIKr7cG2wm7QHc_I_YmwD8YAH7hH4/edit?gid=0#gid=0"
+              target="_blank"
+              rel="noreferrer"
+              className="btn btn-secondary"
+              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#f0fdf4', color: '#15803d', borderColor: '#bbf7d0', textDecoration: 'none' }}
+              title="បើកមើល Google Sheet ផ្ទាល់"
+            >
+              📊 បើកក្នុង Google Sheet ↗
+            </a>
+            <button
+              className="btn btn-secondary"
+              onClick={fetchDevRequests}
+              disabled={devRequestsLoading}
+              style={{ borderRadius: '10px', padding: '8px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}
+            >
+              🔄 {devRequestsLoading ? 'កំពុងផ្ទុក...' : 'Refresh'}
+            </button>
+            <button
+              className="btn btn-primary"
+              onClick={handleOpenAddDevRequest}
+              style={{ borderRadius: '10px', padding: '8px 18px', fontWeight: '800', fontSize: '12.5px', display: 'flex', alignItems: 'center', gap: '8px', boxShadow: '0 4px 12px rgba(37,99,235,0.2)' }}
+            >
+              ➕ បង្កើតការស្នើសុំថ្មី
+            </button>
+          </div>
+        </div>
+
+        {/* Search Field */}
+        <div style={{ marginBottom: '16px' }}>
+          <input
+            type="text"
+            className="form-input"
+            placeholder="🔍 ស្វែងរកតាម គោលបំណង, អ្នកស្នើ, អ្នកទទួល, ស្ថានភាព ឬ កំណត់សម្គាល់..."
+            value={devRequestSearch}
+            onChange={(e) => setDevRequestSearch(e.target.value)}
+            style={{ padding: '10px 16px', borderRadius: '12px', border: '1px solid #cbd5e1', fontSize: '13px', width: '100%', maxWidth: '520px' }}
+          />
+        </div>
+
+        {/* Table View */}
+        <div className="table-card">
+          <div className="table-responsive">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '50px', textAlign: 'center' }}>ល.រ</th>
+                  <th style={{ minWidth: '260px' }}>គោលបំណងស្នើសុំ (Purpose)</th>
+                  <th style={{ width: '130px', textAlign: 'center' }}>ទម្រង់ស្នើសុំ</th>
+                  <th style={{ width: '120px' }}>កាលបរិច្ឆេទស្នើ</th>
+                  <th style={{ width: '130px' }}>អ្នកស្នើ</th>
+                  <th style={{ width: '140px' }}>អ្នកទទួលបន្ទុក</th>
+                  <th style={{ width: '120px' }}>កាលបរិច្ឆេទរួច</th>
+                  <th style={{ width: '130px', textAlign: 'center' }}>ស្ថានភាព</th>
+                  <th style={{ minWidth: '140px' }}>ផ្សេងៗ (Notes)</th>
+                  <th style={{ width: '130px', textAlign: 'center' }}>សកម្មភាព</th>
+                </tr>
+              </thead>
+              <tbody>
+                {devRequestsLoading ? (
+                  <tr>
+                    <td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      <div style={{ display: 'inline-block', fontSize: '20px', marginBottom: '8px' }}>⏳</div>
+                      <div>កំពុងទាញយកទិន្នន័យពី Google Sheets...</div>
+                    </td>
+                  </tr>
+                ) : filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan="10" style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>
+                      មិនមានទិន្នន័យត្រូវគ្នានឹងការស្វែងរកឡើយ
+                    </td>
+                  </tr>
+                ) : (
+                  filtered.map((item) => (
+                    <tr key={item.row_index || item.id}>
+                      <td style={{ textAlign: 'center', fontWeight: '800', color: '#2563eb' }}>
+                        #{item.id}
+                      </td>
+                      <td>
+                        <div style={{ fontWeight: '700', color: '#0f172a', fontSize: '13px', lineHeight: '1.4', whiteSpace: 'pre-line' }}>
+                          {item.purpose_kh || item.purpose_en || '-'}
+                        </div>
+                        {item.purpose_kh && item.purpose_en && (
+                          <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px', whiteSpace: 'pre-line', fontFamily: 'monospace' }}>
+                            {item.purpose_en}
+                          </div>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {(item.form_status || '').trim() === 'រួចរាល់' ? (
+                          <span style={{ backgroundColor: '#dcfce7', color: '#166534', fontWeight: '800', fontSize: '11px', padding: '3px 8px', borderRadius: '10px' }}>
+                            ✓ រួចរាល់
+                          </span>
+                        ) : (
+                          <span style={{ backgroundColor: '#fee2e2', color: '#991b1b', fontWeight: '800', fontSize: '11px', padding: '3px 8px', borderRadius: '10px' }}>
+                            ⚠️ មិនទាន់
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ fontSize: '12px', color: '#475569', fontWeight: '600' }}>
+                        {item.request_date || '-'}
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: '700', fontSize: '12px', color: '#1e293b' }}>
+                          {item.requester || '-'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: '700', fontSize: '12px', color: '#2563eb' }}>
+                          {item.assignee || '-'}
+                        </span>
+                      </td>
+                      <td style={{ fontSize: '12px', color: '#475569' }}>
+                        {item.completed_date || <span style={{ color: '#94a3b8' }}>-</span>}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {getDevStatusBadge(item.status)}
+                      </td>
+                      <td style={{ fontSize: '11.5px', color: '#64748b', whiteSpace: 'pre-line' }}>
+                        {item.notes || '-'}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                          <button
+                            className="btn btn-secondary"
+                            onClick={() => handleOpenEditDevRequest(item)}
+                            title="កែប្រែ"
+                            style={{ padding: '4px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '800' }}
+                          >
+                            ✏️
+                          </button>
+                          {!(item.status || '').toLowerCase().includes('done') && (
+                            <button
+                              className="btn btn-secondary"
+                              onClick={() => handleQuickUpdateDevStatus(item.row_index, 'done')}
+                              title="សម្គាល់ថាបានធ្វើរួច (Mark Done)"
+                              style={{ padding: '4px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: '800', backgroundColor: '#f0fdf4', color: '#16a34a', borderColor: '#bbf7d0' }}
+                            >
+                              ✓
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Add/Edit Modal */}
+        {showDevRequestModal && (
+          <div className="modal-backdrop" onClick={() => setShowDevRequestModal(false)}>
+            <div
+              className="modal-content"
+              onClick={(e) => e.stopPropagation()}
+              style={{ maxWidth: '650px', width: '95%', maxHeight: '90vh', overflowY: 'auto', borderRadius: '16px', padding: '24px' }}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #e2e8f0', paddingBottom: '12px' }}>
+                <h3 style={{ margin: 0, fontSize: '17px', fontWeight: '800', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {editingDevRequest ? `✏️ កែប្រែការស្នើសុំ #${editingDevRequest.id}` : '➕ បង្កើតការស្នើសុំថ្មី (New Request)'}
+                </h3>
+                <button
+                  onClick={() => setShowDevRequestModal(false)}
+                  style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b' }}
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div style={{ backgroundColor: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '10px', padding: '10px 14px', marginBottom: '16px', fontSize: '12px', color: '#1e40af', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span>⚡</span>
+                <span>ទិន្នន័យនឹងត្រូវ Sync ស្វ័យប្រវត្តិចូលទៅក្នុង Google Sheet <strong>Firewall</strong> ភ្លាមៗ</span>
+              </div>
+
+              <form onSubmit={handleSaveDevRequest} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                    គោលបំណងស្នើសុំ KH (Khmer Purpose) <span style={{ color: '#ef4444' }}>*</span>
+                  </label>
+                  <textarea
+                    rows="2"
+                    className="form-input"
+                    placeholder="ឧ. ស្នើសុំបង្កើត VM Prod DC (Dashboard MLVT)..."
+                    value={devRequestForm.purpose_kh}
+                    onChange={(e) => setDevRequestForm({ ...devRequestForm, purpose_kh: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                    គោលបំណងស្នើសុំ EN (English Purpose / Domain / IP)
+                  </label>
+                  <textarea
+                    rows="2"
+                    className="form-input"
+                    placeholder="ឧ. dc-nssf.gov.kh | dc-admin.nssf.gov.kh | 192.168.10.20..."
+                    value={devRequestForm.purpose_en}
+                    onChange={(e) => setDevRequestForm({ ...devRequestForm, purpose_en: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px', fontFamily: 'monospace' }}
+                  />
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                      ឈ្មោះអ្នកស្នើ (Requester)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="ឧ. បង ធីតា, LIM SOU..."
+                      value={devRequestForm.requester}
+                      onChange={(e) => setDevRequestForm({ ...devRequestForm, requester: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                      ឈ្មោះអ្នកទទួល (Assignee)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="ឧ. Mr.Samach, Mr.Panhcharoth..."
+                      value={devRequestForm.assignee}
+                      onChange={(e) => setDevRequestForm({ ...devRequestForm, assignee: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                      កាលបរិច្ឆេទស្នើសុំ (Request Date)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="DD/MM/YYYY"
+                      value={devRequestForm.request_date}
+                      onChange={(e) => setDevRequestForm({ ...devRequestForm, request_date: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                      កាលបរិច្ឆេទធ្វើរួច (Completed Date)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="DD/MM/YYYY (បើមិនទាន់រួច ទុកទទេ)"
+                      value={devRequestForm.completed_date}
+                      onChange={(e) => setDevRequestForm({ ...devRequestForm, completed_date: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                      បំពេញទម្រង់ស្នើសុំ (Form Status)
+                    </label>
+                    <select
+                      className="form-input"
+                      value={devRequestForm.form_status}
+                      onChange={(e) => setDevRequestForm({ ...devRequestForm, form_status: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    >
+                      <option value="មិនទាន់">⚠️ មិនទាន់</option>
+                      <option value="រួចរាល់">✓ រួចរាល់</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                      ស្ថានភាព (Status)
+                    </label>
+                    <input
+                      type="text"
+                      className="form-input"
+                      placeholder="pending, done, in_progress..."
+                      value={devRequestForm.status}
+                      onChange={(e) => setDevRequestForm({ ...devRequestForm, status: e.target.value })}
+                      style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', marginBottom: '6px', color: '#334155' }}>
+                    ផ្សេងៗ (Notes / Details)
+                  </label>
+                  <textarea
+                    rows="2"
+                    className="form-input"
+                    placeholder="កំណត់សម្គាល់បន្ថែម..."
+                    value={devRequestForm.notes}
+                    onChange={(e) => setDevRequestForm({ ...devRequestForm, notes: e.target.value })}
+                    style={{ width: '100%', padding: '8px 12px', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '13px' }}
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowDevRequestModal(false)}
+                    style={{ borderRadius: '10px', padding: '10px 18px', fontWeight: '700' }}
+                  >
+                    បោះបង់
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={submittingDevRequest}
+                    style={{ borderRadius: '10px', padding: '10px 22px', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '8px' }}
+                  >
+                    {submittingDevRequest ? 'កំពុងរក្សាទុក...' : (editingDevRequest ? '💾 រក្សាទុកការកែប្រែ' : '➕ បញ្ជូនសំណើ')}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   // Render Official Tickets Tab
   function renderTicketsTab() {
@@ -8873,6 +9472,11 @@ export default function App() {
                   <span className="menu-icon" style={{ fontSize: '15px' }}>📋</span> កិច្ចការងារ Bitrix (Kanban)
                 </li>
               )}
+              {hasPermission('tickets', 'read') && (
+                <li className={`menu-item ${activeTab === 'dev_requests' ? 'active' : ''}`} onClick={() => handleMenuClick('dev_requests')}>
+                  <span className="menu-icon" style={{ fontSize: '15px' }}>💻</span> តារាងស្នើសុំ Dev (Sheets)
+                </li>
+              )}
               {hasPermission('leave', 'read') && (
                 <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => handleMenuClick('leave')}>
                   <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
@@ -9002,6 +9606,7 @@ export default function App() {
               {activeTab === 'kanban' && 'ប្រព័ន្ធគ្រប់គ្រងកិច្ចការងារ Bitrix (Task Management & Kanban Board)'}
               {activeTab === 'workflow' && 'ប្រព័ន្ធបង្កើត និងកំណត់រចនាសម្ព័ន្ធ Workflow (Visual Workflow & Approval Builder)'}
               {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
+              {activeTab === 'dev_requests' && 'តារាងការស្នើសុំ ខាង Developer (Google Sheet Sync)'}
               {(activeTab === 'pdf_hub' || activeTab === 'forms') && 'ប្រព័ន្ធទម្រង់ PDF តាមប្រភេទ (Categorized PDF Form Hub)'}
               {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
               {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់ (Night Shift Standby Roster)'}
@@ -9010,6 +9615,7 @@ export default function App() {
             <p>
               {activeTab === 'dashboard' && 'Security Operations Center (SOC) & Electronic Request Management System'}
               {activeTab === 'kanban' && 'Bitrix-Style Task Pipeline, Visual Stages, Assignees & Deadlines'}
+              {activeTab === 'dev_requests' && 'ទិន្នន័យស្នើសុំផ្ទាល់ពី Google Sheet "Firewall" — អាចបង្កើត កែប្រែ និង Sync ស្វ័យប្រវត្តិក្នងពេលជាក់ស្តែង'}
               {activeTab === 'workflow' && 'Bitrix24-Style Enterprise Drag & Drop Node Designer, Condition Engine & Multi-Level Approvals'}
               {activeTab === 'ipam' && (
                 ipamCategory === 'branches'
@@ -12080,6 +12686,9 @@ export default function App() {
 
         {/* Official Tickets Tab */}
         {activeTab === 'tickets' && renderTicketsTab()}
+
+        {/* Developer Requests Tab (Google Sheet Integration) */}
+        {activeTab === 'dev_requests' && renderDevRequestsTab()}
 
         {/* Direct Original PDF Auto-Fill Hub */}
         {(activeTab === 'pdf_hub' || activeTab === 'forms') && (

@@ -515,3 +515,130 @@ def delete_hospital_vpn_from_google_sheet(sheet_name, vpn_no, vpn_name=None):
         return True, "Row not found in Google Sheets"
     except Exception as e:
         return False, str(e)
+
+DEV_REQUESTS_SPREADSHEET_ID = os.getenv("DEV_REQUESTS_SPREADSHEET_ID", "1YZKou8qC7_C8JbAIKr7cG2wm7QHc_I_YmwD8YAH7hH4")
+
+def get_developer_requests():
+    """
+    Fetches all developer requests from the Google Sheet 'Firewall' worksheet.
+    Returns list of dicts.
+    """
+    client = get_gspread_client()
+    if not client:
+        return False, "Google credentials file not found or invalid"
+        
+    try:
+        sh = call_gspread_with_retry(client.open_by_key, DEV_REQUESTS_SPREADSHEET_ID)
+        worksheet = call_gspread_with_retry(sh.worksheet, "Firewall")
+        all_values = call_gspread_with_retry(worksheet.get_all_values)
+        if not all_values or len(all_values) < 2:
+            return True, []
+            
+        records = []
+        for row_num, row in enumerate(all_values[2:], start=3):
+            r = row + [""] * (10 - len(row))
+            if not any(c.strip() for c in r):
+                continue
+            records.append({
+                "row_index": row_num,
+                "id": r[0].strip(),
+                "purpose_en": r[1].strip(),
+                "purpose_kh": r[2].strip(),
+                "form_status": r[3].strip(),
+                "request_date": r[4].strip(),
+                "requester": r[5].strip(),
+                "assignee": r[6].strip(),
+                "completed_date": r[7].strip(),
+                "status": r[8].strip(),
+                "notes": r[9].strip()
+            })
+            
+        return True, records
+    except Exception as e:
+        return False, str(e)
+
+def add_developer_request(data: dict):
+    """
+    Appends a new developer request to the Google Sheet.
+    """
+    client = get_gspread_client()
+    if not client:
+        return False, "Google credentials file not found or invalid"
+        
+    try:
+        sh = call_gspread_with_retry(client.open_by_key, DEV_REQUESTS_SPREADSHEET_ID)
+        worksheet = call_gspread_with_retry(sh.worksheet, "Firewall")
+        all_values = call_gspread_with_retry(worksheet.get_all_values)
+        
+        existing_ids = []
+        for r in all_values[2:]:
+            if r and r[0].strip().isdigit():
+                existing_ids.append(int(r[0].strip()))
+        next_id = str(max(existing_ids) + 1) if existing_ids else str(len(all_values) - 1)
+        
+        row_to_append = [
+            str(data.get("id") or next_id),
+            str(data.get("purpose_en", "")).strip(),
+            str(data.get("purpose_kh", "")).strip(),
+            str(data.get("form_status", "មិនទាន់")).strip(),
+            str(data.get("request_date", "")).strip(),
+            str(data.get("requester", "")).strip(),
+            str(data.get("assignee", "")).strip(),
+            str(data.get("completed_date", "")).strip(),
+            str(data.get("status", "pending")).strip(),
+            str(data.get("notes", "")).strip()
+        ]
+        
+        call_gspread_with_retry(worksheet.append_row, row_to_append)
+        
+        return True, {
+            "row_index": len(all_values) + 1,
+            "id": row_to_append[0],
+            "purpose_en": row_to_append[1],
+            "purpose_kh": row_to_append[2],
+            "form_status": row_to_append[3],
+            "request_date": row_to_append[4],
+            "requester": row_to_append[5],
+            "assignee": row_to_append[6],
+            "completed_date": row_to_append[7],
+            "status": row_to_append[8],
+            "notes": row_to_append[9]
+        }
+    except Exception as e:
+        return False, str(e)
+
+def update_developer_request(row_index: int, updates: dict):
+    """
+    Updates specific fields of a developer request at row_index.
+    """
+    client = get_gspread_client()
+    if not client:
+        return False, "Google credentials file not found or invalid"
+        
+    try:
+        sh = call_gspread_with_retry(client.open_by_key, DEV_REQUESTS_SPREADSHEET_ID)
+        worksheet = call_gspread_with_retry(sh.worksheet, "Firewall")
+        
+        col_map = {
+            "purpose_en": 2,
+            "purpose_kh": 3,
+            "form_status": 4,
+            "request_date": 5,
+            "requester": 6,
+            "assignee": 7,
+            "completed_date": 8,
+            "status": 9,
+            "notes": 10
+        }
+        
+        cells_to_update = []
+        for k, v in updates.items():
+            if k in col_map and v is not None:
+                cells_to_update.append(gspread.cell.Cell(row_index, col_map[k], str(v).strip()))
+                
+        if cells_to_update:
+            call_gspread_with_retry(worksheet.update_cells, cells_to_update)
+            return True, "Updated successfully"
+        return True, "No fields to update"
+    except Exception as e:
+        return False, str(e)

@@ -4587,6 +4587,40 @@ def get_tickets_reports(period: str = "monthly", year: int = 2026, month: int = 
         "by_category": cat_counts
     }
 
+# Developer Requests (Google Sheet Integration)
+@app.get("/api/dev-requests")
+def api_get_dev_requests():
+    try:
+        from backend.google_sheets import get_developer_requests
+    except ImportError:
+        from api.google_sheets import get_developer_requests
+    ok, result = get_developer_requests()
+    if not ok:
+        raise HTTPException(status_code=500, detail=str(result))
+    return {"status": "success", "data": result}
+
+@app.post("/api/dev-requests")
+def api_add_dev_request(payload: dict):
+    try:
+        from backend.google_sheets import add_developer_request
+    except ImportError:
+        from api.google_sheets import add_developer_request
+    ok, result = add_developer_request(payload)
+    if not ok:
+        raise HTTPException(status_code=500, detail=str(result))
+    return {"status": "success", "data": result}
+
+@app.put("/api/dev-requests/{row_index}")
+def api_update_dev_request(row_index: int, payload: dict):
+    try:
+        from backend.google_sheets import update_developer_request
+    except ImportError:
+        from api.google_sheets import update_developer_request
+    ok, result = update_developer_request(row_index, payload)
+    if not ok:
+        raise HTTPException(status_code=500, detail=str(result))
+    return {"status": "success", "detail": result}
+
 # Serve Vite Frontend static files in production container (Railway Deployment)
 frontend_dist = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "frontend", "dist")
 if not os.path.exists(frontend_dist):
