@@ -10786,180 +10786,331 @@ export default function App() {
         {/* Dashboard View */}
         {activeTab === 'dashboard' && dashboardStats && (
           <>
-            {/* Top Stats Cards (glowing design matches the screenshot) */}
-            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '24px' }}>
+            {/* Top Stats Cards */}
+            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '20px' }}>
               
               {/* Card 1: Total Branches */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(37, 99, 235, 0.12)'; e.currentTarget.style.borderColor = '#93c5fd'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 onClick={() => { setActiveTab('ipam'); setIpamCategory('branches'); }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(37, 99, 235, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#2563eb' }}>
-                    🏢
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                      <line x1="9" y1="22" x2="9" y2="22.01"></line>
+                      <line x1="15" y1="22" x2="15" y2="22.01"></line>
+                      <line x1="8" y1="6" x2="8.01" y2="6"></line>
+                      <line x1="16" y1="6" x2="16.01" y2="6"></line>
+                      <line x1="8" y1="10" x2="8.01" y2="10"></line>
+                      <line x1="16" y1="10" x2="16.01" y2="10"></line>
+                      <line x1="8" y1="14" x2="8.01" y2="14"></line>
+                      <line x1="16" y1="14" x2="16.01" y2="14"></line>
+                      <line x1="8" y1="18" x2="8.01" y2="18"></line>
+                      <line x1="16" y1="18" x2="16.01" y2="18"></line>
+                    </svg>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e3a8a' }}>{dashboardStats?.counts?.branches ?? 0}</span>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Branches</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.counts?.branches ?? 0}</span>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Total Branches</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: '800', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  View all branches →
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                  View all branches 
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
               {/* Card 2: HQ Departments */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(124, 58, 237, 0.12)'; e.currentTarget.style.borderColor = '#c4b5fd'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 onClick={() => { setActiveTab('ipam'); setIpamCategory('hq'); }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(124, 58, 237, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#7c3aed' }}>
-                    🏢
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                    </svg>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#5b21b6' }}>{dashboardStats?.counts?.hq_departments ?? 0}</span>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>HQ Departments</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.counts?.hq_departments ?? 0}</span>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>HQ Departments</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: '800', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  View all departments →
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                  View all departments 
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
               {/* Card 3: Active VPN Users */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(16, 185, 129, 0.12)'; e.currentTarget.style.borderColor = '#6ee7b7'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 onClick={() => { setActiveTab('vpn'); }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(16, 185, 129, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#10b981' }}>
-                    🔑
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M21 2l-2 2m-1-1l-2 2m-1-1l-2 2m-1-1l-2 2"></path>
+                      <circle cx="7.5" cy="16.5" r="4.5"></circle>
+                      <path d="M10.5 13.5L20 4"></path>
+                    </svg>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#065f46' }}>{dashboardStats?.allocations?.active_vpn_users ?? 0} / {dashboardStats?.counts?.vpn_users ?? 0}</span>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active VPN Users</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.allocations?.active_vpn_users ?? 0} <span style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>/ {dashboardStats?.counts?.vpn_users ?? 0}</span></span>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Active VPN Users</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: '800', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  View all users →
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                  View all users 
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
               {/* Card 4: Active S2S VPNs */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(245, 158, 11, 0.12)'; e.currentTarget.style.borderColor = '#fde68a'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 onClick={() => { setActiveTab('s2s'); }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(245, 158, 11, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#f59e0b' }}>
-                    🛡️
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                      <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                      <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                      <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                    </svg>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#92400e' }}>{dashboardStats?.allocations?.active_s2s_tunnels ?? 0} / {dashboardStats?.counts?.s2s_vpns ?? 0}</span>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Active S2S VPNs</span>
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.allocations?.active_s2s_tunnels ?? 0} <span style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>/ {dashboardStats?.counts?.s2s_vpns ?? 0}</span></span>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Active S2S VPNs</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: '800', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  View all VPNs →
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#d97706', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                  View all VPNs 
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
-              {/* Card 5: ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)', transition: 'all 0.2s', cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03)'; }}
+              {/* Card 5: Electronic Requests */}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(239, 68, 68, 0.12)'; e.currentTarget.style.borderColor = '#fca5a5'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 onClick={() => { setActiveTab('tickets'); }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: 'rgba(239, 68, 68, 0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', color: '#ef4444' }}>
-                    🎫
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                      <polyline points="14 2 14 8 20 8"></polyline>
+                      <line x1="16" y1="13" x2="8" y2="13"></line>
+                      <line x1="16" y1="17" x2="8" y2="17"></line>
+                      <polyline points="10 9 9 9 8 9"></polyline>
+                    </svg>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#991b1b' }}>
-                      {(tickets || []).filter(t => ['pending_l1', 'pending_l2', 'pending_l3'].includes(t.status)).length} / {(tickets || []).length}
+                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>
+                      {(tickets || []).filter(t => ['pending_l1', 'pending_l2', 'pending_l3'].includes(t.status)).length} <span style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>/ {(tickets || []).length}</span>
                     </span>
-                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px' }}>សំណើអេឡិចត្រូនិក</span>
+                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>សំណើកំពុងរង់ចាំ</span>
                   </div>
                 </div>
-                <div style={{ fontSize: '11px', fontWeight: '800', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  គ្រប់គ្រងសំណើ →
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
+                  គ្រប់គ្រងសំណើ 
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
             </div>
 
             {/* Dedicated Quick Action Banner for Electronic Request Management System */}
-            <div style={{ backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '18px 24px', marginBottom: '24px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+            <div style={{ 
+              backgroundColor: '#fff', 
+              borderRadius: '16px', 
+              border: '1px solid #e2e8f0', 
+              borderLeft: '4px solid #2563eb',
+              padding: '16px 22px', 
+              marginBottom: '20px', 
+              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.02)', 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              flexWrap: 'wrap', 
+              gap: '16px' 
+            }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: 'rgba(37, 99, 235, 0.1)', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>
-                  🎫
+                <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                  </svg>
                 </div>
                 <div style={{ textAlign: 'left' }}>
-                  <h3 style={{ margin: 0, fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>
-                    ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)
-                  </h3>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: '800', color: '#1e293b' }}>
+                      ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
+                    </h3>
+                    <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#dbeafe', color: '#1d4ed8' }}>
+                      E-Request
+                    </span>
+                  </div>
                   <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#64748b' }}>
-                    គ្រប់គ្រងលិខិតស្នើសុំ បង្កើតសំណើថ្មី និងពិនិត្យអនុម័តសំណើតាមថ្នាក់ដឹកនាំរហ័ស
+                    Electronic Request Management System ᛫ ស្នើសុំសិទ្ធិ បើក/កែប្រែប្រព័ន្ធបច្ចេកវិទ្យា និងតាមដានការអនុម័ត
                   </p>
                 </div>
               </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button 
                   onClick={() => { setActiveTab('tickets'); setIsCreateTicketModalOpen(true); }}
-                  style={{ padding: '9px 18px', borderRadius: '10px', backgroundColor: '#2563eb', color: '#fff', border: 'none', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)' }}
+                  style={{ 
+                    padding: '8px 16px', 
+                    borderRadius: '10px', 
+                    backgroundColor: '#2563eb', 
+                    color: '#fff', 
+                    border: 'none', 
+                    fontWeight: '700', 
+                    fontSize: '12px', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px', 
+                    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
                 >
-                  <span>➕</span> បង្កើតសំណើថ្មី
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  បង្កើតសំណើថ្មី
                 </button>
                 <button 
                   onClick={() => setActiveTab('tickets')}
-                  style={{ padding: '9px 18px', borderRadius: '10px', backgroundColor: '#f8fafc', color: '#334155', border: '1px solid #cbd5e1', fontWeight: '800', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                  style={{ 
+                    padding: '8px 16px', 
+                    borderRadius: '10px', 
+                    backgroundColor: '#f8fafc', 
+                    color: '#334155', 
+                    border: '1px solid #cbd5e1', 
+                    fontWeight: '700', 
+                    fontSize: '12px', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '6px',
+                    transition: 'all 0.15s'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
                 >
-                  <span>🎫</span> មើលសំណើទាំងអស់ ({tickets ? tickets.length : 0})
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                  បញ្ជីសំណើទាំងអស់ ({(tickets || []).length})
                 </button>
               </div>
             </div>
 
-            {/* Bottom Row Grid */}
-            <div className="dashboard-details-row" style={{ display: 'grid', gridTemplateColumns: '1.40fr 1fr', gap: '24px', alignItems: 'start' }}>
+            {/* Bottom Row Grid: Left Panel (Subnets Preview) & Right Panel (Quick Access & Health) */}
+            <div className="dashboard-details-row" style={{ display: 'grid', gridTemplateColumns: '1.45fr 1fr', gap: '20px', alignItems: 'start' }}>
               
               {/* Left Column: Branch Subnets Preview */}
-              <div className="panel" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: 'none', padding: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ fontSize: '18px' }}>🏢</span>
-                    <span className="panel-title" style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>Branch Subnets Preview</span>
+              <div className="panel" style={{ padding: '20px 22px', backgroundColor: '#fff', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                      </svg>
+                    </div>
+                    <div>
+                      <span className="panel-title" style={{ fontSize: '14.5px', fontWeight: '800', color: '#1e293b', display: 'block', textAlign: 'left' }}>Branch Subnets Preview</span>
+                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500', display: 'block', textAlign: 'left' }}>ការប្រើប្រាស់ IP តាមបណ្តាសាខា ({dashboardStats?.counts?.branches ?? 0} សាខាសរុប)</span>
+                    </div>
                   </div>
-                  <button className="btn btn-secondary" onClick={() => { setActiveTab('ipam'); setIpamCategory('branches'); }} style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '11px', border: '1px solid #cbd5e1', backgroundColor: '#fff', fontWeight: '700', cursor: 'pointer' }}>View All</button>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={() => { setActiveTab('ipam'); setIpamCategory('branches'); }} 
+                    style={{ padding: '6px 14px', borderRadius: '8px', fontSize: '11.5px', border: '1px solid #cbd5e1', backgroundColor: '#f8fafc', fontWeight: '700', color: '#334155', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    View All Branches
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                  </button>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                  {dashboardStats.branch_list.map((b) => {
-                    const pct = Math.round((b.used_ips / b.total_ips) * 100);
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {(dashboardStats.branch_list || []).map((b) => {
+                    const total = b.total_ips || 254;
+                    const used = b.used_ips || 0;
+                    const pct = Math.min(100, Math.round((used / total) * 100));
+                    const statusColor = pct >= 80 ? '#ef4444' : pct >= 50 ? '#f59e0b' : '#10b981';
+                    const statusBg = pct >= 80 ? '#fef2f2' : pct >= 50 ? '#fffbeb' : '#ecfdf5';
+
+                    // Clean name (strip leading numbers if any)
+                    const cleanNameKh = (b.name_kh || '').replace(/^\d+\s*/, '').trim();
+                    const cleanNameEn = (b.name_en || '').replace(/^\d+\s*/, '').trim();
+
                     return (
-                      <div key={b.id} className="subnet-row" onClick={() => { setActiveTab('ipam'); setIpamCategory('branches'); fetchBranchDetails(b.id); }} style={{ padding: '14px 16px', borderRadius: '12px', border: '1px solid #f1f5f9', cursor: 'pointer', transition: 'all 0.15s', textAlign: 'left' }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.backgroundColor = '#f8fafc'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#f1f5f9'; e.currentTarget.style.backgroundColor = 'transparent'; }}
+                      <div 
+                        key={b.id} 
+                        className="subnet-row" 
+                        onClick={() => { setActiveTab('ipam'); setIpamCategory('branches'); fetchBranchDetails(b.id); }} 
+                        style={{ 
+                          padding: '12px 14px', 
+                          borderRadius: '12px', 
+                          border: '1px solid #f1f5f9', 
+                          backgroundColor: '#fafbfc',
+                          cursor: 'pointer', 
+                          transition: 'all 0.15s ease-in-out', 
+                          textAlign: 'left' 
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.backgroundColor = '#f0f7ff'; e.currentTarget.style.transform = 'translateX(2px)'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = '#f1f5f9'; e.currentTarget.style.backgroundColor = '#fafbfc'; e.currentTarget.style.transform = 'translateX(0)'; }}
                       >
-                        <div className="subnet-info-top" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
-                          <span style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block' }}></span>
-                            {b.name_kh} ({b.name_en})
-                          </span>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                            <span style={{ fontSize: '11.5px', fontWeight: '700', color: '#475569' }}>{b.used_ips} / {b.total_ips} IPs</span>
-                            <span style={{ fontSize: '11.5px', fontWeight: '800', color: pct > 80 ? '#ef4444' : '#10b981' }}>{pct}%</span>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: statusColor, display: 'inline-block', flexShrink: 0 }}></span>
+                            <span style={{ fontSize: '13px', fontWeight: '800', color: '#1e293b' }}>
+                              {cleanNameKh || b.name_kh} <span style={{ fontSize: '11.5px', fontWeight: '600', color: '#64748b' }}>({cleanNameEn || b.name_en})</span>
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span style={{ fontSize: '11px', fontWeight: '700', color: '#475569' }}>
+                              {used} / {total} IPs
+                            </span>
+                            <span style={{ 
+                              fontSize: '10.5px', 
+                              fontWeight: '800', 
+                              color: statusColor, 
+                              backgroundColor: statusBg, 
+                              padding: '2px 7px', 
+                              borderRadius: '6px',
+                              border: `1px solid ${statusColor}33`
+                            }}>
+                              {pct}%
+                            </span>
                           </div>
                         </div>
-                        <div className="subnet-address-bar" style={{ fontSize: '11px', color: '#64748b', fontWeight: '600', marginBottom: '10px' }}>
-                          {b.subnet} &nbsp;᛫&nbsp; GW: {b.gateway}
+
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', marginBottom: '8px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '11px', color: '#334155', backgroundColor: '#e2e8f0', padding: '1px 6px', borderRadius: '4px', fontWeight: '600' }}>
+                              {b.subnet || 'N/A'}
+                            </span>
+                            <span style={{ fontSize: '10.5px', color: '#94a3b8' }}>᛫</span>
+                            <span style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace', fontSize: '11px', color: '#64748b' }}>
+                              GW: {b.gateway || 'N/A'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="utilization-bar-container" style={{ height: '6px', backgroundColor: '#e2e8f0', borderRadius: '10px', overflow: 'hidden' }}>
-                          <div className="utilization-bar" style={{ height: '100%', width: `${pct}%`, backgroundColor: pct > 80 ? '#ef4444' : pct > 50 ? '#f59e0b' : '#10b981', borderRadius: '10px' }}></div>
+
+                        <div className="utilization-bar-container" style={{ height: '5px', backgroundColor: '#e2e8f0', borderRadius: '99px', overflow: 'hidden' }}>
+                          <div className="utilization-bar" style={{ height: '100%', width: `${pct}%`, backgroundColor: statusColor, borderRadius: '99px', transition: 'width 0.4s ease' }}></div>
                         </div>
                       </div>
                     );
@@ -10968,129 +11119,233 @@ export default function App() {
               </div>
 
               {/* Right Column: Quick Access & System Status */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                 
                 {/* 1. Quick Access Panel */}
-                <div className="panel" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px' }}>
-                    <span style={{ fontSize: '18px' }}>⚙️</span>
-                    <span style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>Quick Access</span>
+                <div className="panel" style={{ padding: '20px 22px', backgroundColor: '#fff', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#f0fdf4', color: '#16a34a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="3" y="3" width="7" height="7"></rect>
+                          <rect x="14" y="3" width="7" height="7"></rect>
+                          <rect x="14" y="14" width="7" height="7"></rect>
+                          <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                      </div>
+                      <div style={{ textAlign: 'left' }}>
+                        <span style={{ fontSize: '14.5px', fontWeight: '800', color: '#1e293b', display: 'block' }}>Quick Navigation</span>
+                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '500', display: 'block' }}>ចូលទៅកាន់មុខងាររហ័ស</span>
+                      </div>
+                    </div>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '10px' }}>
                     
                     {/* Tile 1: IPAM / IP Address */}
-                    <div onClick={() => { setActiveTab('ipam'); setSelectedBranch(null); setSelectedDept(null); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.borderColor = '#2563eb'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    <div 
+                      onClick={() => { setActiveTab('ipam'); setSelectedBranch(null); setSelectedDept(null); }} 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fafbfc', cursor: 'pointer', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.backgroundColor = '#eff6ff'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#fafbfc'; }}
                     >
-                      <span style={{ fontSize: '20px', marginBottom: '8px', color: '#2563eb' }}>🏢</span>
-                      <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#475569', textAlign: 'center', lineHeight: '1.25' }}>IPAM / IP Address</span>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                          <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                          <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                          <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>IPAM Subnets</span>
                     </div>
 
                     {/* Tile 2: VPN Remote */}
-                    <div onClick={() => setActiveTab('vpn')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.borderColor = '#f59e0b'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    <div 
+                      onClick={() => setActiveTab('vpn')} 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fafbfc', cursor: 'pointer', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#10b981'; e.currentTarget.style.backgroundColor = '#ecfdf5'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#fafbfc'; }}
                     >
-                      <span style={{ fontSize: '20px', marginBottom: '8px', color: '#f59e0b' }}>🔑</span>
-                      <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#475569', textAlign: 'center', lineHeight: '1.25' }}>VPN Remote Access</span>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="2" y1="12" x2="22" y2="12"></line>
+                          <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>VPN Remote</span>
                     </div>
 
                     {/* Tile 3: Hospital VPNs */}
-                    <div onClick={() => setActiveTab('s2s')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.borderColor = '#ef4444'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    <div 
+                      onClick={() => setActiveTab('s2s')} 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fafbfc', cursor: 'pointer', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#ef4444'; e.currentTarget.style.backgroundColor = '#fef2f2'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#fafbfc'; }}
                     >
-                      <span style={{ fontSize: '20px', marginBottom: '8px', color: '#ef4444' }}>🏥</span>
-                      <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#475569', textAlign: 'center', lineHeight: '1.25' }}>Hospital VPNs</span>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#fef2f2', color: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M12 2v20M2 12h20"></path>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>Hospital VPN</span>
                     </div>
 
                     {/* Tile 4: Bank VPNs */}
-                    <div onClick={() => setActiveTab('banks')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.borderColor = '#1e3a8a'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    <div 
+                      onClick={() => setActiveTab('banks')} 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fafbfc', cursor: 'pointer', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.backgroundColor = '#eef2ff'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#fafbfc'; }}
                     >
-                      <span style={{ fontSize: '20px', marginBottom: '8px', color: '#1e3a8a' }}>🏦</span>
-                      <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#475569', textAlign: 'center', lineHeight: '1.25' }}>Bank VPNs</span>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#eef2ff', color: '#6366f1', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4"></path>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>Bank VPNs</span>
                     </div>
 
                     {/* Tile 5: Public IP & DNS */}
-                    <div onClick={() => setActiveTab('public')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.borderColor = '#3b82f6'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    <div 
+                      onClick={() => setActiveTab('public')} 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fafbfc', cursor: 'pointer', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#0284c7'; e.currentTarget.style.backgroundColor = '#f0f9ff'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#fafbfc'; }}
                     >
-                      <span style={{ fontSize: '20px', marginBottom: '8px', color: '#3b82f6' }}>🌐</span>
-                      <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#475569', textAlign: 'center', lineHeight: '1.25' }}>Public IP & DNS</span>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#f0f9ff', color: '#0284c7', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="12" y1="2" x2="12" y2="6"></line>
+                          <line x1="12" y1="18" x2="12" y2="22"></line>
+                          <line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line>
+                          <line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line>
+                          <line x1="2" y1="12" x2="6" y2="12"></line>
+                          <line x1="18" y1="12" x2="22" y2="12"></line>
+                          <line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line>
+                          <line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>Public IP/DNS</span>
                     </div>
 
                     {/* Tile 6: Switches List */}
-                    <div onClick={() => setActiveTab('switches')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.borderColor = '#475569'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    <div 
+                      onClick={() => setActiveTab('switches')} 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fafbfc', cursor: 'pointer', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#475569'; e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#fafbfc'; }}
                     >
-                      <span style={{ fontSize: '20px', marginBottom: '8px', color: '#475569' }}>🔌</span>
-                      <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#475569', textAlign: 'center', lineHeight: '1.25' }}>Switches List</span>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#f1f5f9', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                          <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                          <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                          <line x1="10" y1="6" x2="10.01" y2="6"></line>
+                          <line x1="14" y1="6" x2="14.01" y2="6"></line>
+                          <line x1="18" y1="6" x2="18.01" y2="6"></line>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>Switches List</span>
                     </div>
 
                     {/* Tile 7: File Storage */}
-                    <div onClick={() => setActiveTab('storage')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.borderColor = '#eab308'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    <div 
+                      onClick={() => setActiveTab('storage')} 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fafbfc', cursor: 'pointer', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#eab308'; e.currentTarget.style.backgroundColor = '#fefce8'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#fafbfc'; }}
                     >
-                      <span style={{ fontSize: '20px', marginBottom: '8px', color: '#eab308' }}>📂</span>
-                      <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#475569', textAlign: 'center', lineHeight: '1.25' }}>File Storage</span>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#fefce8', color: '#ca8a04', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>File Storage</span>
                     </div>
 
                     {/* Tile 8: Leave Request */}
-                    <div onClick={() => setActiveTab('leave')} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '14px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#f8fafc', cursor: 'pointer', transition: 'all 0.15s' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.03)'; e.currentTarget.style.borderColor = '#06b6d4'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+                    <div 
+                      onClick={() => setActiveTab('leave')} 
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '12px 6px', borderRadius: '12px', border: '1px solid #e2e8f0', backgroundColor: '#fafbfc', cursor: 'pointer', transition: 'all 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}
+                      onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#0891b2'; e.currentTarget.style.backgroundColor = '#ecfeff'; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.backgroundColor = '#fafbfc'; }}
                     >
-                      <span style={{ fontSize: '20px', marginBottom: '8px', color: '#06b6d4' }}>📝</span>
-                      <span style={{ fontSize: '9.5px', fontWeight: '800', color: '#475569', textAlign: 'center', lineHeight: '1.25' }}>សុំច្បាប់ / Telegram</span>
+                      <div style={{ width: '36px', height: '36px', borderRadius: '10px', backgroundColor: '#ecfeff', color: '#0891b2', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                          <polyline points="14 2 14 8 20 8"></polyline>
+                          <line x1="16" y1="13" x2="8" y2="13"></line>
+                          <line x1="16" y1="17" x2="8" y2="17"></line>
+                          <polyline points="10 9 9 9 8 9"></polyline>
+                        </svg>
+                      </div>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>សុំច្បាប់ SOC</span>
                     </div>
 
                   </div>
                 </div>
 
-                {/* 2. System Status Panel */}
-                <div className="panel" style={{ padding: '24px', backgroundColor: '#fff', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                {/* 2. System Status & Health Panel */}
+                <div className="panel" style={{ padding: '20px 22px', backgroundColor: '#fff', borderRadius: '18px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '18px' }}>⚙️</span>
-                      <span style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>System Status</span>
+                      <span style={{ position: 'relative', display: 'flex', height: '10px', width: '10px' }}>
+                        <span style={{ position: 'absolute', display: 'inline-flex', height: '100%', width: '100%', borderRadius: '50%', backgroundColor: '#34d399', opacity: 0.75, animation: 'ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite' }}></span>
+                        <span style={{ position: 'relative', display: 'inline-flex', borderRadius: '50%', height: '10px', width: '10px', backgroundColor: '#10b981' }}></span>
+                      </span>
+                      <span style={{ fontSize: '14.5px', fontWeight: '800', color: '#1e293b' }}>System Health Status</span>
                     </div>
-                    <span style={{ fontSize: '11px', color: '#2563eb', fontWeight: '800', cursor: 'pointer' }}>View Details</span>
+                    <span style={{ fontSize: '11px', color: '#10b981', fontWeight: '700', backgroundColor: '#ecfdf5', padding: '3px 8px', borderRadius: '6px' }}>
+                      All Systems Operational
+                    </span>
                   </div>
 
-                  <div style={{ display: 'flex', justifyContent: 'space-between', backgroundColor: '#f8fafc', padding: '16px 20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                     
                     {/* Item 1: VPN Tunnels */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>⚡ VPN Tunnels</span>
-                      <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
-                        Healthy
-                      </span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', backgroundColor: '#fafbfc', borderRadius: '10px', border: '1px solid #f1f5f9', textAlign: 'left' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#ecfdf5', color: '#10b981', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>VPN Tunnels</div>
+                        <div style={{ fontSize: '11.5px', fontWeight: '800', color: '#10b981' }}>Healthy (100%)</div>
+                      </div>
                     </div>
 
-                    {/* Item 2: Firewall */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>🛡️ Firewall</span>
-                      <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
-                        Secure
-                      </span>
+                    {/* Item 2: Firewall Security */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', backgroundColor: '#fafbfc', borderRadius: '10px', border: '1px solid #f1f5f9', textAlign: 'left' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>Firewall</div>
+                        <div style={{ fontSize: '11.5px', fontWeight: '800', color: '#2563eb' }}>Secure & Active</div>
+                      </div>
                     </div>
 
-                    {/* Item 3: Storage */}
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
-                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>💾 Storage</span>
-                      <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', boxShadow: '0 0 8px #10b981' }}></span>
-                        Normal
-                      </span>
+                    {/* Item 3: Database Realtime */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', backgroundColor: '#fafbfc', borderRadius: '10px', border: '1px solid #f1f5f9', textAlign: 'left' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#f5f3ff', color: '#7c3aed', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>Supabase DB</div>
+                        <div style={{ fontSize: '11.5px', fontWeight: '800', color: '#7c3aed' }}>Live Sync</div>
+                      </div>
+                    </div>
+
+                    {/* Item 4: Storage & Files */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px', backgroundColor: '#fafbfc', borderRadius: '10px', border: '1px solid #f1f5f9', textAlign: 'left' }}>
+                      <div style={{ width: '28px', height: '28px', borderRadius: '6px', backgroundColor: '#fffbeb', color: '#d97706', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>File Storage</div>
+                        <div style={{ fontSize: '11.5px', fontWeight: '800', color: '#d97706' }}>Normal</div>
+                      </div>
                     </div>
 
                   </div>
