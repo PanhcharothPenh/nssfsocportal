@@ -12426,33 +12426,25 @@ export default function App() {
                               {vpn.name}
                             </div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <select
-                              value={isReopen ? 'reopen' : (isOpen ? 'open' : 'closed')}
-                              onChange={(e) => {
-                                const val = e.target.value;
-                                if (val === 'open') handleQuickChangeHospitalStatus(vpn, 'S2S', 0);
-                                else if (val === 'closed') handleQuickChangeHospitalStatus(vpn, 'Close', 0);
-                                else if (val === 'reopen') handleQuickChangeHospitalStatus(vpn, 'Close', 1);
-                              }}
-                              style={{
-                                padding: '4px 8px',
-                                fontSize: '11px',
-                                fontWeight: '800',
-                                borderRadius: '6px',
-                                border: isOpen ? '1.5px solid #86efac' : isReopen ? '1.5px solid #c4b5fd' : '1.5px solid #fca5a5',
-                                backgroundColor: isOpen ? '#f0fdf4' : isReopen ? '#f5f3ff' : '#fef2f2',
-                                color: isOpen ? '#15803d' : isReopen ? '#6d28d9' : '#b91c1c',
-                                cursor: 'pointer',
-                                outline: 'none'
-                              }}
-                              title="ចុចដើម្បីប្តូរស្ថានភាព៖ បើក (Open), បិទ (Closed), ឬ សុំបើកវិញ (Reopen)"
+                          {isReopen ? (
+                            <span 
+                              className="status-badge badge-reopen" 
+                              onClick={() => handleIPEditClick(vpn, 's2s_vpn')}
+                              style={{ cursor: 'pointer' }}
+                              title="ចុចដើម្បីកែប្រែព័ត៌មាន ឬស្ថានភាព"
                             >
-                              <option value="open">🟢 បើក (OPEN)</option>
-                              <option value="closed">🔴 បិទ (CLOSED)</option>
-                              <option value="reopen">🔄 សុំបើកវិញ (REOPEN)</option>
-                            </select>
-                          </div>
+                              🔄 ស្នើសុំបើកវិញ
+                            </span>
+                          ) : (
+                            <span 
+                              className={`status-badge ${isOpen ? 'badge-active' : 'badge-inactive'}`}
+                              onClick={() => handleIPEditClick(vpn, 's2s_vpn')}
+                              style={{ cursor: 'pointer' }}
+                              title="ចុចដើម្បីកែប្រែព័ត៌មាន ឬស្ថានភាព"
+                            >
+                              {isOpen ? 'OPEN' : 'CLOSED'}
+                            </span>
+                          )}
                         </div>
 
                         <div className="vpn-card-body">
@@ -12569,31 +12561,25 @@ export default function App() {
                             <td>{vpn.no || idx + 1}</td>
                             <td style={{ fontWeight: '600' }}>{vpn.name}</td>
                             <td>
-                              <select
-                                value={isReopen ? 'reopen' : (isOpen ? 'open' : 'closed')}
-                                onChange={(e) => {
-                                  const val = e.target.value;
-                                  if (val === 'open') handleQuickChangeHospitalStatus(vpn, 'S2S', 0);
-                                  else if (val === 'closed') handleQuickChangeHospitalStatus(vpn, 'Close', 0);
-                                  else if (val === 'reopen') handleQuickChangeHospitalStatus(vpn, 'Close', 1);
-                                }}
-                                style={{
-                                  padding: '3px 8px',
-                                  fontSize: '11px',
-                                  fontWeight: '800',
-                                  borderRadius: '6px',
-                                  border: isOpen ? '1.5px solid #86efac' : isReopen ? '1.5px solid #c4b5fd' : '1.5px solid #fca5a5',
-                                  backgroundColor: isOpen ? '#f0fdf4' : isReopen ? '#f5f3ff' : '#fef2f2',
-                                  color: isOpen ? '#15803d' : isReopen ? '#6d28d9' : '#b91c1c',
-                                  cursor: 'pointer',
-                                  outline: 'none'
-                                }}
-                                title="ចុចដើម្បីប្តូរស្ថានភាព៖ បើក (Open), បិទ (Closed), ឬ សុំបើកវិញ (Reopen)"
-                              >
-                                <option value="open">🟢 បើក (OPEN)</option>
-                                <option value="closed">🔴 បិទ (CLOSED)</option>
-                                <option value="reopen">🔄 សុំបើកវិញ (REOPEN)</option>
-                              </select>
+                              {isReopen ? (
+                                <span 
+                                  className="status-badge badge-reopen" 
+                                  style={{ display: 'inline-block', cursor: 'pointer' }}
+                                  onClick={() => handleIPEditClick(vpn, 's2s_vpn')}
+                                  title="ចុចដើម្បីកែប្រែព័ត៌មាន ឬស្ថានភាព"
+                                >
+                                  🔄 ស្នើសុំបើកវិញ
+                                </span>
+                              ) : (
+                                <span 
+                                  className={`status-badge ${isOpen ? 'badge-active' : 'badge-inactive'}`} 
+                                  style={{ display: 'inline-block', cursor: 'pointer' }}
+                                  onClick={() => handleIPEditClick(vpn, 's2s_vpn')}
+                                  title="ចុចដើម្បីកែប្រែព័ត៌មាន ឬស្ថានភាព"
+                                >
+                                  {isOpen ? 'OPEN' : 'CLOSED'}
+                                </span>
+                              )}
                             </td>
                             <td>{vpn.isp || 'ONLINE'}</td>
                             <td style={{ fontFamily: 'var(--font-mono)' }}>{vpn.public_ip || 'N/A'}</td>
