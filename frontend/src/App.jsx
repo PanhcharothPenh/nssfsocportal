@@ -10752,16 +10752,12 @@ export default function App() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
               {[1, 2, 3, 4].map((i) => (
-                <div key={i} style={{ height: '142px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#f1f5f9' }} className="skeleton-pulse"></div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', flex: 1 }}>
-                      <div style={{ height: '22px', width: '60px', backgroundColor: '#f1f5f9', borderRadius: '4px' }} className="skeleton-pulse"></div>
-                      <div style={{ height: '10px', width: '90px', backgroundColor: '#f1f5f9', borderRadius: '3px' }} className="skeleton-pulse"></div>
-                    </div>
+                <div key={i} style={{ height: '76px', backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', padding: '14px 18px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#f1f5f9', flexShrink: 0 }} className="skeleton-pulse"></div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', flex: 1 }}>
+                    <div style={{ height: '18px', width: '50px', backgroundColor: '#f1f5f9', borderRadius: '4px' }} className="skeleton-pulse"></div>
+                    <div style={{ height: '10px', width: '85px', backgroundColor: '#f1f5f9', borderRadius: '3px' }} className="skeleton-pulse"></div>
                   </div>
-                  <div style={{ height: '12px', width: '100%', backgroundColor: '#f8fafc', borderRadius: '3px', marginTop: '6px' }} className="skeleton-pulse"></div>
-                  <div style={{ height: '10px', width: '80px', backgroundColor: '#f1f5f9', borderRadius: '3px', marginTop: 'auto' }} className="skeleton-pulse"></div>
                 </div>
               ))}
             </div>
@@ -10789,168 +10785,148 @@ export default function App() {
         {/* Dashboard View */}
         {activeTab === 'dashboard' && dashboardStats && (
           <>
-            {/* Top Stats Cards */}
-            {/* Top Stats Cards (4 Columns - Balanced Enterprise SOC Design) */}
+            {/* Top Stats Cards (4 Columns - Compact & Clean Design) */}
             <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
               
               {/* Card 1: Total Branches */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left', minHeight: '142px' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(37, 99, 235, 0.12)'; e.currentTarget.style.borderColor = '#93c5fd'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+              <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 0.15s ease', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#93c5fd'; e.currentTarget.style.boxShadow = '0 6px 14px -2px rgba(37, 99, 235, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)'; }}
                 onClick={() => { setActiveTab('ipam'); setIpamCategory('branches'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', flexShrink: 0 }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
-                      <line x1="9" y1="22" x2="9" y2="22.01"></line>
-                      <line x1="15" y1="22" x2="15" y2="22.01"></line>
-                      <line x1="8" y1="6" x2="8.01" y2="6"></line>
-                      <line x1="16" y1="6" x2="16.01" y2="6"></line>
-                      <line x1="8" y1="10" x2="8.01" y2="10"></line>
-                      <line x1="16" y1="10" x2="16.01" y2="10"></line>
-                      <line x1="8" y1="14" x2="8.01" y2="14"></line>
-                      <line x1="16" y1="14" x2="16.01" y2="14"></line>
-                      <line x1="8" y1="18" x2="8.01" y2="18"></line>
-                      <line x1="16" y1="18" x2="16.01" y2="18"></line>
-                    </svg>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.counts?.branches ?? 0}</span>
-                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Total Branches</span>
-                  </div>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="4" y="2" width="16" height="20" rx="2" ry="2"></rect>
+                    <line x1="9" y1="22" x2="9" y2="22.01"></line>
+                    <line x1="15" y1="22" x2="15" y2="22.01"></line>
+                    <line x1="8" y1="6" x2="8.01" y2="6"></line>
+                    <line x1="16" y1="6" x2="16.01" y2="6"></line>
+                    <line x1="8" y1="10" x2="8.01" y2="10"></line>
+                    <line x1="16" y1="10" x2="16.01" y2="10"></line>
+                    <line x1="8" y1="14" x2="8.01" y2="14"></line>
+                    <line x1="16" y1="14" x2="16.01" y2="14"></line>
+                    <line x1="8" y1="18" x2="8.01" y2="18"></line>
+                    <line x1="16" y1="18" x2="16.01" y2="18"></line>
+                  </svg>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', padding: '9px 0 8px 0', borderTop: '1px dashed #e2e8f0', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '600' }}>24 រាជធានី-ខេត្ត</span>
-                  <span style={{ color: '#059669', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
-                    100% Online
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, lineHeight: '1.25' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                    <span style={{ fontSize: '22px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.counts?.branches ?? 0}</span>
+                  </div>
+                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    Total Branches
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: '#2563eb', fontWeight: '600', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    24 រាជធានី-ខេត្ត <span style={{ color: '#cbd5e1' }}>•</span> <span style={{ color: '#059669', fontWeight: '700' }}>100% Online</span>
                   </span>
                 </div>
-
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#2563eb', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  View all branches 
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <div style={{ color: '#cbd5e1', flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
               {/* Card 2: HQ Departments */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left', minHeight: '142px' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(124, 58, 237, 0.12)'; e.currentTarget.style.borderColor = '#c4b5fd'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+              <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 0.15s ease', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#c4b5fd'; e.currentTarget.style.boxShadow = '0 6px 14px -2px rgba(124, 58, 237, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)'; }}
                 onClick={() => { setActiveTab('ipam'); setIpamCategory('hq'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed', flexShrink: 0 }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
-                      <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
-                    </svg>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.counts?.hq_departments ?? 0}</span>
-                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>HQ Departments</span>
-                  </div>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#f5f3ff', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7c3aed', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect>
+                    <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+                  </svg>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', padding: '9px 0 8px 0', borderTop: '1px dashed #e2e8f0', marginBottom: '8px' }}>
-                  <span style={{ fontWeight: '600' }}>ទីស្នាក់ការកណ្តាល</span>
-                  <span style={{ color: '#7c3aed', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#7c3aed' }}></span>
-                    26 ការិយាល័យ
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, lineHeight: '1.25' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                    <span style={{ fontSize: '22px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.counts?.hq_departments ?? 0}</span>
+                  </div>
+                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    HQ Departments
+                  </span>
+                  <span style={{ fontSize: '10.5px', color: '#7c3aed', fontWeight: '600', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    ទីស្នាក់ការកណ្តាល <span style={{ color: '#cbd5e1' }}>•</span> <span style={{ color: '#64748b' }}>26 ផ្នែក</span>
                   </span>
                 </div>
-
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  View all departments 
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <div style={{ color: '#cbd5e1', flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
               {/* Card 3: Active VPN Users */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left', minHeight: '142px' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(16, 185, 129, 0.12)'; e.currentTarget.style.borderColor = '#6ee7b7'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+              <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 0.15s ease', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#6ee7b7'; e.currentTarget.style.boxShadow = '0 6px 14px -2px rgba(16, 185, 129, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)'; }}
                 onClick={() => { setActiveTab('vpn'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', flexShrink: 0 }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M21 2l-2 2m-1-1l-2 2m-1-1l-2 2m-1-1l-2 2"></path>
-                      <circle cx="7.5" cy="16.5" r="4.5"></circle>
-                      <path d="M10.5 13.5L20 4"></path>
-                    </svg>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>
-                      {dashboardStats?.allocations?.active_vpn_users ?? 0} <span style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>/ {dashboardStats?.counts?.vpn_users ?? 0}</span>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#ecfdf5', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#10b981', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 2l-2 2m-1-1l-2 2m-1-1l-2 2m-1-1l-2 2"></path>
+                    <circle cx="7.5" cy="16.5" r="4.5"></circle>
+                    <path d="M10.5 13.5L20 4"></path>
+                  </svg>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, lineHeight: '1.25' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                    <span style={{ fontSize: '22px', fontWeight: '800', color: '#1e293b' }}>
+                      {dashboardStats?.allocations?.active_vpn_users ?? 0}
                     </span>
-                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Active VPN Users</span>
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#94a3b8' }}>
+                      / {dashboardStats?.counts?.vpn_users ?? 0}
+                    </span>
                   </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', padding: '9px 0 8px 0', borderTop: '1px dashed #e2e8f0', marginBottom: '8px' }}>
-                  <span style={{ color: '#059669', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
-                    {dashboardStats?.allocations?.active_vpn_users ?? 0} កំពុងប្រើ
+                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    Active VPN Users
                   </span>
-                  <span style={{ color: '#94a3b8', fontWeight: '600' }}>
-                    {Math.max(0, (dashboardStats?.counts?.vpn_users || 0) - (dashboardStats?.allocations?.active_vpn_users || 0))} មិនទាន់ភ្ជាប់
+                  <span style={{ fontSize: '10.5px', color: '#059669', fontWeight: '700', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {dashboardStats?.allocations?.active_vpn_users ?? 0} ប្រើប្រាស់ <span style={{ color: '#cbd5e1' }}>•</span> <span style={{ color: '#94a3b8', fontWeight: '600' }}>{Math.max(0, (dashboardStats?.counts?.vpn_users || 0) - (dashboardStats?.allocations?.active_vpn_users || 0))} ទំនេរ</span>
                   </span>
                 </div>
-
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#10b981', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  View all users 
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <div style={{ color: '#cbd5e1', flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
-              {/* Card 4: S2S VPNs with Clean Dot Status Indicators */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left', minHeight: '142px' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(245, 158, 11, 0.12)'; e.currentTarget.style.borderColor = '#fde68a'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
+              {/* Card 4: Active S2S VPNs */}
+              <div className="stat-card" style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '14px 18px', backgroundColor: '#fff', borderRadius: '14px', border: '1px solid #e2e8f0', boxShadow: '0 1px 3px rgba(0,0,0,0.02)', transition: 'all 0.15s ease', cursor: 'pointer', textAlign: 'left' }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.borderColor = '#fde68a'; e.currentTarget.style.boxShadow = '0 6px 14px -2px rgba(245, 158, 11, 0.1)'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.02)'; }}
                 onClick={() => { setActiveTab('s2s'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b', flexShrink: 0 }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
-                      <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
-                      <line x1="6" y1="6" x2="6.01" y2="6"></line>
-                      <line x1="6" y1="18" x2="6.01" y2="18"></line>
-                    </svg>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>
-                      {dashboardStats?.allocations?.open_s2s_tunnels ?? 219} <span style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>/ {dashboardStats?.counts?.s2s_vpns ?? 238}</span>
-                    </span>
-                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
-                      Active S2S VPNs
-                    </span>
-                  </div>
+                <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b', flexShrink: 0 }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
+                    <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
+                    <line x1="6" y1="6" x2="6.01" y2="6"></line>
+                    <line x1="6" y1="18" x2="6.01" y2="18"></line>
+                  </svg>
                 </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: '#64748b', padding: '9px 0 8px 0', borderTop: '1px dashed #e2e8f0', marginBottom: '8px' }}>
-                  <span style={{ color: '#059669', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#10b981' }}></span>
-                    {dashboardStats?.allocations?.open_s2s_tunnels ?? 219} ដំណើរការ
-                  </span>
-                  <span style={{ color: '#dc2626', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#ef4444' }}></span>
-                    {dashboardStats?.allocations?.closed_s2s_tunnels ?? 18} បិទ
-                  </span>
-                  {(dashboardStats?.allocations?.reopen_s2s_tunnels ?? 1) > 0 && (
-                    <span style={{ color: '#d97706', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#f59e0b' }}></span>
-                      {dashboardStats?.allocations?.reopen_s2s_tunnels ?? 1} ស្នើសុំ
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, lineHeight: '1.25' }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                    <span style={{ fontSize: '22px', fontWeight: '800', color: '#1e293b' }}>
+                      {dashboardStats?.allocations?.open_s2s_tunnels ?? 219}
                     </span>
-                  )}
+                    <span style={{ fontSize: '13px', fontWeight: '600', color: '#94a3b8' }}>
+                      / {dashboardStats?.counts?.s2s_vpns ?? 238}
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    Active S2S VPNs
+                  </span>
+                  <span style={{ fontSize: '10.5px', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    <span style={{ color: '#059669', fontWeight: '700' }}>{dashboardStats?.allocations?.open_s2s_tunnels ?? 219} បើក</span>
+                    <span style={{ color: '#cbd5e1' }}> • </span>
+                    <span style={{ color: '#dc2626', fontWeight: '700' }}>{dashboardStats?.allocations?.closed_s2s_tunnels ?? 18} បិទ</span>
+                    {(dashboardStats?.allocations?.reopen_s2s_tunnels ?? 1) > 0 && (
+                      <>
+                        <span style={{ color: '#cbd5e1' }}> • </span>
+                        <span style={{ color: '#d97706', fontWeight: '700' }}>{dashboardStats?.allocations?.reopen_s2s_tunnels ?? 1} ស្នើសុំ</span>
+                      </>
+                    )}
+                  </span>
                 </div>
-
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#d97706', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  View all VPNs 
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                <div style={{ color: '#cbd5e1', flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
