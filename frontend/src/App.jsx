@@ -10181,46 +10181,8 @@ export default function App() {
           )}
         </ul>
         
-        <div className="sidebar-footer" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-          {!isStandaloneApp && (
-            <div 
-              onClick={handleInstallPwa}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '9px 12px',
-                backgroundColor: '#f0fdf4',
-                border: '1px solid #bbf7d0',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                transition: 'all 0.15s ease'
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '13px', display: 'flex', alignItems: 'center', color: '#16a34a' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: '1.2' }}>
-                  <span style={{ fontSize: '11px', fontWeight: '800', color: '#15803d' }}>ដំឡើងលើទូរស័ព្ទ</span>
-                  <span style={{ fontSize: '9px', fontWeight: '600', color: '#16a34a' }}>Add to Home Screen</span>
-                </div>
-              </div>
-              <span style={{ color: '#15803d', fontSize: '9px', fontWeight: '800' }}>❯</span>
-            </div>
-          )}
-
-          <div className="last-updated-box" style={{ padding: '8px 12px' }}>
-            <div className="last-updated-info">
-              <span className="last-updated-label" style={{ fontSize: '9px' }}>Last Updated</span>
-              <span className="last-updated-time" style={{ fontSize: '10px' }}>{lastUpdated}</span>
-            </div>
-            <button className="btn-refresh" onClick={triggerRefresh} title="Sync/Refresh data" style={{ padding: '4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#2563eb' }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
-            </button>
-          </div>
-          
-          {isGuest ? (
+        {isGuest && (
+          <div className="sidebar-footer" style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
             <div 
               onClick={() => {
                 setCurrentLoginUser(null);
@@ -10244,25 +10206,8 @@ export default function App() {
             >
               <span>ចូលគណនី Admin</span>
             </div>
-          ) : (
-            <div className="help-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ color: '#2563eb', display: 'flex', alignItems: 'center' }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="12" y1="16" x2="12" y2="12"></line>
-                    <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                  </svg>
-                </span>
-                <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: '1.2' }}>
-                  <span style={{ fontSize: '10.5px', fontWeight: '800', color: 'var(--text-primary)' }}>Need help?</span>
-                  <span style={{ fontSize: '9px', fontWeight: '600', color: 'var(--text-muted)' }}>Contact IT Support</span>
-                </div>
-              </div>
-              <span style={{ color: 'var(--text-muted)', fontSize: '9px', fontWeight: '800' }}>❯</span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
       </aside>
 
       {/* Main Panel Content */}
@@ -11530,20 +11475,6 @@ export default function App() {
                 {/* Right: Sort, View mode & Action Buttons */}
                 {!selectedBranch && !selectedDept && (
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                    {/* Sort Dropdown */}
-                    <select
-                      className="form-input"
-                      style={{ width: '155px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
-                      value={ipamSortOrder}
-                      onChange={(e) => setIpamSortOrder(e.target.value)}
-                    >
-                      <option value="no-asc">តម្រៀប: លេខ ({ipamCategory === 'branches' ? '#1 - #44' : `#1 - #${totalSubnets}`})</option>
-                      <option value="no-desc">តម្រៀប: លេខ បញ្ច្រាស</option>
-                      <option value="name-asc">តម្រៀប: ឈ្មោះ (A-Z)</option>
-                      <option value="pct-desc">តម្រៀប: អត្រាប្រើប្រាស់</option>
-                      <option value="used-desc">តម្រៀប: IP ប្រើច្រើន</option>
-                    </select>
-
                     {/* Grid / Table Toggle */}
                     <div style={{ display: 'flex', gap: '2px', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
                       <button
