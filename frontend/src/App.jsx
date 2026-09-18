@@ -4266,6 +4266,37 @@ export default function App() {
     return hospitalsOnly;
   };
 
+  const handleQuickChangeHospitalStatus = async (vpn, targetType, targetReopen = 0) => {
+    if (!hasPermission('hospital_vpn', 'write')) {
+      alert('លោកអ្នកគ្មានសិទ្ធិក្នុងការកែប្រែទិន្នន័យនេះទេ! (You do not have permission to edit)');
+      return;
+    }
+    
+    const updatedPayload = {
+      ...vpn,
+      vpn_type: targetType,
+      reopen_requested: targetReopen,
+      status: targetType === 'S2S' ? 'UP' : (targetReopen === 1 ? 'REOPEN' : 'DOWN')
+    };
+    
+    try {
+      const res = await fetch(`${API_BASE}/hospital_vpns/${vpn.id}`, {
+        method: 'POST',
+        headers: jsonHeaders,
+        body: JSON.stringify(updatedPayload)
+      });
+      if (res.ok) {
+        setHospitalVpns(prev => prev.map(item => item.id === vpn.id ? { ...item, ...updatedPayload } : item));
+        fetchDashboardStats();
+      } else {
+        const err = await res.json().catch(() => ({}));
+        alert('❌ បរាជ័យក្នុងការផ្លាស់ប្តូរស្ថានភាព៖ ' + (err.detail || 'Connection error'));
+      }
+    } catch (e) {
+      alert('❌ បរាជ័យក្នុងការផ្លាស់ប្តូរស្ថានភាព៖ Connection error');
+    }
+  };
+
   // Subnet inner search filter helper
   const filterIPNodes = (nodes) => {
     if (!nodes) return [];
@@ -12343,15 +12374,33 @@ export default function App() {
                               {vpn.name}
                             </div>
                           </div>
-                          {isReopen ? (
-                            <span className="status-badge badge-reopen">
-                              🔄 ស្នើសុំបើកវិញ
-                            </span>
-                          ) : (
-                            <span className={`status-badge ${isOpen ? 'badge-active' : 'badge-inactive'}`}>
-                              {isOpen ? 'OPEN' : 'CLOSED'}
-                            </span>
-                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <select
+                              value={isReopen ? 'reopen' : (isOpen ? 'open' : 'closed')}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                if (val === 'open') handleQuickChangeHospitalStatus(vpn, 'S2S', 0);
+                                else if (val === 'closed') handleQuickChangeHospitalStatus(vpn, 'Close', 0);
+                                else if (val === 'reopen') handleQuickChangeHospitalStatus(vpn, 'Close', 1);
+                              }}
+                              style={{
+                                padding: '4px 8px',
+                                fontSize: '11px',
+                                fontWeight: '800',
+                                borderRadius: '6px',
+                                border: isOpen ? '1.5px solid #86efac' : isReopen ? '1.5px solid #c4b5fd' : '1.5px solid #fca5a5',
+                                backgroundColor: isOpen ? '#f0fdf4' : isReopen ? '#f5f3ff' : '#fef2f2',
+                                color: isOpen ? '#15803d' : isReopen ? '#6d28d9' : '#b91c1c',
+                                cursor: 'pointer',
+                                outline: 'none'
+                              }}
+                              title="ចុចដើម្បីប្តូរស្ថានភាព៖ បើក (Open), បិទ (Closed), ឬ សុំបើកវិញ (Reopen)"
+                            >
+                              <option value="open">🟢 បើក (OPEN)</option>
+                              <option value="closed">🔴 បិទ (CLOSED)</option>
+                              <option value="reopen">🔄 សុំបើកវិញ (REOPEN)</option>
+                            </select>
+                          </div>
                         </div>
 
                         <div className="vpn-card-body">
@@ -12468,15 +12517,31 @@ export default function App() {
                             <td>{vpn.no || idx + 1}</td>
                             <td style={{ fontWeight: '600' }}>{vpn.name}</td>
                             <td>
-                              {isReopen ? (
-                                <span className="status-badge badge-reopen" style={{ display: 'inline-block' }}>
-                                  🔄 ស្នើសុំបើកវិញ
-                                </span>
-                              ) : (
-                                <span className={`status-badge ${isOpen ? 'badge-active' : 'badge-inactive'}`} style={{ display: 'inline-block' }}>
-                                  {isOpen ? 'OPEN' : 'CLOSED'}
-                                </span>
-                              )}
+                              <select
+                                value={isReopen ? 'reopen' : (isOpen ? 'open' : 'closed')}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  if (val === 'open') handleQuickChangeHospitalStatus(vpn, 'S2S', 0);
+                                  else if (val === 'closed') handleQuickChangeHospitalStatus(vpn, 'Close', 0);
+                                  else if (val === 'reopen') handleQuickChangeHospitalStatus(vpn, 'Close', 1);
+                                }}
+                                style={{
+                                  padding: '3px 8px',
+                                  fontSize: '11px',
+                                  fontWeight: '800',
+                                  borderRadius: '6px',
+                                  border: isOpen ? '1.5px solid #86efac' : isReopen ? '1.5px solid #c4b5fd' : '1.5px solid #fca5a5',
+                                  backgroundColor: isOpen ? '#f0fdf4' : isReopen ? '#f5f3ff' : '#fef2f2',
+                                  color: isOpen ? '#15803d' : isReopen ? '#6d28d9' : '#b91c1c',
+                                  cursor: 'pointer',
+                                  outline: 'none'
+                                }}
+                                title="ចុចដើម្បីប្តូរស្ថានភាព៖ បើក (Open), បិទ (Closed), ឬ សុំបើកវិញ (Reopen)"
+                              >
+                                <option value="open">🟢 បើក (OPEN)</option>
+                                <option value="closed">🔴 បិទ (CLOSED)</option>
+                                <option value="reopen">🔄 សុំបើកវិញ (REOPEN)</option>
+                              </select>
                             </td>
                             <td>{vpn.isp || 'ONLINE'}</td>
                             <td style={{ fontFamily: 'var(--font-mono)' }}>{vpn.public_ip || 'N/A'}</td>
@@ -13769,6 +13834,98 @@ export default function App() {
               <button type="button" className="modal-close" onClick={() => setEditingModal(null)}>×</button>
             </div>
             <div className="modal-body">
+              {/* VPN Status / Type Selector */}
+              <div className="form-group" style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
+                <label className="form-label" style={{ fontWeight: '800', color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span>🛡️</span> ស្ថានភាពតភ្ជាប់ VPN (VPN Connection Status) ៖
+                </label>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={() => setEditingData({
+                      ...editingData,
+                      vpn_type: 'S2S',
+                      reopen_requested: 0,
+                      status: editingData.status === 'DOWN' || editingData.status === 'REOPEN' ? 'UP' : (editingData.status || 'UP')
+                    })}
+                    style={{
+                      padding: '10px 8px',
+                      borderRadius: '8px',
+                      border: editingData.vpn_type === 'S2S' ? '2px solid #16a34a' : '1px solid #cbd5e1',
+                      backgroundColor: editingData.vpn_type === 'S2S' ? '#f0fdf4' : '#fff',
+                      color: editingData.vpn_type === 'S2S' ? '#166534' : '#64748b',
+                      fontWeight: '800',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: editingData.vpn_type === 'S2S' ? '0 2px 8px rgba(22,163,74,0.15)' : 'none'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>🟢</span>
+                    <span>បើកដំណើរការ (Open)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditingData({
+                      ...editingData,
+                      vpn_type: 'Close',
+                      reopen_requested: 0,
+                      status: editingData.status === 'UP' ? 'DOWN' : (editingData.status || 'DOWN')
+                    })}
+                    style={{
+                      padding: '10px 8px',
+                      borderRadius: '8px',
+                      border: editingData.vpn_type === 'Close' && editingData.reopen_requested !== 1 ? '2px solid #dc2626' : '1px solid #cbd5e1',
+                      backgroundColor: editingData.vpn_type === 'Close' && editingData.reopen_requested !== 1 ? '#fef2f2' : '#fff',
+                      color: editingData.vpn_type === 'Close' && editingData.reopen_requested !== 1 ? '#991b1b' : '#64748b',
+                      fontWeight: '800',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: editingData.vpn_type === 'Close' && editingData.reopen_requested !== 1 ? '0 2px 8px rgba(220,38,38,0.15)' : 'none'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>🔴</span>
+                    <span>បិទ (Closed)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditingData({
+                      ...editingData,
+                      vpn_type: 'Close',
+                      reopen_requested: 1,
+                      status: 'REOPEN'
+                    })}
+                    style={{
+                      padding: '10px 8px',
+                      borderRadius: '8px',
+                      border: editingData.reopen_requested === 1 ? '2px solid #8b5cf6' : '1px solid #cbd5e1',
+                      backgroundColor: editingData.reopen_requested === 1 ? '#f5f3ff' : '#fff',
+                      color: editingData.reopen_requested === 1 ? '#6d28d9' : '#64748b',
+                      fontWeight: '800',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      alignItems: 'center',
+                      gap: '4px',
+                      boxShadow: editingData.reopen_requested === 1 ? '0 2px 8px rgba(139,92,246,0.15)' : 'none'
+                    }}
+                  >
+                    <span style={{ fontSize: '18px' }}>🔄</span>
+                    <span>សុំបើកវិញ (Reopen)</span>
+                  </button>
+                </div>
+              </div>
+
               <div className="form-group">
                 <label className="form-label">Connection Name</label>
                 <input

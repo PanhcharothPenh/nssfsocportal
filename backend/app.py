@@ -1653,7 +1653,7 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request):
             
         cursor.execute("""
         UPDATE hospital_vpns
-        SET name = ?, address = ?, isp = ?, public_ip = ?, subnet = ?, gateway = ?, lan_ip = ?, lan_subnet = ?, lan_gateway = ?, ikey = ?, tunnel = ?, status = ?, contact = ?, year = ?, device = ?, other = ?, reopen_requested = ?, reference_doc = ?
+        SET name = ?, address = ?, isp = ?, public_ip = ?, subnet = ?, gateway = ?, lan_ip = ?, lan_subnet = ?, lan_gateway = ?, ikey = ?, tunnel = ?, status = ?, contact = ?, year = ?, device = ?, other = ?, reopen_requested = ?, reference_doc = ?, vpn_type = ?
         WHERE id = ?
         """, (
             v_data.name,
@@ -1672,8 +1672,9 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request):
             v_data.year,
             v_data.device,
             v_data.other,
-            1 if (v_data.status and str(v_data.status).strip().lower() in ['reopen', 'ស្នើសុំបើក']) else 0,
+            v_data.reopen_requested if v_data.reopen_requested is not None else (1 if (v_data.status and str(v_data.status).strip().lower() in ['reopen', 'ស្នើសុំបើក']) else 0),
             v_data.reference_doc,
+            v_data.vpn_type if v_data.vpn_type else 'S2S',
             id
         ))
         
