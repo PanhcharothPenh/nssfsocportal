@@ -2400,23 +2400,34 @@ def delete_file(file_id: str):
 
     return {"status": "success"}
 
-@app.get("/api/drive/files/download/{file_id}")
+def make_content_disposition(fname: str, disposition: str = "inline") -> str:
+    import os, urllib.parse
+    quoted_fname = urllib.parse.quote(fname)
+    ext = os.path.splitext(fname)[1] or ".bin"
+    fallback = f"document{ext}"
+    return f"{disposition}; filename=\"{fallback}\"; filename*=UTF-8''{quoted_fname}"
+
+@app.get("/api/drive/files/download/{file_id:path}")
 def download_drive_or_local_file(file_id: str):
+    import os, io, base64, mimetypes, unicodedata, urllib.parse
+    from fastapi.responses import StreamingResponse, FileResponse, Response
+
     init_stored_documents_table()
+    clean_file_id = urllib.parse.unquote(file_id).strip().lstrip("/")
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     
     # 1. If file_id is a Google Drive file ID
-    if folder_id and len(file_id) > 15 and "." not in file_id:
+    if folder_id and len(clean_file_id) > 15 and "." not in clean_file_id and not any(c > '\x7f' for c in clean_file_id):
         try:
             from google_drive import get_drive_service
             from googleapiclient.http import MediaIoBaseDownload
             service = get_drive_service()
             if service:
-                g_file = service.files().get(fileId=file_id, fields="id, name, mimeType", supportsAllDrives=True).execute()
+                g_file = service.files().get(fileId=clean_file_id, fields="id, name, mimeType", supportsAllDrives=True).execute()
                 fname = g_file.get("name", "document")
                 mtype = g_file.get("mimeType", "application/octet-stream")
                 
-                media_request = service.files().get_media(fileId=file_id, supportsAllDrives=True)
+                media_request = service.files().get_media(fileId=clean_file_id, supportsAllDrives=True)
                 file_stream = io.BytesIO()
                 downloader = MediaIoBaseDownload(file_stream, media_request)
                 done = False
@@ -2424,31 +2435,74 @@ def download_drive_or_local_file(file_id: str):
                     status, done = downloader.next_chunk()
                 file_stream.seek(0)
                 
-                headers = {"Content-Disposition": f'inline; filename="{fname}"'}
+                headers = {"Content-Disposition": make_content_disposition(fname)}
                 return StreamingResponse(file_stream, media_type=mtype, headers=headers)
         except Exception as e:
             print("Proxy stream error from Google Drive, falling back to database/local file:", e)
 
     # 2. Check local disk cache
-    safe_filename = os.path.basename(file_id)
+    safe_filename = os.path.basename(clean_file_id)
     filepath = os.path.join(STORED_FILES_DIR, safe_filename)
     if os.path.exists(filepath):
         mime_type, _ = mimetypes.guess_type(filepath)
-        return FileResponse(filepath, media_type=mime_type or "application/octet-stream", content_disposition_type="inline")
+        headers = {"Content-Disposition": make_content_disposition(safe_filename)}
+        return FileResponse(filepath, media_type=mime_type or "application/octet-stream", headers=headers)
 
-    # 3. Check persistent database stored_documents
+    # 3. Check persistent database stored_documents with intelligent fallback matching
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
-        cursor.execute("SELECT name, mime_type, data_base64 FROM stored_documents WHERE name = ? OR CAST(id AS TEXT) = ?", (file_id, file_id))
-        row = cursor.fetchone()
+        
+        candidates = [
+            clean_file_id,
+            unicodedata.normalize('NFC', clean_file_id),
+            unicodedata.normalize('NFD', clean_file_id),
+            clean_file_id.replace("បញ្ចប់", "បញ្ជប់"),
+            clean_file_id.replace("បញ្ជប់", "បញ្ចប់"),
+            clean_file_id.replace(" ", "_"),
+            clean_file_id.replace("_", " ")
+        ]
+        unique_candidates = list(dict.fromkeys(candidates))
+
+        row = None
+        for cand in unique_candidates:
+            cursor.execute("SELECT name, mime_type, data_base64 FROM stored_documents WHERE name = ? OR CAST(id AS TEXT) = ? LIMIT 1", (cand, cand))
+            row = cursor.fetchone()
+            if row and row["data_base64"]:
+                break
+
+        # If still not found, try fuzzy case-insensitive LIKE
+        if not row or not row["data_base64"]:
+            stem = os.path.splitext(clean_file_id)[0]
+            cursor.execute("SELECT name, mime_type, data_base64 FROM stored_documents WHERE LOWER(name) LIKE LOWER(?) OR name LIKE ? LIMIT 1", (f"%{stem}%", f"%{clean_file_id}%"))
+            row = cursor.fetchone()
+
+        # If still not found, check tickets attachment table
+        if not row or not row["data_base64"]:
+            cursor.execute("""
+                SELECT attachment_name as name, attachment_data, attachment_url FROM tickets 
+                WHERE attachment_name = ? OR attachment_url LIKE ? OR attachment_name LIKE ?
+                ORDER BY id DESC LIMIT 1
+            """, (clean_file_id, f"%{clean_file_id}%", f"%{clean_file_id}%"))
+            t_row = cursor.fetchone()
+            if t_row:
+                data_uri = t_row.get('attachment_data') or t_row.get('attachment_url')
+                if data_uri and data_uri.startswith("data:"):
+                    header, encoded = data_uri.split(",", 1)
+                    mtype = header.split(";")[0].replace("data:", "")
+                    raw_bytes = base64.b64decode(encoded)
+                    fname = t_row.get('name') or clean_file_id
+                    headers = {"Content-Disposition": make_content_disposition(fname)}
+                    conn.close()
+                    return Response(content=raw_bytes, media_type=mtype, headers=headers)
+
         conn.close()
         if row and row["data_base64"]:
             raw_bytes = base64.b64decode(row["data_base64"])
             file_stream = io.BytesIO(raw_bytes)
-            fname = row["name"]
+            fname = row["name"] or clean_file_id
             mtype = row["mime_type"] or "application/octet-stream"
-            headers = {"Content-Disposition": f'inline; filename="{fname}"'}
+            headers = {"Content-Disposition": make_content_disposition(fname)}
             return StreamingResponse(file_stream, media_type=mtype, headers=headers)
     except Exception as db_e:
         print("Error fetching file from DB:", db_e)
@@ -4737,7 +4791,7 @@ def serve_uploaded_file(filename: str):
                 return Response(
                     content=file_data,
                     media_type=mime_type,
-                    headers={"Content-Disposition": f"inline; filename=\"{filename}\""}
+                    headers={"Content-Disposition": make_content_disposition(filename)}
                 )
     except Exception as ex:
         print("Database attachment lookup error:", ex)

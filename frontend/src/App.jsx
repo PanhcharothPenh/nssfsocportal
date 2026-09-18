@@ -7405,17 +7405,19 @@ export default function App() {
                 <tbody>
                   {driveFiles.map((file) => {
                     const handleViewFile = () => {
-                      const isPDF = file.mimeType === 'application/pdf';
-                      const isImage = file.mimeType.startsWith('image/');
+                      const isPDF = file.mimeType === 'application/pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf'));
+                      const isImage = (file.mimeType && file.mimeType.startsWith('image/')) || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name || '');
+                      const rawUrl = file.webViewLink || `/api/drive/files/download/${encodeURIComponent(file.name)}`;
+                      const resolvedUrl = rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl);
                       
                       if (isPDF || isImage) {
                         setPreviewFile({
                           name: file.name,
-                          url: file.webViewLink,
-                          mimeType: file.mimeType
+                          url: resolvedUrl,
+                          mimeType: isPDF ? 'application/pdf' : (file.mimeType || 'image/jpeg')
                         });
                       } else {
-                        window.open(file.webViewLink, '_blank');
+                        window.open(resolvedUrl, '_blank');
                       }
                     };
 
@@ -12837,16 +12839,25 @@ export default function App() {
                           )}
                           
                           {vpn.reference_doc && (() => {
-                            const matchedFile = driveFiles.find(f => f.name === vpn.reference_doc);
+                            const normalizeStr = (s) => (s || '').trim().replace(/_/g, ' ').replace(/បញ្ជប់/g, 'បញ្ចប់').toLowerCase();
+                            const matchedFile = driveFiles.find(f => f.name === vpn.reference_doc || normalizeStr(f.name) === normalizeStr(vpn.reference_doc));
+                            const rawUrl = matchedFile?.webViewLink || `/api/drive/files/download/${encodeURIComponent(vpn.reference_doc)}`;
+                            const resolvedUrl = rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl);
+                            const isClickable = true;
+
                             return (
                               <div 
                                 className="ref-doc-box" 
-                                style={{ cursor: matchedFile ? 'pointer' : 'default' }} 
-                                onClick={matchedFile ? () => setPreviewFile({ name: matchedFile.name, url: matchedFile.webViewLink, mimeType: matchedFile.mimeType }) : undefined}
+                                style={{ cursor: isClickable ? 'pointer' : 'default' }} 
+                                onClick={() => setPreviewFile({ 
+                                  name: vpn.reference_doc, 
+                                  url: resolvedUrl, 
+                                  mimeType: (matchedFile?.mimeType || vpn.reference_doc.toLowerCase().endsWith('.pdf')) ? 'application/pdf' : 'application/octet-stream' 
+                                })}
                               >
                                 <span className="ref-doc-label">📂 ឯកសារយោង (Reference Document)</span>
-                                <span className="ref-doc-value" style={{ color: matchedFile ? '#2563eb' : 'inherit', textDecoration: matchedFile ? 'underline' : 'none', fontWeight: matchedFile ? '700' : 'normal' }}>
-                                  {vpn.reference_doc} {matchedFile && '👁️ (មើល)'}
+                                <span className="ref-doc-value" style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '700' }}>
+                                  {vpn.reference_doc} 👁️ (មើល)
                                 </span>
                               </div>
                             );
@@ -12943,18 +12954,22 @@ export default function App() {
                             <td>{vpn.year || 'N/A'}</td>
                             <td>
                               {vpn.reference_doc ? (() => {
-                                const matchedFile = driveFiles.find(f => f.name === vpn.reference_doc);
-                                return matchedFile ? (
+                                const normalizeStr = (s) => (s || '').trim().replace(/_/g, ' ').replace(/បញ្ជប់/g, 'បញ្ចប់').toLowerCase();
+                                const matchedFile = driveFiles.find(f => f.name === vpn.reference_doc || normalizeStr(f.name) === normalizeStr(vpn.reference_doc));
+                                const rawUrl = matchedFile?.webViewLink || `/api/drive/files/download/${encodeURIComponent(vpn.reference_doc)}`;
+                                const resolvedUrl = rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl);
+
+                                return (
                                   <span 
-                                    onClick={() => setPreviewFile({ name: matchedFile.name, url: matchedFile.webViewLink, mimeType: matchedFile.mimeType })}
+                                    onClick={() => setPreviewFile({ 
+                                      name: vpn.reference_doc, 
+                                      url: resolvedUrl, 
+                                      mimeType: (matchedFile?.mimeType || vpn.reference_doc.toLowerCase().endsWith('.pdf')) ? 'application/pdf' : 'application/octet-stream' 
+                                    })}
                                     style={{ color: '#2563eb', cursor: 'pointer', textDecoration: 'underline', fontWeight: '700', fontSize: '11px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
                                     title={`បើកមើល៖ ${vpn.reference_doc}`}
                                   >
                                     📄 យោង 👁️
-                                  </span>
-                                ) : (
-                                  <span style={{ fontSize: '11.5px', color: 'var(--text-muted)' }} title={vpn.reference_doc}>
-                                    {vpn.reference_doc.length > 15 ? vpn.reference_doc.substring(0, 15) + '...' : vpn.reference_doc}
                                   </span>
                                 );
                               })() : 'N/A'}
@@ -15733,36 +15748,81 @@ export default function App() {
         </div>
       )}
       {/* 9. PDF & Image Document Preview Modal */}
-      {previewFile && (
-        <div className="modal-overlay" onClick={() => setPreviewFile(null)} style={{ zIndex: 1100 }}>
-          <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '90%', width: '1000px', height: '85vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', borderRadius: '16px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-            <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 24px', borderBottom: '1px solid #f1f5f9', backgroundColor: '#fff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '20px' }}>📄</span>
-                <span style={{ fontSize: '15px', fontWeight: '800', color: '#1e293b' }}>បង្ហាញឯកសារ៖ {previewFile.name}</span>
+      {previewFile && (() => {
+        const safeUrl = (() => {
+          const u = previewFile.url || '';
+          if (!u) return '';
+          if (u.startsWith('http://') || u.startsWith('https://') || u.startsWith('blob:') || u.startsWith('data:')) return u;
+          if (u.startsWith('/api') && API_BASE.startsWith('http')) {
+            return `${API_BASE.replace(/\/api\/?$/, '')}${u}`;
+          }
+          return u;
+        })();
+
+        return (
+          <div className="modal-overlay" onClick={() => setPreviewFile(null)} style={{ zIndex: 1100 }}>
+            <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '92%', width: '1050px', height: '88vh', display: 'flex', flexDirection: 'column', padding: 0, overflow: 'hidden', borderRadius: '16px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+              <div className="modal-header" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', borderBottom: '1px solid #e2e8f0', backgroundColor: '#fff' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflow: 'hidden' }}>
+                  <div style={{ width: '32px', height: '32px', borderRadius: '8px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                  </div>
+                  <span style={{ fontSize: '14px', fontWeight: '800', color: '#1e293b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {previewFile.name}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
+                  <a 
+                    href={safeUrl} 
+                    target="_blank" 
+                    rel="noopener noreferrer" 
+                    download={previewFile.name}
+                    style={{
+                      padding: '6px 12px',
+                      borderRadius: '8px',
+                      backgroundColor: '#eff6ff',
+                      color: '#2563eb',
+                      border: '1px solid #bfdbfe',
+                      fontSize: '11.5px',
+                      fontWeight: '700',
+                      textDecoration: 'none',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px'
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                    ទាញយក / បើកក្រៅ
+                  </a>
+                  <button 
+                    onClick={() => setPreviewFile(null)} 
+                    style={{ border: '1px solid #cbd5e1', background: '#f8fafc', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', cursor: 'pointer', color: '#475569', fontWeight: '700' }}
+                  >
+                    បិទ
+                  </button>
+                </div>
               </div>
-              <button onClick={() => setPreviewFile(null)} style={{ border: 'none', background: 'none', fontSize: '18px', cursor: 'pointer', color: '#64748b', fontWeight: '700' }}>❌ បិទ</button>
-            </div>
-            <div style={{ flex: 1, backgroundColor: '#f8fafc', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
-              {previewFile.mimeType === 'application/pdf' ? (
-                <iframe
-                  src={previewFile.url}
-                  title={previewFile.name}
-                  width="100%"
-                  height="100%"
-                  style={{ border: 'none' }}
-                />
-              ) : (
-                <img
-                  src={previewFile.url}
-                  alt={previewFile.name}
-                  style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: '24px' }}
-                />
-              )}
+              <div style={{ flex: 1, backgroundColor: '#525659', position: 'relative', display: 'flex', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }}>
+                {previewFile.mimeType === 'application/pdf' || previewFile.name?.toLowerCase().endsWith('.pdf') ? (
+                  <iframe
+                    src={safeUrl}
+                    title={previewFile.name}
+                    width="100%"
+                    height="100%"
+                    style={{ border: 'none', backgroundColor: '#fff' }}
+                  />
+                ) : (
+                  <img
+                    src={safeUrl}
+                    alt={previewFile.name}
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain', padding: '16px' }}
+                  />
+                )}
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Redesigned Logout Confirmation Modal */}
       {showLogoutConfirm && (
