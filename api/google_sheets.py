@@ -302,17 +302,19 @@ def sync_hospital_vpn_to_google_sheet(sheet_name, vpn_type, vpn_no, vpn_name, up
             return False, "Row not found in Google Sheet"
             
         cells_to_update = []
-        import sqlite3
+        try:
+            from database import get_db_connection
+        except ImportError:
+            from backend.database import get_db_connection
         
         if vpn_type == 'S2S':
             subnet_cols = [idx for h_key, idx in headers.items() if 'subnet' in h_key]
             gw_cols = [idx for h_key, idx in headers.items() if 'gateway' in h_key]
             
             # Query full DB record to construct Other text correctly (combining reference_doc and other)
-            conn_db = sqlite3.connect(os.path.join(WORKSPACE, "soc_network.db"))
-            conn_db.row_factory = sqlite3.Row
+            conn_db = get_db_connection()
             db_cursor = conn_db.cursor()
-            db_cursor.execute("SELECT reference_doc, other FROM hospital_vpns WHERE no = ?", (vpn_no,))
+            db_cursor.execute("SELECT reference_doc, other FROM hospital_vpns WHERE no = ? OR name = ?", (vpn_no, vpn_name))
             db_row = db_cursor.fetchone()
             conn_db.close()
             
@@ -370,10 +372,9 @@ def sync_hospital_vpn_to_google_sheet(sheet_name, vpn_type, vpn_no, vpn_name, up
                             cells_to_update.append(gspread.cell.Cell(target_row_idx, target_col_idx + 1, val_str))
                             
         elif vpn_type == 'Close':
-            conn = sqlite3.connect(os.path.join(WORKSPACE, "soc_network.db"))
-            conn.row_factory = sqlite3.Row
+            conn = get_db_connection()
             db_cursor = conn.cursor()
-            db_cursor.execute("SELECT reopen_requested, reference_doc, other FROM hospital_vpns WHERE no = ?", (vpn_no,))
+            db_cursor.execute("SELECT reopen_requested, reference_doc, other FROM hospital_vpns WHERE no = ? OR name = ?", (vpn_no, vpn_name))
             db_row = db_cursor.fetchone()
             conn.close()
             

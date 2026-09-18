@@ -430,28 +430,31 @@ def sync_hospital_vpn_to_excel(vpn_id, updates):
     db_no = vpn['no']
     db_name = vpn['name']
     db_ip = vpn['public_ip']
-    db_type = vpn['vpn_type']
+    db_type = vpn['vpn_type'] or 'S2S'
     conn.close()
     
-    use_gs = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
-    files = glob.glob(os.path.join(WORKSPACE, "*PRIVATE-HOSPITAL-VPN*.xlsx"))
-    
-    if use_gs or not files:
-        try:
-            from google_sheets import sync_hospital_vpn_to_google_sheet
-            return sync_hospital_vpn_to_google_sheet(db_no, db_name, updates)
-        except Exception as gs_err:
-            return False, f"Google Sheets Hospital Sync Error: {gs_err}"
-    file_path = files[0]
-    
     # Map database vpn_type to Sheet name
-    sheet_name = None
+    sheet_name = 'Hospital-VPN-S2S'
     if db_type == 'S2S':
         sheet_name = 'Hospital-VPN-S2S'
     elif db_type == 'Close':
         sheet_name = 'VPN-HOS-Close'
     elif db_type == 'Bank':
         sheet_name = 'Bank-VPN'
+
+    use_gs = os.getenv("USE_GOOGLE_SHEETS", "false").lower() == "true"
+    files = glob.glob(os.path.join(WORKSPACE, "*PRIVATE-HOSPITAL-VPN*.xlsx"))
+    
+    if use_gs or not files:
+        try:
+            try:
+                from google_sheets import sync_hospital_vpn_to_google_sheet
+            except ImportError:
+                from backend.google_sheets import sync_hospital_vpn_to_google_sheet
+            return sync_hospital_vpn_to_google_sheet(sheet_name, db_type, db_no, db_name, updates)
+        except Exception as gs_err:
+            return False, f"Google Sheets Hospital Sync Error: {gs_err}"
+    file_path = files[0]
         
     if not sheet_name:
         return False, "Invalid VPN Type"
