@@ -611,6 +611,9 @@ class HospitalVPNUpdate(BaseModel):
     reference_doc: Optional[str] = None
     vpn_type: Optional[str] = None
 
+    class Config:
+        extra = "allow"
+
 _dashboard_cache = {
     "data": None,
     "expires_at": 0
@@ -1681,32 +1684,48 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request):
         conn.commit()
         conn.close()
         
-        # Trigger Telegram Audit Notification
-        from backend.telegram import notify_data_change
-        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
-        client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
-        notify_data_change(
-            action_title="ធ្វើបច្ចុប្បន្នភាព Hospital/Bank VPN (Hospital VPN Update)",
-            details={
-                "ឈ្មោះមន្ទីរពេទ្យ/ធនាគារ": v_data.name,
-                "LAN IP": v_data.lan_ip,
-                "Public IP": v_data.public_ip,
-                "ISP": v_data.isp,
-                "ប្រភេទ (VPN Type)": getattr(v_data, 'vpn_type', None) or "S2S",
-                "ស្ថានភាព (Status)": v_data.status
-            },
-            editor_username=editor,
-            client_ip=client_ip
-        )
+        # Trigger Telegram Audit Notification (safely)
+        try:
+            try:
+                from backend.telegram import notify_data_change
+            except ImportError:
+                from api.telegram import notify_data_change
+            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+            client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
+            notify_data_change(
+                action_title="ធ្វើបច្ចុប្បន្នភាព Hospital/Bank VPN (Hospital VPN Update)",
+                details={
+                    "ឈ្មោះមន្ទីរពេទ្យ/ធនាគារ": v_data.name,
+                    "LAN IP": v_data.lan_ip,
+                    "Public IP": v_data.public_ip,
+                    "ISP": v_data.isp,
+                    "ប្រភេទ (VPN Type)": getattr(v_data, 'vpn_type', None) or "S2S",
+                    "ស្ថានភាព (Status)": v_data.status
+                },
+                editor_username=editor,
+                client_ip=client_ip
+            )
+        except Exception as t_err:
+            print("Telegram notification error:", t_err)
         
-        # Sync to Excel
-        updates = v_data.dict(exclude_unset=True)
-        success, msg = sync_hospital_vpn_to_excel(id, updates)
+        # Sync to Excel (safely)
+        excel_sync_msg = "skipped"
+        try:
+            updates = v_data.dict(exclude_unset=True)
+            try:
+                from syncer import sync_hospital_vpn_to_excel
+            except ImportError:
+                from backend.syncer import sync_hospital_vpn_to_excel
+            success, msg = sync_hospital_vpn_to_excel(id, updates)
+            excel_sync_msg = "success" if success else f"failed ({msg})"
+        except Exception as sync_e:
+            print("Sync to Excel error:", sync_e)
+            excel_sync_msg = f"failed ({sync_e})"
         
         return {
             "status": "success",
             "db_update": "success",
-            "excel_sync": "success" if success else f"failed ({msg})"
+            "excel_sync": excel_sync_msg
         }
     except HTTPException:
         raise

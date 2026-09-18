@@ -4189,15 +4189,42 @@ export default function App() {
           alert(`❌ មានបញ្ហាក្នុងការចុះឈ្មោះ ៖ ${err.detail || 'Error adding VPN user'}`);
         }
       } else if (editingModal === 's2s_vpn') {
+        const payload = {
+          name: editingData.name || '',
+          address: editingData.address || '',
+          isp: editingData.isp || '',
+          public_ip: editingData.public_ip || '',
+          subnet: editingData.subnet || '',
+          gateway: editingData.gateway || '',
+          lan_ip: editingData.lan_ip || '',
+          lan_subnet: editingData.lan_subnet || '',
+          lan_gateway: editingData.lan_gateway || '',
+          ikey: editingData.ikey || '',
+          tunnel: editingData.tunnel || '',
+          status: editingData.status || '',
+          contact: editingData.contact || '',
+          year: editingData.year ? String(editingData.year) : '',
+          device: editingData.device || '',
+          other: editingData.other || '',
+          reopen_requested: editingData.reopen_requested ? 1 : 0,
+          reference_doc: editingData.reference_doc || '',
+          vpn_type: editingData.vpn_type || 'S2S'
+        };
         const res = await fetch(`${API_BASE}/hospital_vpns/${editingData.id}`, {
           method: 'POST',
           headers: jsonHeaders,
-          body: JSON.stringify(editingData)
+          body: JSON.stringify(payload)
         });
         if (res.ok) {
-          fetchHospitalVpns();
-          fetchDashboardStats();
+          await fetchHospitalVpns();
+          await fetchDashboardStats();
           setEditingModal(null);
+          setModalError(null);
+          alert('✅ រក្សាទុក និងធ្វើសមកាលកម្មទិន្នន័យបានជោគជ័យ!');
+        } else {
+          const err = await res.json().catch(() => ({ detail: 'Error updating S2S VPN' }));
+          setModalError(err.detail || 'Error updating S2S VPN');
+          alert(`❌ មានបញ្ហាក្នុងការរក្សាទុក ៖ ${err.detail || 'កំហុសបច្ចេកទេស'}`);
         }
       } else if (editingModal === 'branch_add') {
         const res = await fetch(`${API_BASE}/branches`, {
@@ -13877,6 +13904,20 @@ export default function App() {
               <button type="button" className="modal-close" onClick={() => setEditingModal(null)}>×</button>
             </div>
             <div className="modal-body">
+              {modalError && (
+                <div style={{
+                  padding: '12px 16px',
+                  backgroundColor: '#fef2f2',
+                  border: '1px solid #fee2e2',
+                  borderRadius: '8px',
+                  color: '#991b1b',
+                  fontSize: '13px',
+                  fontWeight: '600',
+                  marginBottom: '16px'
+                }}>
+                  ❌ {modalError}
+                </div>
+              )}
               {/* VPN Status / Type Selector */}
               <div className="form-group" style={{ backgroundColor: '#f8fafc', padding: '12px 14px', borderRadius: '10px', border: '1px solid #e2e8f0', marginBottom: '16px' }}>
                 <label className="form-label" style={{ fontWeight: '800', color: '#0f172a', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '6px' }}>
