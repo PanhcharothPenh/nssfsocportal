@@ -139,6 +139,7 @@ export default function App() {
   
   // Hospital VPN filtering
   const [hospitalFilter, setHospitalFilter] = useState('all'); // 'all' | 'open' | 'closed'
+  const [hospitalSearch, setHospitalSearch] = useState('');
   
   // VPN Remote Access filtering & visibility states
   const [vpnCategory, setVpnCategory] = useState('all'); // 'all' | 'leader' | 'department' | 'hospital'
@@ -4259,11 +4260,27 @@ export default function App() {
   const bankVpns = hospitalVpns.filter(v => v.vpn_type === 'Bank');
   
   const getFilteredHospitals = () => {
-    const hospitalsOnly = hospitalVpns.filter(v => v.vpn_type === 'S2S' || v.vpn_type === 'Close');
-    if (hospitalFilter === 'open') return openHospitals;
-    if (hospitalFilter === 'closed') return closedHospitals;
-    if (hospitalFilter === 'reopen') return reopenHospitals;
-    return hospitalsOnly;
+    let list = hospitalVpns.filter(v => v.vpn_type === 'S2S' || v.vpn_type === 'Close');
+    if (hospitalFilter === 'open') list = openHospitals;
+    else if (hospitalFilter === 'closed') list = closedHospitals;
+    else if (hospitalFilter === 'reopen') list = reopenHospitals;
+
+    if (hospitalSearch && hospitalSearch.trim()) {
+      const q = hospitalSearch.toLowerCase().trim();
+      list = list.filter(v => 
+        (v.name && v.name.toLowerCase().includes(q)) ||
+        (v.public_ip && v.public_ip.toLowerCase().includes(q)) ||
+        (v.lan_ip && v.lan_ip.toLowerCase().includes(q)) ||
+        (v.isp && v.isp.toLowerCase().includes(q)) ||
+        (v.address && v.address.toLowerCase().includes(q)) ||
+        (v.tunnel && String(v.tunnel).toLowerCase().includes(q)) ||
+        (v.contact && v.contact.toLowerCase().includes(q)) ||
+        (v.reference_doc && v.reference_doc.toLowerCase().includes(q)) ||
+        (v.status && v.status.toLowerCase().includes(q)) ||
+        (v.year && String(v.year).toLowerCase().includes(q))
+      );
+    }
+    return list;
   };
 
   const handleQuickChangeHospitalStatus = async (vpn, targetType, targetReopen = 0) => {
@@ -12286,12 +12303,47 @@ export default function App() {
             </div>
 
             <div className="panel">
-              <div className="panel-header" style={{ borderBottom: 'none', paddingBottom: '0' }}>
-                <span className="panel-title">
-                  🛡️ Private Hospital & Partner VPN Tunnel Status
-                </span>
+              <div className="panel-header" style={{ borderBottom: 'none', paddingBottom: '0', flexWrap: 'wrap', gap: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap', flex: '1', minWidth: '300px' }}>
+                  <span className="panel-title" style={{ whiteSpace: 'nowrap' }}>
+                    🛡️ Private Hospital & Partner VPN Tunnel Status
+                  </span>
+                  
+                  {/* Dedicated Search Bar for Hospital VPNs */}
+                  <div className="subnet-inner-search" style={{ width: '340px', maxWidth: '100%', margin: 0 }}>
+                    <span className="subnet-inner-search-icon">🔍</span>
+                    <input
+                      type="text"
+                      placeholder="ស្វែងរកមន្ទីរពេទ្យ (ឈ្មោះ, IP, ISP, Tunnel...)"
+                      value={hospitalSearch}
+                      onChange={(e) => setHospitalSearch(e.target.value)}
+                      style={{ paddingRight: hospitalSearch ? '28px' : '12px' }}
+                    />
+                    {hospitalSearch && (
+                      <button
+                        type="button"
+                        onClick={() => setHospitalSearch('')}
+                        style={{
+                          position: 'absolute',
+                          right: '8px',
+                          top: '50%',
+                          transform: 'translateY(-50%)',
+                          background: 'none',
+                          border: 'none',
+                          color: '#94a3b8',
+                          cursor: 'pointer',
+                          fontSize: '12px',
+                          padding: '2px 4px'
+                        }}
+                        title="លុបការស្វែងរក"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                </div>
                 
-                <div className="panel-actions">
+                <div className="panel-actions" style={{ flexWrap: 'wrap', gap: '10px' }}>
                   {/* Active/Closed/Reopen Filters */}
                   <div className="status-filters">
                     <button 
