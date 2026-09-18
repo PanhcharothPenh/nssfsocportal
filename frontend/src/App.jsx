@@ -2848,6 +2848,7 @@ export default function App() {
 
   useEffect(() => {
     triggerRefresh();
+    fetchDriveFiles();
   }, []);
 
   // Fetch Tab Specific Data
@@ -2899,7 +2900,7 @@ export default function App() {
         setShiftSchedule(cleanedSchedule);
       }
     } catch (err) {
-      console.error('Error fetching shift schedule:', err);
+      console.error(err);
     } finally {
       setIsShiftLoading(false);
     }
@@ -2925,18 +2926,21 @@ export default function App() {
     }
   };
 
-  const handleNotifyShift = async (targetDay = 'today') => {
-    setIsNotifyingShift(targetDay);
+  const handleNotifyShift = async (target) => {
+    setIsNotifyingShift(true);
     setShiftNotifyResult(null);
     try {
-      const endpoint = targetDay === 'tomorrow' ? `${API_BASE}/shift/notify-tomorrow` : `${API_BASE}/shift/notify-today`;
-      const res = await fetch(endpoint, { method: 'POST' });
+      const res = await fetch(`${API_BASE}/shift/notify-today`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ target: target })
+      });
       const data = await res.json();
-      if (res.ok) {
-        if (data.status === 'no_shift_today' || data.status === 'no_shift_tomorrow') {
-          setShiftNotifyResult({ type: 'warning', message: data.message });
+      if (res.ok && data.status === 'success') {
+        if (target === 'all_month') {
+          setShiftNotifyResult({ type: 'success', message: `បានបញ្ជូនតារាងវេនប្រចាំការពេញមួយខែទៅកាន់ Telegram រួចរាល់!` });
         } else {
-          const dayKh = targetDay === 'tomorrow' ? 'ថ្ងៃស្អែក' : 'យប់នេះ';
+          const dayKh = target === 'tomorrow' ? 'ថ្ងៃស្អែក' : 'ថ្ងៃនេះ';
           setShiftNotifyResult({ type: 'success', message: `បានបញ្ជូនសាររំលឹកវេនប្រចាំការ${dayKh} ទៅកាន់ Telegram រួចរាល់!` });
         }
       } else {
@@ -2948,8 +2952,6 @@ export default function App() {
       setIsNotifyingShift(false);
     }
   };
-
-  const handleNotifyShiftToday = () => handleNotifyShift('today');
 
   const fetchDriveFiles = async () => {
     setIsDriveLoading(true);
@@ -2973,8 +2975,8 @@ export default function App() {
     }
   };
 
-  const uploadDriveFile = async (fileObj) => {
-    if (!fileObj) return;
+  const uploadDriveFile = async (fileObj, silent = false) => {
+    if (!fileObj) return null;
     setIsDriveUploading(true);
     const formData = new FormData();
     formData.append('file', fileObj);
@@ -2985,13 +2987,16 @@ export default function App() {
       });
       const data = await res.json();
       if (res.ok && data.status === 'success') {
-        alert('✔️ ឯកសារត្រូវបានបញ្ចូលទៅកាន់ Google Drive ដោយជោគជ័យ!');
-        fetchDriveFiles();
+        if (!silent) alert('✔️ ឯកសារត្រូវបានបញ្ចូលទៅកាន់ប្រព័ន្ធផ្ទុកឯកសារដោយជោគជ័យ!');
+        await fetchDriveFiles();
+        return data.file || { id: fileObj.name, name: fileObj.name, webViewLink: `/api/drive/files/download/${fileObj.name}` };
       } else {
         alert(`❌ មិនអាចបញ្ចូលឯកសារបានទេ: ${data.detail || 'កំហុសបច្ចេកទេស'}`);
+        return null;
       }
     } catch (err) {
       alert(`❌ មិនអាចបញ្ចូលឯកសារបានទេ: ${err.message}`);
+      return null;
     } finally {
       setIsDriveUploading(false);
     }
@@ -14100,8 +14105,15 @@ export default function App() {
                 <label htmlFor="reopen_requested" className="form-label" style={{ marginBottom: 0, cursor: 'pointer' }}>Reopen Requested? (ស្នើសុំបើកដំណើរការឡើងវិញ)</label>
               </div>
               <div className="form-group">
-                <label className="form-label">Reference Document (លិខិតយោង / ឯកសារយោង)</label>
-                <div style={{ display: 'flex', gap: '8px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ marginBottom: 0 }}>
+                    Reference Document (លិខិតយោង / ឯកសារយោង)
+                  </label>
+                  <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>
+                    {driveFiles.length > 0 ? `📁 មាន ${driveFiles.length} ឯកសារក្នុងប្រព័ន្ធ` : '⚠️ មិនទាន់មានឯកសារ'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                   <select
                     className="form-input"
                     value={editingData.reference_doc || ''}
@@ -14123,6 +14135,44 @@ export default function App() {
                     placeholder="ឬវាយបញ្ចូលឈ្មោះឯកសារ/លេខលិខិត"
                     style={{ flex: '1.2' }}
                   />
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    padding: '6px 14px',
+                    background: '#eff6ff',
+                    color: '#2563eb',
+                    border: '1px solid #bfdbfe',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: isDriveUploading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s'
+                  }}>
+                    {isDriveUploading ? '⏳ កំពុងបញ្ចូល...' : '📤 Upload ឯកសារថ្មី (Direct Upload)'}
+                    <input
+                      type="file"
+                      disabled={isDriveUploading}
+                      style={{ display: 'none' }}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          const uploaded = await uploadDriveFile(file, true);
+                          if (uploaded) {
+                            setEditingData({ ...editingData, reference_doc: uploaded.name || file.name });
+                          }
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                  </label>
+                  {editingData.reference_doc && (
+                    <span style={{ fontSize: '11px', color: '#16a34a', fontWeight: '600' }}>
+                      ✓ បានជ្រើសរើស៖ {editingData.reference_doc}
+                    </span>
+                  )}
                 </div>
               </div>
               <div className="form-group">

@@ -1973,131 +1973,207 @@ except Exception:
     STORED_FILES_DIR = os.path.join(tempfile.gettempdir(), "stored_files")
     os.makedirs(STORED_FILES_DIR, exist_ok=True)
 
+import base64
+import io
+import datetime
+import mimetypes
+from fastapi.responses import StreamingResponse, FileResponse
+
+def init_stored_documents_table():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS stored_documents (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            mime_type TEXT,
+            size INTEGER,
+            data_base64 TEXT,
+            created_at TEXT
+        )
+        """)
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("Error initializing stored_documents table:", e)
+
+init_stored_documents_table()
+
 @app.get("/api/drive/files")
 def get_drive_files():
+    init_stored_documents_table()
+    files_map = {}
+    
+    # 1. Try Google Drive if configured
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     if folder_id:
         try:
             from google_drive import list_files_in_drive
-            files, err = list_files_in_drive(folder_id)
-            if not err and files is not None:
-                return {"status": "success", "files": files, "folder_id": folder_id}
+            g_files, err = list_files_in_drive(folder_id)
+            if not err and g_files is not None:
+                for f in g_files:
+                    files_map[f["name"]] = f
         except Exception as e:
-            print("Google Drive API error, falling back to local storage:", e)
+            print("Google Drive API error, falling back to database storage:", e)
 
-    import mimetypes
-    import datetime
-    files = []
+    # 2. Query persistent database stored_documents
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name, mime_type, size, created_at FROM stored_documents ORDER BY id DESC")
+        rows = cursor.fetchall()
+        for r in rows:
+            fname = r["name"]
+            if fname not in files_map:
+                files_map[fname] = {
+                    "id": str(r["id"]),
+                    "name": fname,
+                    "mimeType": r["mime_type"] or "application/octet-stream",
+                    "size": r["size"] or 0,
+                    "createdTime": r["created_at"] or datetime.datetime.now().isoformat(),
+                    "webViewLink": f"/api/drive/files/download/{fname}"
+                }
+        conn.close()
+    except Exception as db_e:
+        print("Error reading stored_documents from DB:", db_e)
+
+    # 3. Check local disk cache if exists
     try:
         if os.path.exists(STORED_FILES_DIR):
             for filename in os.listdir(STORED_FILES_DIR):
                 filepath = os.path.join(STORED_FILES_DIR, filename)
-                if os.path.isfile(filepath):
+                if os.path.isfile(filepath) and filename not in files_map:
                     stat = os.stat(filepath)
                     mime_type, _ = mimetypes.guess_type(filepath)
                     dt = datetime.datetime.fromtimestamp(stat.st_mtime)
-                    iso_time = dt.isoformat()
-                    
-                    webViewLink = f"/api/drive/files/download/{filename}"
-                    
-                    files.append({
+                    files_map[filename] = {
                         "id": filename,
                         "name": filename,
                         "mimeType": mime_type or "application/octet-stream",
                         "size": stat.st_size,
-                        "createdTime": iso_time,
-                        "webViewLink": webViewLink
-                    })
-        # Sort files by createdTime descending
-        files.sort(key=lambda x: x["createdTime"], reverse=True)
-        return {"status": "success", "files": files, "folder_id": "Local Storage (ម៉ាស៊ីន Server ផ្ទាល់)"}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+                        "createdTime": dt.isoformat(),
+                        "webViewLink": f"/api/drive/files/download/{filename}"
+                    }
+    except Exception as disk_e:
+        print("Error reading local STORED_FILES_DIR:", disk_e)
+
+    files_list = list(files_map.values())
+    files_list.sort(key=lambda x: x.get("createdTime", ""), reverse=True)
+    return {
+        "status": "success",
+        "files": files_list,
+        "folder_id": folder_id or "Secure Database & Cloud Storage"
+    }
 
 @app.post("/api/drive/upload")
 def upload_file(file: UploadFile = File(...)):
+    init_stored_documents_table()
     file_bytes = file.file.read()
+    now_iso = datetime.datetime.now().isoformat()
+    mime_type = file.content_type or mimetypes.guess_type(file.filename)[0] or "application/octet-stream"
+    filename = file.filename
+
+    # 1. Try upload to Google Drive if configured
+    uploaded_gdrive_file = None
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
     if folder_id:
         try:
             from google_drive import upload_file_to_drive
-            import io
             file_stream = io.BytesIO(file_bytes)
-            uploaded_file, err = upload_file_to_drive(file_stream, file.filename, file.content_type or "application/octet-stream", folder_id)
+            uploaded_file, err = upload_file_to_drive(file_stream, filename, mime_type, folder_id)
             if not err and uploaded_file:
-                return {"status": "success", "file": uploaded_file, "storage_type": "Google Drive"}
-            else:
-                print("Google Drive Upload Note (falling back to server storage):", err)
+                uploaded_gdrive_file = uploaded_file
         except Exception as e:
-            print("Google Drive Upload Exception (falling back to server storage):", e)
+            print("Google Drive Upload Exception (saving to DB):", e)
 
+    # 2. Always persist into database stored_documents
+    b64_data = base64.b64encode(file_bytes).decode('utf-8')
     try:
-        import datetime
-        filename = file.filename
-        base, ext = os.path.splitext(filename)
-        counter = 1
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM stored_documents WHERE name = ?", (filename,))
+        existing = cursor.fetchone()
+        if existing:
+            cursor.execute("""
+            UPDATE stored_documents
+            SET mime_type = ?, size = ?, data_base64 = ?, created_at = ?
+            WHERE name = ?
+            """, (mime_type, len(file_bytes), b64_data, now_iso, filename))
+        else:
+            cursor.execute("""
+            INSERT INTO stored_documents (name, mime_type, size, data_base64, created_at)
+            VALUES (?, ?, ?, ?, ?)
+            """, (filename, mime_type, len(file_bytes), b64_data, now_iso))
+        conn.commit()
+        conn.close()
+    except Exception as db_e:
+        print("Error saving document to DB:", db_e)
+
+    # 3. Save to local disk cache
+    try:
         filepath = os.path.join(STORED_FILES_DIR, filename)
-        while os.path.exists(filepath):
-            filename = f"{base}_{counter}{ext}"
-            filepath = os.path.join(STORED_FILES_DIR, filename)
-            counter += 1
-            
         with open(filepath, "wb") as f:
             f.write(file_bytes)
-            
-        stat = os.stat(filepath)
-        dt = datetime.datetime.fromtimestamp(stat.st_mtime)
-        
-        return {
-            "status": "success",
-            "storage_type": "Server Storage",
-            "file": {
-                "id": filename,
-                "name": filename,
-                "webViewLink": f"/api/drive/files/download/{filename}",
-                "size": stat.st_size,
-                "createdTime": dt.isoformat()
-            }
+    except Exception as disk_e:
+        pass
+
+    return {
+        "status": "success",
+        "storage_type": "Google Drive" if uploaded_gdrive_file else "Database Storage",
+        "file": uploaded_gdrive_file or {
+            "id": filename,
+            "name": filename,
+            "webViewLink": f"/api/drive/files/download/{filename}",
+            "size": len(file_bytes),
+            "createdTime": now_iso
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    }
 
 @app.delete("/api/drive/files/{file_id}")
 def delete_file(file_id: str):
+    init_stored_documents_table()
+    
+    # 1. Try delete from Google Drive if ID is a Google Drive ID
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
-    if folder_id and not file_id.startswith("/") and len(file_id) > 15:
+    if folder_id and not file_id.startswith("/") and len(file_id) > 15 and "." not in file_id:
         try:
             from google_drive import delete_file_from_drive
-            success, err = delete_file_from_drive(file_id)
-            if success:
-                return {"status": "success"}
+            delete_file_from_drive(file_id)
         except Exception as e:
-            print("Google Drive delete exception, falling back to local storage:", e)
+            print("Google Drive delete exception:", e)
 
+    # 2. Delete from database stored_documents
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM stored_documents WHERE name = ? OR CAST(id AS TEXT) = ?", (file_id, file_id))
+        conn.commit()
+        conn.close()
+    except Exception as db_e:
+        print("Error deleting document from DB:", db_e)
+
+    # 3. Delete from local disk
     try:
         safe_filename = os.path.basename(file_id)
         filepath = os.path.join(STORED_FILES_DIR, safe_filename)
         if os.path.exists(filepath):
             os.remove(filepath)
-            return {"status": "success"}
-        else:
-            raise HTTPException(status_code=404, detail="File not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception:
+        pass
 
-from fastapi.responses import StreamingResponse, FileResponse
-import mimetypes
+    return {"status": "success"}
 
 @app.get("/api/drive/files/download/{file_id}")
 def download_drive_or_local_file(file_id: str):
+    init_stored_documents_table()
     folder_id = os.getenv("GOOGLE_DRIVE_FOLDER_ID")
-    # If file_id is a Google Drive file ID (alphanumeric string without extension)
-    if folder_id and len(file_id) > 15 and not "." in file_id:
+    
+    # 1. If file_id is a Google Drive file ID
+    if folder_id and len(file_id) > 15 and "." not in file_id:
         try:
             from google_drive import get_drive_service
-            import io
             from googleapiclient.http import MediaIoBaseDownload
-            
             service = get_drive_service()
             if service:
                 g_file = service.files().get(fileId=file_id, fields="id, name, mimeType", supportsAllDrives=True).execute()
@@ -2112,23 +2188,36 @@ def download_drive_or_local_file(file_id: str):
                     status, done = downloader.next_chunk()
                 file_stream.seek(0)
                 
-                headers = {
-                    "Content-Disposition": f'inline; filename="{fname}"'
-                }
+                headers = {"Content-Disposition": f'inline; filename="{fname}"'}
                 return StreamingResponse(file_stream, media_type=mtype, headers=headers)
         except Exception as e:
-            print("Proxy stream error from Google Drive, falling back to local file:", e)
+            print("Proxy stream error from Google Drive, falling back to database/local file:", e)
 
+    # 2. Check local disk cache
+    safe_filename = os.path.basename(file_id)
+    filepath = os.path.join(STORED_FILES_DIR, safe_filename)
+    if os.path.exists(filepath):
+        mime_type, _ = mimetypes.guess_type(filepath)
+        return FileResponse(filepath, media_type=mime_type or "application/octet-stream", content_disposition_type="inline")
+
+    # 3. Check persistent database stored_documents
     try:
-        safe_filename = os.path.basename(file_id)
-        filepath = os.path.join(STORED_FILES_DIR, safe_filename)
-        if os.path.exists(filepath):
-            mime_type, _ = mimetypes.guess_type(filepath)
-            return FileResponse(filepath, media_type=mime_type or "application/octet-stream", content_disposition_type="inline")
-        else:
-            raise HTTPException(status_code=404, detail="File not found")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT name, mime_type, data_base64 FROM stored_documents WHERE name = ? OR CAST(id AS TEXT) = ?", (file_id, file_id))
+        row = cursor.fetchone()
+        conn.close()
+        if row and row["data_base64"]:
+            raw_bytes = base64.b64decode(row["data_base64"])
+            file_stream = io.BytesIO(raw_bytes)
+            fname = row["name"]
+            mtype = row["mime_type"] or "application/octet-stream"
+            headers = {"Content-Disposition": f'inline; filename="{fname}"'}
+            return StreamingResponse(file_stream, media_type=mtype, headers=headers)
+    except Exception as db_e:
+        print("Error fetching file from DB:", db_e)
+
+    raise HTTPException(status_code=404, detail="File not found")
 
 class TelegramSendMessagePayload(BaseModel):
     message: str
