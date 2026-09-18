@@ -10055,88 +10055,131 @@ export default function App() {
         <ul className="sidebar-menu">
           {isGuest ? (
             <li className={`menu-item ${activeTab === 'shift' ? 'active' : ''}`} onClick={() => handleMenuClick('shift')}>
-              <span className="menu-icon" style={{ fontSize: '15px' }}>📅</span> វេនប្រចាំការ (Shift)
+              <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+              </span>
+              <span>វេនប្រចាំការ (Shift)</span>
             </li>
           ) : (
             <>
               {hasPermission('dashboard', 'read') && (
                 <li className={`menu-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => handleMenuClick('dashboard')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>📊</span> Dashboard
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                  </span>
+                  <span>Dashboard</span>
                 </li>
               )}
               {hasPermission('ipam', 'read') && (
                 <li className={`menu-item ${activeTab === 'ipam' ? 'active' : ''}`} onClick={() => handleMenuClick('ipam')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>🏢</span> IPAM / IP Address
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+                  </span>
+                  <span>IPAM / IP Address</span>
                 </li>
               )}
               {hasPermission('vpn_remote', 'read') && (
                 <li className={`menu-item ${activeTab === 'vpn' ? 'active' : ''}`} onClick={() => handleMenuClick('vpn')}>
-                  <span className="menu-icon" style={{ fontSize: '15px', display: 'flex', alignItems: 'center' }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-                    </svg>
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
                   </span>
-                  VPN Remote Access
+                  <span>VPN Remote Access</span>
                 </li>
               )}
               {hasPermission('hospital_vpn', 'read') && (
                 <li className={`menu-item ${activeTab === 's2s' ? 'active' : ''}`} onClick={() => handleMenuClick('s2s')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>🏥</span> Hospital VPNs
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"></path></svg>
+                  </span>
+                  <span>Hospital VPNs</span>
                 </li>
               )}
               {hasPermission('bank_vpn', 'read') && (
                 <li className={`menu-item ${activeTab === 'banks' ? 'active' : ''}`} onClick={() => handleMenuClick('banks')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>🏦</span> Bank VPNs
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 21h18M3 10h18M5 10v11M19 10v11M9 10v11M15 10v11M12 3l9 7H3z"></path></svg>
+                  </span>
+                  <span>Bank VPNs</span>
                 </li>
               )}
               {hasPermission('public_ip', 'read') && (
                 <li className={`menu-item ${activeTab === 'public' ? 'active' : ''}`} onClick={() => handleMenuClick('public')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>🌐</span> Public IP & DNS
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="2" y1="12" x2="22" y2="12"></line><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>
+                  </span>
+                  <span>Public IP & DNS</span>
                 </li>
               )}
               {hasPermission('switches', 'read') && (
                 <li className={`menu-item ${activeTab === 'switches' ? 'active' : ''}`} onClick={() => handleMenuClick('switches')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>🔌</span> Switches List
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
+                  </span>
+                  <span>Switches List</span>
                 </li>
               )}
               {hasPermission('storage', 'read') && (
                 <li className={`menu-item ${activeTab === 'storage' ? 'active' : ''}`} onClick={() => handleMenuClick('storage')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>📂</span> File Storage
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                  </span>
+                  <span>File Storage</span>
                 </li>
               )}
               {hasPermission('pdf_hub', 'read') && (
                 <li className={`menu-item ${activeTab === 'pdf_hub' || activeTab === 'forms' ? 'active' : ''}`} onClick={() => handleMenuClick('pdf_hub')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>📄</span> ទម្រង់ឯកសារស្នើសុំ PDF (PDF Form Hub)
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                  </span>
+                  <span>ទម្រង់ PDF Form Hub</span>
                 </li>
               )}
               {hasPermission('tickets', 'read') && (
                 <li className={`menu-item ${activeTab === 'tickets' ? 'active' : ''}`} onClick={() => handleMenuClick('tickets')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>🎫</span> ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                  </span>
+                  <span>សំណើអេឡិចត្រូនិក (Tickets)</span>
                 </li>
               )}
               {hasPermission('tickets', 'read') && (
                 <li className={`menu-item ${activeTab === 'dev_requests' ? 'active' : ''}`} onClick={() => handleMenuClick('dev_requests')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>💻</span> តារាងស្នើសុំ Dev (Sheets)
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+                  </span>
+                  <span>តារាងស្នើសុំ Dev</span>
                 </li>
               )}
               {hasPermission('leave', 'read') && (
                 <li className={`menu-item ${activeTab === 'leave' ? 'active' : ''}`} onClick={() => handleMenuClick('leave')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>📝</span> សុំច្បាប់ / ចេញក្រៅ
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="8.5" cy="7" r="4"></circle><line x1="20" y1="8" x2="20" y2="14"></line><line x1="23" y1="11" x2="17" y2="11"></line></svg>
+                  </span>
+                  <span>សុំច្បាប់ / ចេញក្រៅ</span>
                 </li>
               )}
               {hasPermission('shift', 'read') && (
                 <li className={`menu-item ${activeTab === 'shift' ? 'active' : ''}`} onClick={() => handleMenuClick('shift')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>📅</span> វេនប្រចាំការ (Shift)
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                  </span>
+                  <span>វេនប្រចាំការ (Shift)</span>
                 </li>
               )}
               {hasPermission('shift', 'write') && (
                 <li className={`menu-item ${activeTab === 'shift_generator' ? 'active' : ''}`} onClick={() => handleMenuClick('shift_generator')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>🎲</span> Random កាលវិភាគប្រចាំការ
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                  </span>
+                  <span>Random កាលវិភាគប្រចាំការ</span>
                 </li>
               )}
               {hasPermission('user_management', 'read') && (
                 <li className={`menu-item ${activeTab === 'users' ? 'active' : ''}`} onClick={() => handleMenuClick('users')}>
-                  <span className="menu-icon" style={{ fontSize: '15px' }}>👥</span> គ្រប់គ្រងអ្នកប្រើប្រាស់
+                  <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                  </span>
+                  <span>គ្រប់គ្រងអ្នកប្រើប្រាស់</span>
                 </li>
               )}
             </>
@@ -10160,7 +10203,9 @@ export default function App() {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '15px' }}>📲</span>
+                <span style={{ fontSize: '13px', display: 'flex', alignItems: 'center', color: '#16a34a' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                </span>
                 <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left', lineHeight: '1.2' }}>
                   <span style={{ fontSize: '11px', fontWeight: '800', color: '#15803d' }}>ដំឡើងលើទូរស័ព្ទ</span>
                   <span style={{ fontSize: '9px', fontWeight: '600', color: '#16a34a' }}>Add to Home Screen</span>
@@ -10175,8 +10220,8 @@ export default function App() {
               <span className="last-updated-label" style={{ fontSize: '9px' }}>Last Updated</span>
               <span className="last-updated-time" style={{ fontSize: '10px' }}>{lastUpdated}</span>
             </div>
-            <button className="btn-refresh" onClick={triggerRefresh} title="Sync/Refresh data" style={{ padding: '4px' }}>
-              🔄
+            <button className="btn-refresh" onClick={triggerRefresh} title="Sync/Refresh data" style={{ padding: '4px', border: 'none', background: 'transparent', cursor: 'pointer', color: '#2563eb' }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
             </button>
           </div>
           
@@ -10202,7 +10247,7 @@ export default function App() {
                 cursor: 'pointer'
               }}
             >
-              🔑 <span>ចូលគណនី Admin</span>
+              <span>ចូលគណនី Admin</span>
             </div>
           ) : (
             <div className="help-card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 12px', backgroundColor: 'var(--bg-primary)', border: '1px solid var(--border-color)', borderRadius: '8px', cursor: 'pointer' }}>
@@ -10236,7 +10281,7 @@ export default function App() {
             ☰
           </button>
           <div className="page-title">
-            <h1>
+            <h1 style={{ margin: 0 }}>
               {activeTab === 'dashboard' && 'មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC) & ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក'}
               {activeTab === 'ipam' && 'ការគ្រប់គ្រងអាសយដ្ឋាន IP & VLAN (IPAM)'}
               {activeTab === 'vpn' && 'គណនី VPN Remote Access'}
@@ -10244,7 +10289,7 @@ export default function App() {
               {activeTab === 'banks' && 'ស្ថានភាព VPN ធនាគារដៃគូ (Bank S2S Links)'}
               {activeTab === 'public' && 'តារាង IP Public & DNS Host Mapping'}
               {activeTab === 'switches' && 'បញ្ជីឧបករណ៍ Switch តាមសាខា'}
-              {activeTab === 'storage' && 'ប្រព័ន្ធផ្ទុកឯកសាររួម Google Drive'}
+              {activeTab === 'storage' && 'ប្រព័ន្ធផ្ទុកឯកសាររួម File Storage'}
               {activeTab === 'kanban' && 'ប្រព័ន្ធគ្រប់គ្រងកិច្ចការងារ Bitrix (Task Management & Kanban Board)'}
               {activeTab === 'workflow' && 'ប្រព័ន្ធបង្កើត និងកំណត់រចនាសម្ព័ន្ធ Workflow (Visual Workflow & Approval Builder)'}
               {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
@@ -10254,26 +10299,6 @@ export default function App() {
               {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់ (Night Shift Standby Roster)'}
               {activeTab === 'shift_generator' && 'ប្រព័ន្ធ Random & គ្រប់គ្រងកាលវិភាគប្រចាំការ (Shift Schedule Generator)'}
             </h1>
-            <p>
-              {activeTab === 'kanban' && 'Bitrix-Style Task Pipeline, Visual Stages, Assignees & Deadlines'}
-              {activeTab === 'workflow' && 'Bitrix24-Style Enterprise Drag & Drop Node Designer, Condition Engine & Multi-Level Approvals'}
-              {activeTab === 'ipam' && (
-                ipamCategory === 'branches'
-                  ? (selectedBranch ? `Subnet IP Range details for ${selectedBranch.name_kh} (${selectedBranch.name_en})` : 'Utilization and host mappings for NSSF branch subnets')
-                  : (selectedDept ? `VLAN allocation details for ${selectedDept.name_en}${selectedDept.sheet_name ? ` (${selectedDept.sheet_name})` : ''} (VLAN ${selectedDept.vlan_id})` : 'Utilization and hosts for HQ departments')
-              )}
-              {activeTab === 'vpn' && 'Credential list, statuses, and permissions for VPN remote users'}
-              {activeTab === 's2s' && 'Monitor and filter active S2S hospital VPN connections versus completed/closed ones'}
-              {activeTab === 'banks' && 'Monitor and manage dedicated private VPN parameters for partner financial institutions'}
-              {activeTab === 'public' && 'NAT configuration history and DNS records mapped internally'}
-              {activeTab === 'switches' && 'Management IP addresses and switch models deployed across NSSF branches'}
-              {activeTab === 'storage' && 'Upload, view, and organize files in the shared Google Drive folder'}
-              {activeTab === 'tickets' && 'បង្កើត ពិនិត្យតាមដាន និងអនុម័តសំណើការងារអេឡិចត្រូនិកតាមលំដាប់ថ្នាក់រដ្ឋបាល'}
-              {activeTab === 'forms' && 'ប្រព័ន្ធបង្កើត និងបោះពុម្ពទម្រង់ឯកសារស្នើសុំផ្លូវការ (Auto-Fill, ហត្ថលេខាឌីជីថល, ភ្ជាប់ឯកសារ និងទាញយក PDF)'}
-              {activeTab === 'leave' && 'Generate formatted Khmer requests and post them automatically to the Telegram group'}
-              {activeTab === 'shift' && 'Roster of active on-duty standby officers and daily notification alert dispatcher'}
-              {activeTab === 'shift_generator' && 'បង្កើត និង Random កាលវិភាគប្រចាំការខែថ្មី រក្សាទុកទិន្នន័យ និងបង្ហាញចំនួនវេនសរុបក្នុង ១នាក់'}
-            </p>
           </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
