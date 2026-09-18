@@ -739,9 +739,17 @@ def get_dashboard_stats(force_refresh: bool = False):
         cursor.execute("SELECT COUNT(*) FROM vpn_remote_users WHERE status LIKE '%active%' OR status LIKE '%using%'")
         active_vpn_users = cursor.fetchone()[0]
         
-        # Active Hospital/Bank VPNs count (UP status)
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE status LIKE '%UP%' or status LIKE '%using%'")
-        active_s2s_tunnels = cursor.fetchone()[0]
+        # S2S VPN stats breakdown (Hospital & Bank VPNs)
+        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE vpn_type != 'Close' AND (reopen_requested IS NULL OR reopen_requested = 0)")
+        open_s2s_tunnels = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE vpn_type = 'Close' AND (reopen_requested IS NULL OR reopen_requested = 0)")
+        closed_s2s_tunnels = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE reopen_requested = 1")
+        reopen_s2s_tunnels = cursor.fetchone()[0]
+
+        active_s2s_tunnels = open_s2s_tunnels
         
         conn.close()
         
@@ -757,7 +765,10 @@ def get_dashboard_stats(force_refresh: bool = False):
                 "branch_allocated": allocated_branch_ips,
                 "hq_allocated": allocated_hq_ips,
                 "active_vpn_users": active_vpn_users,
-                "active_s2s_tunnels": active_s2s_tunnels
+                "active_s2s_tunnels": active_s2s_tunnels,
+                "open_s2s_tunnels": open_s2s_tunnels,
+                "closed_s2s_tunnels": closed_s2s_tunnels,
+                "reopen_s2s_tunnels": reopen_s2s_tunnels
             },
             "branch_list": branches[:8], # limit dashboard preview
             "hq_list": depts[:8]

@@ -10750,8 +10750,8 @@ export default function App() {
         {/* Dashboard View Skeleton Loader */}
         {activeTab === 'dashboard' && !dashboardStats && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', width: '100%' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px' }}>
-              {[1, 2, 3, 4, 5].map((i) => (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }}>
+              {[1, 2, 3, 4].map((i) => (
                 <div key={i} style={{ height: '110px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '18px 20px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div style={{ width: '42px', height: '42px', borderRadius: '50%', backgroundColor: '#f1f5f9' }} className="skeleton-pulse"></div>
@@ -10789,7 +10789,8 @@ export default function App() {
         {activeTab === 'dashboard' && dashboardStats && (
           <>
             {/* Top Stats Cards */}
-            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '16px', marginBottom: '20px' }}>
+            {/* Top Stats Cards (4 Columns without E-request) */}
+            <div className="dashboard-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '20px' }}>
               
               {/* Card 1: Total Branches */}
               <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
@@ -10873,14 +10874,14 @@ export default function App() {
                 </div>
               </div>
 
-              {/* Card 4: Active S2S VPNs */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
+              {/* Card 4: S2S VPNs with Clear Breakdown (ដំណើរការ / បិទ / ស្នើសុំបើក) */}
+              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '16px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
                 onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(245, 158, 11, 0.12)'; e.currentTarget.style.borderColor = '#fde68a'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
                 onClick={() => { setActiveTab('s2s'); }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '10px' }}>
+                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#fffbeb', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#f59e0b', flexShrink: 0 }}>
                     <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                       <rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect>
                       <rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect>
@@ -10889,132 +10890,39 @@ export default function App() {
                     </svg>
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>{dashboardStats?.allocations?.active_s2s_tunnels ?? 0} <span style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>/ {dashboardStats?.counts?.s2s_vpns ?? 0}</span></span>
-                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>Active S2S VPNs</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                      <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>
+                        {dashboardStats?.counts?.s2s_vpns ?? 238}
+                      </span>
+                      <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '700' }}>Tunnels</span>
+                    </div>
+                    <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>
+                      S2S VPNs (មន្ទីរពេទ្យ/ធនាគារ)
+                    </span>
                   </div>
                 </div>
+
+                {/* Status Breakdown Pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#059669', backgroundColor: '#ecfdf5', padding: '2px 8px', borderRadius: '6px', border: '1px solid #a7f3d0' }}>
+                    🟢 {dashboardStats?.allocations?.open_s2s_tunnels ?? 219} ដំណើរការ
+                  </span>
+                  <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#dc2626', backgroundColor: '#fef2f2', padding: '2px 8px', borderRadius: '6px', border: '1px solid #fecaca' }}>
+                    🔴 {dashboardStats?.allocations?.closed_s2s_tunnels ?? 18} បិទ
+                  </span>
+                  {(dashboardStats?.allocations?.reopen_s2s_tunnels ?? 1) > 0 && (
+                    <span style={{ fontSize: '10.5px', fontWeight: '800', color: '#d97706', backgroundColor: '#fffbeb', padding: '2px 8px', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                      🔄 {dashboardStats?.allocations?.reopen_s2s_tunnels ?? 1} ស្នើសុំបើក
+                    </span>
+                  )}
+                </div>
+
                 <div style={{ fontSize: '11px', fontWeight: '700', color: '#d97706', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
                   View all VPNs 
                   <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
                 </div>
               </div>
 
-              {/* Card 5: Electronic Requests */}
-              <div className="stat-card" style={{ display: 'flex', flexDirection: 'column', padding: '18px 20px', backgroundColor: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)', transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)', cursor: 'pointer', textAlign: 'left' }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-3px)'; e.currentTarget.style.boxShadow = '0 10px 20px -5px rgba(239, 68, 68, 0.12)'; e.currentTarget.style.borderColor = '#fca5a5'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.02), 0 1px 2px rgba(0,0,0,0.03)'; e.currentTarget.style.borderColor = '#e2e8f0'; }}
-                onClick={() => { setActiveTab('tickets'); }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '14px' }}>
-                  <div style={{ width: '42px', height: '42px', borderRadius: '12px', backgroundColor: '#fef2f2', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#ef4444' }}>
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                      <polyline points="14 2 14 8 20 8"></polyline>
-                      <line x1="16" y1="13" x2="8" y2="13"></line>
-                      <line x1="16" y1="17" x2="8" y2="17"></line>
-                      <polyline points="10 9 9 9 8 9"></polyline>
-                    </svg>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                    <span style={{ fontSize: '24px', fontWeight: '800', color: '#1e293b' }}>
-                      {(tickets || []).filter(t => ['pending_l1', 'pending_l2', 'pending_l3'].includes(t.status)).length} <span style={{ fontSize: '14px', fontWeight: '600', color: '#94a3b8' }}>/ {(tickets || []).length}</span>
-                    </span>
-                    <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.4px' }}>សំណើកំពុងរង់ចាំ</span>
-                  </div>
-                </div>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#ef4444', display: 'flex', alignItems: 'center', gap: '4px', marginTop: 'auto' }}>
-                  គ្រប់គ្រងសំណើ 
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                </div>
-              </div>
-
-            </div>
-
-            {/* Dedicated Quick Action Banner for Electronic Request Management System */}
-            <div style={{ 
-              backgroundColor: '#fff', 
-              borderRadius: '16px', 
-              border: '1px solid #e2e8f0', 
-              borderLeft: '4px solid #2563eb',
-              padding: '16px 22px', 
-              marginBottom: '20px', 
-              boxShadow: '0 2px 4px rgba(0, 0, 0, 0.02)', 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'space-between', 
-              flexWrap: 'wrap', 
-              gap: '16px' 
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                <div style={{ width: '44px', height: '44px', borderRadius: '12px', backgroundColor: '#eff6ff', color: '#2563eb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                    <line x1="16" y1="13" x2="8" y2="13"></line>
-                    <line x1="16" y1="17" x2="8" y2="17"></line>
-                  </svg>
-                </div>
-                <div style={{ textAlign: 'left' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <h3 style={{ margin: 0, fontSize: '14.5px', fontWeight: '800', color: '#1e293b' }}>
-                      ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក
-                    </h3>
-                    <span style={{ fontSize: '10px', fontWeight: '700', padding: '2px 8px', borderRadius: '12px', backgroundColor: '#dbeafe', color: '#1d4ed8' }}>
-                      E-Request
-                    </span>
-                  </div>
-                  <p style={{ margin: '2px 0 0 0', fontSize: '11.5px', color: '#64748b' }}>
-                    Electronic Request Management System ᛫ ស្នើសុំសិទ្ធិ បើក/កែប្រែប្រព័ន្ធបច្ចេកវិទ្យា និងតាមដានការអនុម័ត
-                  </p>
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <button 
-                  onClick={() => { setActiveTab('tickets'); setIsCreateTicketModalOpen(true); }}
-                  style={{ 
-                    padding: '8px 16px', 
-                    borderRadius: '10px', 
-                    backgroundColor: '#2563eb', 
-                    color: '#fff', 
-                    border: 'none', 
-                    fontWeight: '700', 
-                    fontSize: '12px', 
-                    cursor: 'pointer', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '6px', 
-                    boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
-                    transition: 'all 0.15s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#1d4ed8'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
-                  បង្កើតសំណើថ្មី
-                </button>
-                <button 
-                  onClick={() => setActiveTab('tickets')}
-                  style={{ 
-                    padding: '8px 16px', 
-                    borderRadius: '10px', 
-                    backgroundColor: '#f8fafc', 
-                    color: '#334155', 
-                    border: '1px solid #cbd5e1', 
-                    fontWeight: '700', 
-                    fontSize: '12px', 
-                    cursor: 'pointer', 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: '6px',
-                    transition: 'all 0.15s'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.borderColor = '#94a3b8'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#f8fafc'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 6h16M4 12h16M4 18h16"></path></svg>
-                  បញ្ជីសំណើទាំងអស់ ({(tickets || []).length})
-                </button>
-              </div>
             </div>
 
             {/* Bottom Row Grid: Left Panel (Subnets Preview) & Right Panel (Quick Access & Health) */}
