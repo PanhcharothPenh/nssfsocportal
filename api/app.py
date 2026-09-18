@@ -29,6 +29,39 @@ from syncer import (
     sync_hospital_vpn_to_excel
 )
 
+# Safe Telegram imports
+try:
+    from telegram import (
+        notify_data_change,
+        send_telegram_message,
+        get_telegram_config,
+        process_telegram_incoming_update,
+        send_ticket_telegram_alert,
+        send_ticket_assignee_alert,
+        send_task_kanban_telegram_alert
+    )
+except ImportError:
+    try:
+        from backend.telegram import (
+            notify_data_change,
+            send_telegram_message,
+            get_telegram_config,
+            process_telegram_incoming_update,
+            send_ticket_telegram_alert,
+            send_ticket_assignee_alert,
+            send_task_kanban_telegram_alert
+        )
+    except ImportError:
+        from api.telegram import (
+            notify_data_change,
+            send_telegram_message,
+            get_telegram_config,
+            process_telegram_incoming_update,
+            send_ticket_telegram_alert,
+            send_ticket_assignee_alert,
+            send_task_kanban_telegram_alert
+        )
+
 from fastapi.middleware.gzip import GZipMiddleware
 
 app = FastAPI(title="NSSF SOC Network API", version="1.0.0")
@@ -43,6 +76,56 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def ensure_user_columns_exist(conn=None):
+    should_close = False
+    if conn is None:
+        conn = get_db_connection()
+        should_close = True
+    try:
+        cursor = conn.cursor()
+        is_postgres = (conn.__class__.__name__ == 'PostgresConnectionWrapper')
+        user_cols = [
+            ("email", "TEXT"),
+            ("phone", "TEXT"),
+            ("department", "TEXT"),
+            ("position", "TEXT"),
+            ("language", "TEXT"),
+            ("timezone", "TEXT"),
+            ("date_format", "TEXT"),
+            ("theme", "TEXT"),
+            ("client_ip", "TEXT"),
+            ("last_login", "TEXT"),
+            ("telegram_chat_id", "TEXT"),
+            ("telegram_username", "TEXT"),
+            ("notify_telegram", "TEXT"),
+            ("must_change_password", "INTEGER DEFAULT 0"),
+            ("permissions", "TEXT")
+        ]
+        for col_name, col_type in user_cols:
+            try:
+                if is_postgres:
+                    cursor.execute(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+                    conn.commit()
+                else:
+                    cursor.execute("PRAGMA table_info(users)")
+                    existing = [row[1] for row in cursor.fetchall()]
+                    if col_name not in existing:
+                        cursor.execute(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}")
+                        conn.commit()
+            except Exception:
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+    except Exception as e:
+        print("ensure_user_columns_exist warning:", e)
+    finally:
+        if should_close:
+            try:
+                conn.close()
+            except Exception:
+                pass
 
 def init_db_migrations():
     try:
@@ -74,6 +157,8 @@ def init_db_migrations():
         except Exception as e_k:
             print("Kanban table migration warning:", e_k)
             conn.rollback()
+
+        ensure_user_columns_exist(conn)
 
         conn.close()
     except Exception as e:
@@ -1045,6 +1130,10 @@ def get_branch_details(id: int):
 
 @app.post("/api/branches/{id}/ips")
 def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str = Query(...)):
+    global _dashboard_cache
+    _dashboard_cache["expires_at"] = 0
+    _dashboard_cache["data"] = None
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -1055,27 +1144,35 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
             conn.close()
             raise HTTPException(status_code=404, detail="Branch not found")
             
-        # Check if entry already exists in SQLite
-        cursor.execute("SELECT id FROM branch_ips WHERE ip = ?", (ip,))
+        # Check if entry already exists in DB
+        cursor.execute("SELECT * FROM branch_ips WHERE ip = ?", (ip,))
         row = cursor.fetchone()
         
         is_cleared = (ip_data.status in ['Available', 'AVAILABLE']) and not (ip_data.user_name and str(ip_data.user_name).strip())
         if is_cleared:
             cursor.execute("DELETE FROM branch_ips WHERE ip = ?", (ip,))
         elif row:
-            # Update existing
+            ex = dict(row)
+            user_name = ip_data.user_name if ip_data.user_name is not None else ex.get('user_name')
+            position = ip_data.position if ip_data.position is not None else ex.get('position')
+            mac_address = ip_data.mac_address if ip_data.mac_address is not None else ex.get('mac_address')
+            device_type = ip_data.device_type if ip_data.device_type is not None else ex.get('device_type')
+            status = ip_data.status if ip_data.status is not None else ex.get('status')
+            internet_permission = ip_data.internet_permission if ip_data.internet_permission is not None else ex.get('internet_permission')
+            other = ip_data.other if ip_data.other is not None else ex.get('other')
+            
             cursor.execute("""
             UPDATE branch_ips
             SET user_name = ?, position = ?, mac_address = ?, device_type = ?, status = ?, internet_permission = ?, other = ?
             WHERE ip = ?
             """, (
-                ip_data.user_name,
-                ip_data.position,
-                ip_data.mac_address,
-                ip_data.device_type,
-                ip_data.status,
-                ip_data.internet_permission,
-                ip_data.other,
+                user_name,
+                position,
+                mac_address,
+                device_type,
+                status,
+                internet_permission,
+                other,
                 ip
             ))
         else:
@@ -1099,24 +1196,26 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from backend.telegram import notify_data_change
-        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
-        client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
-        branch_name = f"{branch_row['name_kh']} ({branch_row['name_en']})"
-        notify_data_change(
-            action_title="ធ្វើបច្ចុប្បន្នភាព IP តាមសាខា (Branch IP Update)",
-            details={
-                "សាខា (Branch)": branch_name,
-                "IP Address": ip,
-                "ឈ្មោះអ្នកប្រើប្រាស់ (User Name)": ip_data.user_name,
-                "តួនាទី (Position)": ip_data.position,
-                "MAC Address": ip_data.mac_address,
-                "ប្រភេទឧបករណ៍ (Device)": ip_data.device_type,
-                "ស្ថានភាព (Status)": ip_data.status
-            },
-            editor_username=editor,
-            client_ip=client_ip
-        )
+        try:
+            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+            client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
+            branch_name = f"{branch_row['name_kh']} ({branch_row['name_en']})"
+            notify_data_change(
+                action_title="ធ្វើបច្ចុប្បន្នភាព IP តាមសាខា (Branch IP Update)",
+                details={
+                    "សាខា (Branch)": branch_name,
+                    "IP Address": ip,
+                    "ឈ្មោះអ្នកប្រើប្រាស់ (User Name)": ip_data.user_name,
+                    "តួនាទី (Position)": ip_data.position,
+                    "MAC Address": ip_data.mac_address,
+                    "ប្រភេទឧបករណ៍ (Device)": ip_data.device_type,
+                    "ស្ថានភាព (Status)": ip_data.status
+                },
+                editor_username=editor,
+                client_ip=client_ip
+            )
+        except Exception as t_err:
+            print("Telegram notification error:", t_err)
         
         # Now sync with the Excel file using the helper
         updates = ip_data.dict(exclude_unset=True)
@@ -1127,7 +1226,14 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
             "db_update": "success",
             "excel_sync": "success" if success else f"failed ({msg})"
         }
+    except HTTPException:
+        raise
     except Exception as e:
+        try:
+            conn.close()
+        except Exception:
+            pass
+        raise HTTPException(status_code=500, detail=str(e))
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -1252,6 +1358,10 @@ def get_hq_dept_details(id: int):
 
 @app.post("/api/hq/{id}/ips")
 def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query(...)):
+    global _dashboard_cache
+    _dashboard_cache["expires_at"] = 0
+    _dashboard_cache["data"] = None
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -1262,31 +1372,43 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
             conn.close()
             raise HTTPException(status_code=404, detail="Department not found")
             
-        # Check if entry already exists in SQLite
-        cursor.execute("SELECT id FROM hq_ips WHERE ip = ?", (ip,))
+        # Check if entry already exists in DB
+        cursor.execute("SELECT * FROM hq_ips WHERE ip = ?", (ip,))
         row = cursor.fetchone()
         
         is_cleared = (ip_data.status in ['Available', 'AVAILABLE']) and not (ip_data.user_name_en and str(ip_data.user_name_en).strip()) and not (ip_data.user_name_kh and str(ip_data.user_name_kh).strip())
         if is_cleared:
             cursor.execute("DELETE FROM hq_ips WHERE ip = ?", (ip,))
         elif row:
-            # Update existing
+            ex = dict(row)
+            user_name_kh = ip_data.user_name_kh if ip_data.user_name_kh is not None else ex.get('user_name_kh')
+            user_name_en = ip_data.user_name_en if ip_data.user_name_en is not None else ex.get('user_name_en')
+            position = ip_data.position if ip_data.position is not None else ex.get('position')
+            old_ip = ip_data.old_ip if ip_data.old_ip is not None else ex.get('old_ip')
+            subnet_mask = ip_data.subnet_mask if ip_data.subnet_mask is not None else ex.get('subnet_mask')
+            gateway = ip_data.gateway if ip_data.gateway is not None else ex.get('gateway')
+            status = ip_data.status if ip_data.status is not None else ex.get('status')
+            internet_permission = ip_data.internet_permission if ip_data.internet_permission is not None else ex.get('internet_permission')
+            group_system = ip_data.group_system if ip_data.group_system is not None else ex.get('group_system')
+            verify_update = ip_data.verify_update if ip_data.verify_update is not None else ex.get('verify_update')
+            other = ip_data.other if ip_data.other is not None else ex.get('other')
+            
             cursor.execute("""
             UPDATE hq_ips
             SET user_name_kh = ?, user_name_en = ?, position = ?, old_ip = ?, subnet_mask = ?, gateway = ?, status = ?, internet_permission = ?, group_system = ?, verify_update = ?, other = ?
             WHERE ip = ?
             """, (
-                ip_data.user_name_kh,
-                ip_data.user_name_en,
-                ip_data.position,
-                ip_data.old_ip,
-                ip_data.subnet_mask,
-                ip_data.gateway,
-                ip_data.status,
-                ip_data.internet_permission,
-                ip_data.group_system,
-                ip_data.verify_update,
-                ip_data.other,
+                user_name_kh,
+                user_name_en,
+                position,
+                old_ip,
+                subnet_mask,
+                gateway,
+                status,
+                internet_permission,
+                group_system,
+                verify_update,
+                other,
                 ip
             ))
         else:
@@ -1314,22 +1436,24 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
         conn.close()
         
         # Trigger Telegram Audit Notification
-        from backend.telegram import notify_data_change
-        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
-        client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
-        dept_name = f"{dept_row['name_en']} (VLAN {dept_row['vlan_id']})"
-        notify_data_change(
-            action_title="ធ្វើបច្ចុប្បន្នភាព IP តាមនាយកដ្ឋាន HQ (HQ IP Update)",
-            details={
-                "នាយកដ្ឋាន (Department)": dept_name,
-                "IP Address": ip,
-                "ឈ្មោះបុគ្គលិក (User Name)": ip_data.user_name_kh or ip_data.user_name_en,
-                "តួនាទី (Position)": ip_data.position,
-                "ស្ថានភាព (Status)": ip_data.status
-            },
-            editor_username=editor,
-            client_ip=client_ip
-        )
+        try:
+            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+            client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
+            dept_name = f"{dept_row['name_en']} (VLAN {dept_row['vlan_id']})"
+            notify_data_change(
+                action_title="ធ្វើបច្ចុប្បន្នភាព IP តាមនាយកដ្ឋាន HQ (HQ IP Update)",
+                details={
+                    "នាយកដ្ឋាន (Department)": dept_name,
+                    "IP Address": ip,
+                    "ឈ្មោះបុគ្គលិក (User Name)": ip_data.user_name_kh or ip_data.user_name_en,
+                    "តួនាទី (Position)": ip_data.position,
+                    "ស្ថានភាព (Status)": ip_data.status
+                },
+                editor_username=editor,
+                client_ip=client_ip
+            )
+        except Exception as t_err:
+            print("Telegram notification error:", t_err)
         
         # Now sync with the Excel file using the helper
         updates = ip_data.dict(exclude_unset=True)
@@ -1340,8 +1464,13 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
             "db_update": "success",
             "excel_sync": "success" if success else f"failed ({msg})"
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/switches")
@@ -1468,30 +1597,47 @@ def create_vpn_user(v_data: VPNUserUpdate, request: Request = None):
 @app.post("/api/vpn_users/{id}")
 @app.put("/api/vpn_users/{id}")
 @app.patch("/api/vpn_users/{id}")
-def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
+def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request, background_tasks: BackgroundTasks):
+    global _dashboard_cache
+    _dashboard_cache["expires_at"] = 0
+    _dashboard_cache["data"] = None
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id FROM vpn_remote_users WHERE id = ?", (id,))
-        if not cursor.fetchone():
+        cursor.execute("SELECT * FROM vpn_remote_users WHERE id = ?", (id,))
+        existing = cursor.fetchone()
+        if not existing:
             conn.close()
             raise HTTPException(status_code=404, detail="VPN user not found")
-            
+        
+        ex = dict(existing)
+        name = v_data.name if v_data.name is not None else ex.get('name', '')
+        position = v_data.position if v_data.position is not None else ex.get('position', '')
+        username = v_data.username if v_data.username is not None else ex.get('username', '')
+        password = v_data.password if v_data.password is not None else ex.get('password', '')
+        department = v_data.department if v_data.department is not None else ex.get('department', '')
+        company = v_data.company if v_data.company is not None else ex.get('company', '')
+        status = v_data.status if v_data.status is not None else ex.get('status', 'Active')
+        purpose = v_data.purpose if v_data.purpose is not None else ex.get('purpose', '')
+        vpn_type = v_data.vpn_type if v_data.vpn_type is not None else ex.get('vpn_type', '')
+        other = v_data.other if v_data.other is not None else ex.get('other', '')
+
         cursor.execute("""
         UPDATE vpn_remote_users
         SET name = ?, position = ?, username = ?, password = ?, department = ?, company = ?, status = ?, purpose = ?, vpn_type = ?, other = ?
         WHERE id = ?
         """, (
-            v_data.name or '',
-            v_data.position or '',
-            v_data.username or '',
-            v_data.password or '',
-            v_data.department or '',
-            v_data.company or '',
-            v_data.status or 'Active',
-            v_data.purpose or '',
-            v_data.vpn_type or '',
-            v_data.other or '',
+            name,
+            position,
+            username,
+            password,
+            department,
+            company,
+            status,
+            purpose,
+            vpn_type,
+            other,
             id
         ))
         
@@ -1500,17 +1646,16 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
         
         # Trigger Telegram Audit Notification
         try:
-            from backend.telegram import notify_data_change
             editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
             client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             notify_data_change(
                 action_title="ធ្វើបច្ចុប្បន្នភាព Remote VPN User (VPN User Update)",
                 details={
-                    "ឈ្មោះ (Name)": v_data.name,
-                    "Username": v_data.username,
-                    "នាយកដ្ឋាន (Dept)": v_data.department,
-                    "ប្រភេទ (VPN Type)": v_data.vpn_type,
-                    "ស្ថានភាព (Status)": v_data.status
+                    "ឈ្មោះ (Name)": name,
+                    "Username": username,
+                    "នាយកដ្ឋាន (Dept)": department,
+                    "ប្រភេទ (VPN Type)": vpn_type,
+                    "ស្ថានភាព (Status)": status
                 },
                 editor_username=editor,
                 client_ip=client_ip
@@ -1518,27 +1663,45 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request):
         except Exception as t_err:
             print("Telegram notification error:", t_err)
         
-        # Sync to Excel
-        success = True
-        msg = ""
+        # Sync to Excel in background
         try:
-            updates = v_data.dict(exclude_unset=True)
-            success, msg = sync_vpn_user_to_excel(id, updates)
+            updates = {
+                "name": name,
+                "position": position,
+                "username": username,
+                "password": password,
+                "department": department,
+                "company": company,
+                "status": status,
+                "purpose": purpose,
+                "vpn_type": vpn_type,
+                "other": other
+            }
+            background_tasks.add_task(sync_vpn_user_to_excel, id, updates)
         except Exception as ex_err:
             print("Excel sync error:", ex_err)
 
         return {
             "status": "success",
             "db_update": "success",
-            "excel_sync": "success" if success else f"failed ({msg})"
+            "excel_sync": "queued"
         }
+    except HTTPException:
+        raise
     except Exception as e:
-        conn.close()
+        try:
+            conn.close()
+        except Exception:
+            pass
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.delete("/api/vpn/{id}")
 @app.delete("/api/vpn_users/{id}")
 def delete_vpn_user(id: int, request: Request):
+    global _dashboard_cache
+    _dashboard_cache["expires_at"] = 0
+    _dashboard_cache["data"] = None
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -1553,7 +1716,6 @@ def delete_vpn_user(id: int, request: Request):
         conn.close()
         
         try:
-            from backend.telegram import notify_data_change
             editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
             client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             user_name = user_rec['name'] if hasattr(user_rec, 'keys') and 'name' in user_rec else (user_rec[1] if isinstance(user_rec, (tuple, list)) and len(user_rec) > 1 else '')
@@ -1593,12 +1755,8 @@ def get_hospital_vpns(type: Optional[str] = None):
         raise HTTPException(status_code=500, detail=str(e))
 
 def _bg_notify_and_sync_hospital_vpn(id: int, v_data_dict: dict, editor: Optional[str], client_ip: Optional[str]):
-    # Trigger Telegram Audit Notification (safely in background)
+    # Trigger Telegram Audit Notification
     try:
-        try:
-            from api.telegram import notify_data_change
-        except ImportError:
-            from backend.telegram import notify_data_change
         notify_data_change(
             action_title="ធ្វើបច្ចុប្បន្នភាព Hospital/Bank VPN (Hospital VPN Update)",
             details={
@@ -1615,50 +1773,72 @@ def _bg_notify_and_sync_hospital_vpn(id: int, v_data_dict: dict, editor: Optiona
     except Exception as t_err:
         print("Telegram notification error in background:", t_err)
 
-    # Sync to Excel / Google Sheets (safely in background)
+    # Sync to Excel / Google Sheets
     try:
-        try:
-            from syncer import sync_hospital_vpn_to_excel
-        except ImportError:
-            from backend.syncer import sync_hospital_vpn_to_excel
         sync_hospital_vpn_to_excel(id, v_data_dict)
     except Exception as sync_e:
         print("Sync to Excel error in background:", sync_e)
 
 @app.post("/api/hospital_vpns/{id}")
 def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request, background_tasks: BackgroundTasks):
+    global _dashboard_cache
+    _dashboard_cache["expires_at"] = 0
+    _dashboard_cache["data"] = None
+
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
-        cursor.execute("SELECT id FROM hospital_vpns WHERE id = ?", (id,))
-        if not cursor.fetchone():
+        cursor.execute("SELECT * FROM hospital_vpns WHERE id = ?", (id,))
+        existing = cursor.fetchone()
+        if not existing:
             conn.close()
             raise HTTPException(status_code=404, detail="VPN config not found")
             
+        ex = dict(existing)
+        name = v_data.name if v_data.name is not None else ex.get('name')
+        address = v_data.address if v_data.address is not None else ex.get('address')
+        isp = v_data.isp if v_data.isp is not None else ex.get('isp')
+        public_ip = v_data.public_ip if v_data.public_ip is not None else ex.get('public_ip')
+        subnet = v_data.subnet if v_data.subnet is not None else ex.get('subnet')
+        gateway = v_data.gateway if v_data.gateway is not None else ex.get('gateway')
+        lan_ip = v_data.lan_ip if v_data.lan_ip is not None else ex.get('lan_ip')
+        lan_subnet = v_data.lan_subnet if v_data.lan_subnet is not None else ex.get('lan_subnet')
+        lan_gateway = v_data.lan_gateway if v_data.lan_gateway is not None else ex.get('lan_gateway')
+        ikey = v_data.ikey if v_data.ikey is not None else ex.get('ikey')
+        tunnel = v_data.tunnel if v_data.tunnel is not None else ex.get('tunnel')
+        status = v_data.status if v_data.status is not None else ex.get('status')
+        contact = v_data.contact if v_data.contact is not None else ex.get('contact')
+        year = v_data.year if v_data.year is not None else ex.get('year')
+        device = v_data.device if v_data.device is not None else ex.get('device')
+        other = v_data.other if v_data.other is not None else ex.get('other')
+        reopen_requested = v_data.reopen_requested if v_data.reopen_requested is not None else (1 if (status and str(status).strip().lower() in ['reopen', 'ស្នើសុំបើក']) else ex.get('reopen_requested', 0))
+        reference_doc = v_data.reference_doc if v_data.reference_doc is not None else ex.get('reference_doc')
+        vpn_type = v_data.vpn_type if v_data.vpn_type is not None else ex.get('vpn_type', 'S2S')
+
         cursor.execute("""
         UPDATE hospital_vpns
         SET name = ?, address = ?, isp = ?, public_ip = ?, subnet = ?, gateway = ?, lan_ip = ?, lan_subnet = ?, lan_gateway = ?, ikey = ?, tunnel = ?, status = ?, contact = ?, year = ?, device = ?, other = ?, reopen_requested = ?, reference_doc = ?, vpn_type = ?
         WHERE id = ?
         """, (
-            v_data.name,
-            v_data.address,
-            v_data.isp,
-            v_data.public_ip,
-            v_data.subnet,
-            v_data.gateway,
-            v_data.lan_ip,
-            v_data.lan_subnet,
-            v_data.lan_gateway,
-            v_data.ikey,
-            v_data.tunnel,
-            v_data.status,
-            v_data.contact,
-            v_data.year,
-            v_data.device,
-            v_data.other,
-            v_data.reopen_requested if v_data.reopen_requested is not None else (1 if (v_data.status and str(v_data.status).strip().lower() in ['reopen', 'ស្នើសុំបើក']) else 0),
-            v_data.reference_doc,
-            v_data.vpn_type if v_data.vpn_type else 'S2S',
+            name,
+            address,
+            isp,
+            public_ip,
+            subnet,
+            gateway,
+            lan_ip,
+            lan_subnet,
+            lan_gateway,
+            ikey,
+            tunnel,
+            status,
+            contact,
+            year,
+            device,
+            other,
+            reopen_requested,
+            reference_doc,
+            vpn_type,
             id
         ))
         
@@ -1667,8 +1847,37 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request, ba
         
         editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
-        v_dict = v_data.dict(exclude_unset=True)
-        background_tasks.add_task(_bg_notify_and_sync_hospital_vpn, id, v_dict, editor, client_ip)
+        v_dict = {
+            "name": name,
+            "address": address,
+            "isp": isp,
+            "public_ip": public_ip,
+            "lan_ip": lan_ip,
+            "status": status,
+            "vpn_type": vpn_type,
+            "reopen_requested": reopen_requested,
+            "reference_doc": reference_doc
+        }
+        
+        # In serverless environments, trigger notification
+        try:
+            notify_data_change(
+                action_title="ធ្វើបច្ចុប្បន្នភាព Hospital/Bank VPN (Hospital VPN Update)",
+                details={
+                    "ឈ្មោះមន្ទីរពេទ្យ/ធនាគារ": name,
+                    "LAN IP": lan_ip,
+                    "Public IP": public_ip,
+                    "ISP": isp,
+                    "ប្រភេទ (VPN Type)": vpn_type,
+                    "ស្ថានភាព (Status)": status
+                },
+                editor_username=editor,
+                client_ip=client_ip
+            )
+        except Exception as t_err:
+            print("Telegram notification error:", t_err)
+
+        background_tasks.add_task(sync_hospital_vpn_to_excel, id, v_dict)
         
         return {
             "status": "success",
@@ -1978,8 +2187,13 @@ def google_sheets_webhook(payload: GoogleSheetWebhookPayload):
         if conn:
             conn.close()
         raise HTTPException(status_code=500, detail=str(e))
-# Local Document Storage Endpoints (Bypassing cloud quota limitations)
+# Local & Persistent Document Storage Endpoints
 import tempfile
+import base64
+import io
+import datetime
+import mimetypes
+from fastapi.responses import StreamingResponse, FileResponse
 
 if os.getenv("VERCEL") or not os.access(WORKSPACE, os.W_OK):
     STORED_FILES_DIR = os.path.join(tempfile.gettempdir(), "stored_files")
@@ -1991,12 +2205,6 @@ try:
 except Exception:
     STORED_FILES_DIR = os.path.join(tempfile.gettempdir(), "stored_files")
     os.makedirs(STORED_FILES_DIR, exist_ok=True)
-
-import base64
-import io
-import datetime
-import mimetypes
-from fastapi.responses import StreamingResponse, FileResponse
 
 def init_stored_documents_table():
     try:
@@ -2749,9 +2957,9 @@ def auth_login(payload: UserLoginPayload, request: Request):
 
     # Send 2FA OTP Code to Telegram Bot
     try:
-        from api.telegram import send_telegram_message, get_telegram_config
-    except ImportError:
         from backend.telegram import send_telegram_message, get_telegram_config
+    except ImportError:
+        from api.telegram import send_telegram_message, get_telegram_config
 
     tg_message = f"Your 2FA login verification code is: {otp_code}"
 
@@ -2881,9 +3089,9 @@ def auth_resend_2fa(payload: Resend2FAPayload, request: Request):
     tg_message = f"Your 2FA login verification code is: {new_otp}"
     
     try:
-        from api.telegram import send_telegram_message, get_telegram_config
-    except ImportError:
         from backend.telegram import send_telegram_message, get_telegram_config
+    except ImportError:
+        from api.telegram import send_telegram_message, get_telegram_config
 
     bot_token, default_chat_id = get_telegram_config()
     target_chat = None
@@ -2917,15 +3125,26 @@ def auth_change_password(payload: ChangePasswordPayload):
             raise HTTPException(status_code=400, detail="លេខសម្ងាត់ថ្មីត្រូវតែមានយ៉ាងតិច 6 ខ្ទង់ (Password must be at least 6 characters)")
         
         hashed_pass = hash_password(payload.new_password.strip())
-        cursor.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?", (hashed_pass, payload.user_id))
+        try:
+            cursor.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?", (hashed_pass, payload.user_id))
+        except Exception as e_pass:
+            if any(k in str(e_pass).lower() for k in ["column", "exist", "must_change_password"]):
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                ensure_user_columns_exist(conn)
+                cursor.execute("UPDATE users SET password_hash = ?, must_change_password = 0 WHERE id = ?", (hashed_pass, payload.user_id))
+            else:
+                raise e_pass
         conn.commit()
         conn.close()
 
         # Send Telegram security notice
         try:
-            from api.telegram import send_telegram_message, get_telegram_config
-        except ImportError:
             from backend.telegram import send_telegram_message, get_telegram_config
+        except ImportError:
+            from api.telegram import send_telegram_message, get_telegram_config
 
         now_str = datetime.datetime.now().strftime('%d/%m/%Y %H:%M:%S')
         sec_msg = f"🔐 <b>NSSF SOC Portal — បានប្តូរលេខសម្ងាត់ជោគជ័យ (Password Changed)</b>\n\n👤 <b>គណនី:</b> <code>{user['username']}</code>\n⏰ <b>កាលបរិច្ឆេទ:</b> {now_str}"
@@ -2994,10 +3213,11 @@ def create_user(payload: UserCreatePayload):
         perms_str = json.dumps(perms)
         
         must_change = payload.must_change_password if payload.must_change_password is not None else (0 if payload.role == 'admin' else 1)
-        cursor.execute("""
+        insert_sql = """
         INSERT INTO users (username, password_hash, role, full_name, permissions, telegram_username, email, position, must_change_password)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, (
+        """
+        insert_params = (
             payload.username.strip(), 
             hashed_pass, 
             payload.role, 
@@ -3007,7 +3227,19 @@ def create_user(payload: UserCreatePayload):
             payload.email.strip() if payload.email and payload.email.strip() else None,
             payload.position.strip() if payload.position else "មន្ត្រី",
             must_change
-        ))
+        )
+        try:
+            cursor.execute(insert_sql, insert_params)
+        except Exception as e_ins:
+            if any(k in str(e_ins).lower() for k in ["column", "exist", "must_change_password"]):
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                ensure_user_columns_exist(conn)
+                cursor.execute(insert_sql, insert_params)
+            else:
+                raise e_ins
         conn.commit()
         new_id = cursor.lastrowid
         if not new_id:
@@ -3095,7 +3327,18 @@ def update_user(user_id: int, payload: UserUpdatePayload):
             
         params.append(user_id)
         sql = f"UPDATE users SET {', '.join(fields)} WHERE id = ?"
-        cursor.execute(sql, tuple(params))
+        try:
+            cursor.execute(sql, tuple(params))
+        except Exception as e_up:
+            if any(k in str(e_up).lower() for k in ["column", "exist", "relation"]):
+                try:
+                    conn.rollback()
+                except Exception:
+                    pass
+                ensure_user_columns_exist(conn)
+                cursor.execute(sql, tuple(params))
+            else:
+                raise e_up
         conn.commit()
         conn.close()
         return {"status": "success"}
@@ -3126,31 +3369,43 @@ def update_user_profile(user_id: int, payload: UserProfileUpdatePayload):
         if fields:
             params.append(user_id)
             sql = f"UPDATE users SET {', '.join(fields)} WHERE id = ?"
-            cursor.execute(sql, tuple(params))
+            try:
+                cursor.execute(sql, tuple(params))
+            except Exception as e_up:
+                if any(k in str(e_up).lower() for k in ["column", "exist", "relation"]):
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+                    ensure_user_columns_exist(conn)
+                    cursor.execute(sql, tuple(params))
+                else:
+                    raise e_up
             conn.commit()
             
         cursor.execute("SELECT * FROM users WHERE id = ?", (user_id,))
         updated_user = cursor.fetchone()
         conn.close()
         
+        u_dict = dict(updated_user) if updated_user else {}
         return {
             "status": "success",
             "user": {
-                "id": updated_user['id'],
-                "username": updated_user['username'],
-                "role": updated_user['role'],
-                "full_name": updated_user['full_name'],
-                "email": updated_user['email'],
-                "phone": updated_user['phone'],
-                "department": updated_user['department'],
-                "language": updated_user['language'] or 'English',
-                "timezone": updated_user['timezone'] or '(GMT+07:00) Bangkok',
-                "date_format": updated_user['date_format'] or 'dd/mm/yyyy',
-                "theme": updated_user['theme'] or 'Light',
-                "client_ip": updated_user['client_ip'],
-                "last_login": updated_user['last_login'],
-                "telegram_chat_id": updated_user['telegram_chat_id'],
-                "telegram_username": updated_user['telegram_username']
+                "id": u_dict.get('id'),
+                "username": u_dict.get('username'),
+                "role": u_dict.get('role'),
+                "full_name": u_dict.get('full_name'),
+                "email": u_dict.get('email'),
+                "phone": u_dict.get('phone'),
+                "department": u_dict.get('department'),
+                "language": u_dict.get('language') or 'English',
+                "timezone": u_dict.get('timezone') or '(GMT+07:00) Bangkok',
+                "date_format": u_dict.get('date_format') or 'dd/mm/yyyy',
+                "theme": u_dict.get('theme') or 'Light',
+                "client_ip": u_dict.get('client_ip'),
+                "last_login": u_dict.get('last_login'),
+                "telegram_chat_id": u_dict.get('telegram_chat_id'),
+                "telegram_username": u_dict.get('telegram_username')
             }
         }
     except Exception as e:
@@ -4132,7 +4387,6 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
     # Broadcast to Telegram asynchronously for INSTANT speed
     import threading
     try:
-        from backend.telegram import send_ticket_telegram_alert, send_telegram_message
         c2 = get_db_connection()
         cur2 = c2.cursor()
         cur2.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
@@ -4147,7 +4401,6 @@ def approve_ticket(ticket_id: int, payload: dict = Body(...)):
                 send_ticket_telegram_alert(up_tkt, level=3)
             else:
                 if action != "reject":
-                    from backend.telegram import send_ticket_assignee_alert
                     send_ticket_assignee_alert(up_tkt, event_type="approved")
                 st_desc = "❌ បដិសេធ" if action == "reject" else "✅ បានអនុម័តផ្លូវការ (Approved)"
                 c_txt = comment or ("បានពិនិត្យ និងសម្រេចឯកភាព" if action != "reject" else "បដិសេធដោយថ្នាក់ដឹកនាំ")
@@ -4203,7 +4456,6 @@ def update_ticket_status(ticket_id: int, payload: dict = Body(...)):
         cursor.execute("SELECT * FROM tickets WHERE id = ?", (ticket_id,))
         up_row = cursor.fetchone()
         if up_row:
-            from backend.telegram import send_ticket_assignee_alert
             send_ticket_assignee_alert(dict(up_row), event_type=new_status)
     except Exception as ex_st:
         print("Error sending ticket status change alert to Telegram:", ex_st)
@@ -4279,7 +4531,6 @@ def create_kanban_task(payload: dict = Body(...)):
     
     # Dispatch Telegram Alert to assignee
     try:
-        from backend.telegram import send_task_kanban_telegram_alert
         send_task_kanban_telegram_alert(task_obj)
     except Exception as ex_t:
         print("Kanban task telegram alert exception:", ex_t)

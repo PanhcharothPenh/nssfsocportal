@@ -297,9 +297,11 @@ def notify_data_change(action_title: str, details: dict, editor_username: str = 
         except Exception as err:
             print(f"Error sending audit notification to linked users: {err}")
 
-    # Send message in background thread to keep API response fast
-    t = threading.Thread(target=broadcast_to_linked_users, args=(msg,), daemon=True)
-    t.start()
+    # Broadcast to Telegram group / linked users safely
+    try:
+        broadcast_to_linked_users(msg)
+    except Exception as b_err:
+        print(f"Error in broadcast_to_linked_users: {b_err}")
 
 
 _portal_context_cache = {"timestamp": 0, "data": ""}

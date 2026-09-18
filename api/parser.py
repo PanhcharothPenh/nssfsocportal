@@ -184,6 +184,20 @@ def create_tables(conn):
         role TEXT NOT NULL,
         full_name TEXT,
         permissions TEXT,
+        email TEXT,
+        phone TEXT,
+        department TEXT,
+        position TEXT,
+        language TEXT DEFAULT 'English',
+        timezone TEXT DEFAULT '(GMT+07:00) Bangkok',
+        date_format TEXT DEFAULT 'dd/mm/yyyy',
+        theme TEXT DEFAULT 'Light',
+        client_ip TEXT,
+        last_login TEXT,
+        telegram_chat_id TEXT,
+        telegram_username TEXT,
+        notify_telegram TEXT,
+        must_change_password INTEGER DEFAULT 0,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
     """)
@@ -335,8 +349,23 @@ def create_tables(conn):
     add_column_if_not_exists("users", "permissions", "TEXT")
 
     # Migration: add profile columns to users if they do not exist
-    for col in ["email", "phone", "department", "language", "timezone", "date_format", "theme", "client_ip", "last_login", "telegram_chat_id", "telegram_username", "notify_telegram", "must_change_password"]:
-        add_column_if_not_exists("users", col, "TEXT")
+    for col, ctype in [
+        ("email", "TEXT"),
+        ("phone", "TEXT"),
+        ("department", "TEXT"),
+        ("position", "TEXT"),
+        ("language", "TEXT"),
+        ("timezone", "TEXT"),
+        ("date_format", "TEXT"),
+        ("theme", "TEXT"),
+        ("client_ip", "TEXT"),
+        ("last_login", "TEXT"),
+        ("telegram_chat_id", "TEXT"),
+        ("telegram_username", "TEXT"),
+        ("notify_telegram", "TEXT"),
+        ("must_change_password", "INTEGER DEFAULT 0")
+    ]:
+        add_column_if_not_exists("users", col, ctype)
 
     # Ensure admin has permissions seeded if not set
     cursor.execute("SELECT id, permissions FROM users WHERE username = 'admin'")
