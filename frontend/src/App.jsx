@@ -11339,141 +11339,137 @@ export default function App() {
 
           return (
             <>
-              {/* Unified Top Control Bar (Branch/HQ + Category Pills + Search + Sort + Actions) */}
-              <div style={{
-                backgroundColor: '#fff',
-                borderRadius: '12px',
-                border: '1px solid #e2e8f0',
-                padding: '6px 12px',
-                marginBottom: '14px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                gap: '10px',
-                flexWrap: 'wrap',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-              }}>
-                {/* Left: Branch / HQ Tabs + Sub-category Pills + Search + Status */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '320px' }}>
-                  {/* Branch vs HQ Selector */}
-                  <div style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                    <button
-                      className={`tab-btn ${ipamCategory === 'branches' ? 'active' : ''}`}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        fontSize: '11.5px',
-                        fontWeight: '800',
-                        cursor: 'pointer',
-                        backgroundColor: ipamCategory === 'branches' ? '#2563eb' : 'transparent',
-                        color: ipamCategory === 'branches' ? '#fff' : '#64748b',
-                        boxShadow: ipamCategory === 'branches' ? '0 1px 4px rgba(37, 99, 235, 0.25)' : 'none',
-                        transition: 'all 0.15s ease'
-                      }}
-                      onClick={() => {
-                        setIpamCategory('branches');
-                        setSelectedBranch(null);
-                        setSelectedDept(null);
-                      }}
+              {/* Unified Top Control Bar (Branch/HQ + Category Pills + Search + Actions) */}
+              {!selectedBranch && !selectedDept && (
+                <div style={{
+                  backgroundColor: '#fff',
+                  borderRadius: '12px',
+                  border: '1px solid #e2e8f0',
+                  padding: '6px 12px',
+                  marginBottom: '14px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  gap: '10px',
+                  flexWrap: 'wrap',
+                  boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                }}>
+                  {/* Left: Branch / HQ Tabs + Sub-category Pills + Search + Status */}
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '320px' }}>
+                    {/* Branch vs HQ Selector */}
+                    <div style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <button
+                        className={`tab-btn ${ipamCategory === 'branches' ? 'active' : ''}`}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          fontSize: '11.5px',
+                          fontWeight: '800',
+                          cursor: 'pointer',
+                          backgroundColor: ipamCategory === 'branches' ? '#2563eb' : 'transparent',
+                          color: ipamCategory === 'branches' ? '#fff' : '#64748b',
+                          boxShadow: ipamCategory === 'branches' ? '0 1px 4px rgba(37, 99, 235, 0.25)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onClick={() => {
+                          setIpamCategory('branches');
+                          setSelectedBranch(null);
+                          setSelectedDept(null);
+                        }}
+                      >
+                        🏢 សាខា (Branches)
+                      </button>
+                      <button
+                        className={`tab-btn ${ipamCategory === 'hq' ? 'active' : ''}`}
+                        style={{
+                          padding: '6px 14px',
+                          borderRadius: '6px',
+                          border: 'none',
+                          fontSize: '11.5px',
+                          fontWeight: '800',
+                          cursor: 'pointer',
+                          backgroundColor: ipamCategory === 'hq' ? '#2563eb' : 'transparent',
+                          color: ipamCategory === 'hq' ? '#fff' : '#64748b',
+                          boxShadow: ipamCategory === 'hq' ? '0 1px 4px rgba(37, 99, 235, 0.25)' : 'none',
+                          transition: 'all 0.15s ease'
+                        }}
+                        onClick={() => {
+                          setIpamCategory('hq');
+                          setSelectedBranch(null);
+                          setSelectedDept(null);
+                        }}
+                      >
+                        🏢 ស្នាក់ការកណ្តាល (HQ)
+                      </button>
+                    </div>
+
+                    {/* Divider */}
+                    <div style={{ width: '1px', height: '22px', backgroundColor: '#e2e8f0', margin: '0 2px' }} />
+
+                    {/* Sub-tabs: Branch types (35 / 3 / 6 / 44) */}
+                    {ipamCategory === 'branches' ? (
+                      <div style={{ display: 'inline-flex', gap: '3px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                        {[
+                          { id: 'branches', label: 'សាខា (35)' },
+                          { id: 'aeon', label: 'AEON (3)' },
+                          { id: 'hospitals', label: 'មន្ទីរពេទ្យ (6)' },
+                          { id: 'all', label: 'ទាំងអស់ (44)' }
+                        ].map(tab => (
+                          <button
+                            key={tab.id}
+                            onClick={() => setIpamBranchTypeFilter(tab.id)}
+                            style={{
+                              border: 'none',
+                              padding: '4px 8px',
+                              borderRadius: '6px',
+                              fontSize: '11px',
+                              fontWeight: ipamBranchTypeFilter === tab.id ? '800' : '600',
+                              cursor: 'pointer',
+                              backgroundColor: ipamBranchTypeFilter === tab.id ? '#2563eb' : 'transparent',
+                              color: ipamBranchTypeFilter === tab.id ? '#fff' : '#64748b',
+                              boxShadow: ipamBranchTypeFilter === tab.id ? '0 1px 3px rgba(37,99,235,0.25)' : 'none',
+                              transition: 'all 0.15s ease'
+                            }}
+                          >
+                            {tab.label}
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <span style={{ fontSize: '12px', fontWeight: '800', color: '#1e293b', padding: '0 4px' }}>
+                        នាយកដ្ឋានសរុប ({totalSubnets})
+                      </span>
+                    )}
+
+                    {/* Search box */}
+                    <div className="search-container" style={{ width: '190px', margin: 0 }}>
+                      <span className="search-icon-left" style={{ fontSize: '11px' }}>🔍</span>
+                      <input
+                        type="text"
+                        className="search-input"
+                        placeholder={ipamCategory === 'branches' ? "ស្វែងរកសាខា, IP, Gateway..." : "ស្វែងរកនាយកដ្ឋាន, IP..."}
+                        value={ipamSearchQuery}
+                        onChange={(e) => setIpamSearchQuery(e.target.value)}
+                        style={{ height: '30px', fontSize: '11px', paddingLeft: '26px' }}
+                      />
+                    </div>
+
+                    {/* Status Dropdown */}
+                    <select
+                      className="form-input"
+                      style={{ width: '85px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
+                      value={ipamStatusFilter}
+                      onChange={(e) => setIpamStatusFilter(e.target.value)}
                     >
-                      🏢 សាខា (Branches)
-                    </button>
-                    <button
-                      className={`tab-btn ${ipamCategory === 'hq' ? 'active' : ''}`}
-                      style={{
-                        padding: '6px 14px',
-                        borderRadius: '6px',
-                        border: 'none',
-                        fontSize: '11.5px',
-                        fontWeight: '800',
-                        cursor: 'pointer',
-                        backgroundColor: ipamCategory === 'hq' ? '#2563eb' : 'transparent',
-                        color: ipamCategory === 'hq' ? '#fff' : '#64748b',
-                        boxShadow: ipamCategory === 'hq' ? '0 1px 4px rgba(37, 99, 235, 0.25)' : 'none',
-                        transition: 'all 0.15s ease'
-                      }}
-                      onClick={() => {
-                        setIpamCategory('hq');
-                        setSelectedBranch(null);
-                        setSelectedDept(null);
-                      }}
-                    >
-                      🏢 ស្នាក់ការកណ្តាល (HQ)
-                    </button>
+                      <option value="all">ស្ថានភាព</option>
+                      <option value="online">សកម្ម</option>
+                      <option value="warning">ជិតពេញ</option>
+                      <option value="offline">មិនទាន់ប្រើ</option>
+                    </select>
                   </div>
 
-                  {!selectedBranch && !selectedDept && (
-                    <>
-                      {/* Divider */}
-                      <div style={{ width: '1px', height: '22px', backgroundColor: '#e2e8f0', margin: '0 2px' }} />
-
-                      {/* Sub-tabs: Branch types (35 / 3 / 6 / 44) */}
-                      {ipamCategory === 'branches' ? (
-                        <div style={{ display: 'inline-flex', gap: '3px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                          {[
-                            { id: 'branches', label: 'សាខា (35)' },
-                            { id: 'aeon', label: 'AEON (3)' },
-                            { id: 'hospitals', label: 'មន្ទីរពេទ្យ (6)' },
-                            { id: 'all', label: 'ទាំងអស់ (44)' }
-                          ].map(tab => (
-                            <button
-                              key={tab.id}
-                              onClick={() => setIpamBranchTypeFilter(tab.id)}
-                              style={{
-                                border: 'none',
-                                padding: '4px 8px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: ipamBranchTypeFilter === tab.id ? '800' : '600',
-                                cursor: 'pointer',
-                                backgroundColor: ipamBranchTypeFilter === tab.id ? '#2563eb' : 'transparent',
-                                color: ipamBranchTypeFilter === tab.id ? '#fff' : '#64748b',
-                                boxShadow: ipamBranchTypeFilter === tab.id ? '0 1px 3px rgba(37,99,235,0.25)' : 'none',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              {tab.label}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#1e293b', padding: '0 4px' }}>
-                          នាយកដ្ឋានសរុប ({totalSubnets})
-                        </span>
-                      )}
-
-                      {/* Search box */}
-                      <div className="search-container" style={{ width: '190px', margin: 0 }}>
-                        <span className="search-icon-left" style={{ fontSize: '11px' }}>🔍</span>
-                        <input
-                          type="text"
-                          className="search-input"
-                          placeholder={ipamCategory === 'branches' ? "ស្វែងរកសាខា, IP, Gateway..." : "ស្វែងរកនាយកដ្ឋាន, IP..."}
-                          value={ipamSearchQuery}
-                          onChange={(e) => setIpamSearchQuery(e.target.value)}
-                          style={{ height: '30px', fontSize: '11px', paddingLeft: '26px' }}
-                        />
-                      </div>
-
-                      {/* Status Dropdown */}
-                      <select
-                        className="form-input"
-                        style={{ width: '85px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
-                        value={ipamStatusFilter}
-                        onChange={(e) => setIpamStatusFilter(e.target.value)}
-                      >
-                        <option value="all">ស្ថានភាព</option>
-                        <option value="online">សកម្ម</option>
-                        <option value="warning">ជិតពេញ</option>
-                        <option value="offline">មិនទាន់ប្រើ</option>
-                      </select>
-                    </>
-                  )}
-                </div>
-
-                {/* Right: Sort, View mode & Action Buttons */}
-                {!selectedBranch && !selectedDept && (
+                  {/* Right: View mode & Action Buttons */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
                     {/* Grid / Table Toggle */}
                     <div style={{ display: 'flex', gap: '2px', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
@@ -11535,93 +11531,164 @@ export default function App() {
                       </button>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Detail view checks */}
               {ipamCategory === 'branches' && selectedBranch ? (
                 /* Branches Detail Mappings Panel */
                 <div className="fade-in">
-              <div className="panel">
-                <div className="panel-header">
-                  <span className="panel-title">
-                    <span style={{ cursor: 'pointer', color: 'var(--color-accent)' }} onClick={() => setSelectedBranch(null)}>🏢 Branches</span> / {selectedBranch.name_kh} Subnet
-                  </span>
-                  <button className="btn btn-secondary" onClick={() => setSelectedBranch(null)}>Back to List</button>
-                </div>
-                 <div style={{ display: 'flex', gap: '20px', fontSize: '13px', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-                  <div><strong>Subnet:</strong> <code style={{ fontFamily: 'var(--font-mono)' }}>{selectedBranch.subnet}</code></div>
-                  <div><strong>Subnet Mask:</strong> <code style={{ fontFamily: 'var(--font-mono)' }}>{selectedBranch.mask}</code></div>
-                  <div><strong>Gateway:</strong> <code style={{ fontFamily: 'var(--font-mono)' }}>{selectedBranch.gateway}</code></div>
-                  <div><strong>ប្រើអស់:</strong> <span style={{ color: '#ef4444', fontWeight: '800' }}>{selectedBranchData.filter(x => (x.user_name && x.user_name.trim() !== '' && x.user_name !== 'None') || (x.position && x.position.trim() !== '' && x.position !== 'None')).length} IPs</span></div>
-                  <div><strong>នៅសល់:</strong> <span style={{ color: '#10b981', fontWeight: '800' }}>{selectedBranchData.length - selectedBranchData.filter(x => (x.user_name && x.user_name.trim() !== '' && x.user_name !== 'None') || (x.position && x.position.trim() !== '' && x.position !== 'None')).length} IPs</span></div>
-                </div>
+                  {/* Single Sleek Unified Branch Header Banner */}
+                  <div style={{
+                    backgroundColor: '#fff',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    padding: '10px 14px',
+                    marginBottom: '12px',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    {/* Row 1: Back button + Branch Title + Network Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <button
+                          onClick={() => setSelectedBranch(null)}
+                          style={{
+                            border: '1px solid #cbd5e1',
+                            backgroundColor: '#f8fafc',
+                            color: '#1e293b',
+                            borderRadius: '7px',
+                            padding: '5px 12px',
+                            fontSize: '11.5px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title="ត្រឡប់ទៅបញ្ជីសាខា"
+                        >
+                          <span style={{ fontSize: '13px' }}>←</span> ត្រឡប់ក្រោយ (Back)
+                        </button>
+                        <div style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>
+                          🏢 {selectedBranch.name_kh} <span style={{ fontSize: '12.5px', color: '#64748b', fontWeight: '600' }}>({selectedBranch.name_en})</span>
+                        </div>
+                      </div>
 
-                {/* Subnet Toolbar (Toggle List/Grid & Search Filter) */}
-                <div className="subnet-actions-bar">
-                  <div className="panel-actions">
-                    <button 
-                      className={`btn-toggle ${subnetViewMode === 'allocated' ? 'active' : ''}`}
-                      onClick={() => setSubnetViewMode('allocated')}
-                    >
-                      📋 Occupied IPs Only (Table / បញ្ជីប្រើប្រាស់)
-                    </button>
-                    <button 
-                      className={`btn-toggle ${subnetViewMode === 'grid' ? 'active' : ''}`}
-                      onClick={() => setSubnetViewMode('grid')}
-                    >
-                      🔳 Full Grid (254 IPs / ប្លង់សរុប)
-                    </button>
-                    {hasPermission('ipam', 'write') && (
-                      <button 
-                        className="btn btn-primary"
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          fontSize: '11px',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          backgroundColor: '#2563eb',
-                          color: '#fff',
-                          boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)',
-                          marginLeft: '8px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                        onClick={() => {
-                          const firstAvail = selectedBranchData.find(node => node.status === 'Available' && node.device_type !== 'Gateway');
-                          setEditingData({
-                            branch_id: selectedBranch.id,
-                            ip: firstAvail ? firstAvail.ip : '',
-                            user_name: '',
-                            position: '',
-                            mac_address: '',
-                            device_type: '',
-                            status: 'Using',
-                            internet_permission: '',
-                            other: '',
-                            isNew: true
-                          });
-                          setEditingModal('branch_ip');
-                        }}
-                      >
-                        <span>➕</span> បន្ថែមអ្នកប្រើប្រាស់ (Add User)
-                      </button>
-                    )}
+                      {/* Network Badges */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '11px' }}>
+                        <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontFamily: 'var(--font-mono)' }}>
+                          <strong>Subnet:</strong> {selectedBranch.subnet}/24
+                        </span>
+                        <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontFamily: 'var(--font-mono)' }}>
+                          <strong>Gateway:</strong> {selectedBranch.gateway}
+                        </span>
+                        <span style={{ backgroundColor: '#fef2f2', padding: '4px 8px', borderRadius: '6px', border: '1px solid #fecaca', color: '#dc2626', fontWeight: '800' }}>
+                          🔴 ប្រើអស់: {selectedBranchData.filter(x => (x.user_name && x.user_name.trim() !== '' && x.user_name !== 'None') || (x.position && x.position.trim() !== '' && x.position !== 'None')).length} IPs
+                        </span>
+                        <span style={{ backgroundColor: '#ecfdf5', padding: '4px 8px', borderRadius: '6px', border: '1px solid #a7f3d0', color: '#16a34a', fontWeight: '800' }}>
+                          🟢 នៅសល់: {selectedBranchData.length - selectedBranchData.filter(x => (x.user_name && x.user_name.trim() !== '' && x.user_name !== 'None') || (x.position && x.position.trim() !== '' && x.position !== 'None')).length} IPs
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 2: View Switchers + Add User + Search Filter */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'inline-flex', gap: '2px', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                          <button
+                            className={`btn-toggle ${subnetViewMode === 'allocated' ? 'active' : ''}`}
+                            onClick={() => setSubnetViewMode('allocated')}
+                            style={{
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: subnetViewMode === 'allocated' ? '800' : '600',
+                              cursor: 'pointer',
+                              backgroundColor: subnetViewMode === 'allocated' ? '#2563eb' : 'transparent',
+                              color: subnetViewMode === 'allocated' ? '#fff' : '#64748b'
+                            }}
+                          >
+                            📋 Occupied IPs Only (Table / បញ្ជីប្រើប្រាស់)
+                          </button>
+                          <button
+                            className={`btn-toggle ${subnetViewMode === 'grid' ? 'active' : ''}`}
+                            onClick={() => setSubnetViewMode('grid')}
+                            style={{
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: subnetViewMode === 'grid' ? '800' : '600',
+                              cursor: 'pointer',
+                              backgroundColor: subnetViewMode === 'grid' ? '#2563eb' : 'transparent',
+                              color: subnetViewMode === 'grid' ? '#fff' : '#64748b'
+                            }}
+                          >
+                            🔳 Full Grid (254 IPs / ប្លង់សរុប)
+                          </button>
+                        </div>
+
+                        {hasPermission('ipam', 'write') && (
+                          <button
+                            className="btn btn-primary"
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              fontSize: '11px',
+                              fontWeight: '800',
+                              cursor: 'pointer',
+                              backgroundColor: '#2563eb',
+                              color: '#fff',
+                              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              height: '28px'
+                            }}
+                            onClick={() => {
+                              const firstAvail = selectedBranchData.find(node => node.status === 'Available' && node.device_type !== 'Gateway');
+                              setEditingData({
+                                branch_id: selectedBranch.id,
+                                ip: firstAvail ? firstAvail.ip : '',
+                                user_name: '',
+                                position: '',
+                                mac_address: '',
+                                device_type: '',
+                                status: 'Using',
+                                internet_permission: '',
+                                other: '',
+                                isNew: true
+                              });
+                              setEditingModal('branch_ip');
+                            }}
+                          >
+                            <span>➕</span> បន្ថែមអ្នកប្រើប្រាស់ (Add User)
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Search box */}
+                      <div className="search-container" style={{ width: '220px', margin: 0 }}>
+                        <span className="search-icon-left" style={{ fontSize: '11px' }}>🔍</span>
+                        <input
+                          type="text"
+                          className="search-input"
+                          placeholder="Filter IP, User name, MAC..."
+                          value={subnetSearch}
+                          onChange={(e) => setSubnetSearch(e.target.value)}
+                          style={{ height: '28px', fontSize: '11px', paddingLeft: '26px' }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="subnet-inner-search">
-                    <span className="subnet-inner-search-icon">🔍</span>
-                    <input
-                      type="text"
-                      placeholder="Filter IP, User name, MAC..."
-                      value={subnetSearch}
-                      onChange={(e) => setSubnetSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
+
+                  <div className="panel" style={{ padding: '12px' }}>
 
                 {/* Display Grid vs Table */}
                 {subnetViewMode === 'grid' ? (
@@ -11706,87 +11773,163 @@ export default function App() {
           ) : ipamCategory === 'hq' && selectedDept ? (
                 /* HQ Detail Mappings Panel */
                 <div className="fade-in">
-              <div className="panel">
-                <div className="panel-header">
-                  <span className="panel-title">
-                    <span style={{ cursor: 'pointer', color: 'var(--color-accent)' }} onClick={() => setSelectedDept(null)}>🏢 HQ Departments</span> / {selectedDept.name_en}{selectedDept.sheet_name ? ` (${selectedDept.sheet_name})` : ''} Subnet
-                  </span>
-                  <button className="btn btn-secondary" onClick={() => setSelectedDept(null)}>Back to List</button>
-                </div>
-                <div style={{ display: 'flex', gap: '20px', fontSize: '13px', color: 'var(--text-secondary)', flexWrap: 'wrap' }}>
-                  <div><strong>Subnet:</strong> <code style={{ fontFamily: 'var(--font-mono)' }}>{selectedDept.subnet}</code></div>
-                  <div><strong>Gateway:</strong> <code style={{ fontFamily: 'var(--font-mono)' }}>{selectedDept.gateway}</code></div>
-                  <div><strong>VLAN ID:</strong> <code style={{ fontFamily: 'var(--font-mono)' }}>{selectedDept.vlan_id}</code></div>
-                  <div><strong>ប្រើអស់:</strong> <span style={{ color: '#ef4444', fontWeight: '800' }}>{selectedDeptData.filter(x => (x.user_name_kh && x.user_name_kh.trim() !== '') || (x.user_name_en && x.user_name_en.trim() !== '') || (x.position && x.position.trim() !== '')).length} IPs</span></div>
-                  <div><strong>នៅសល់:</strong> <span style={{ color: '#10b981', fontWeight: '800' }}>{selectedDeptData.length - selectedDeptData.filter(x => (x.user_name_kh && x.user_name_kh.trim() !== '') || (x.user_name_en && x.user_name_en.trim() !== '') || (x.position && x.position.trim() !== '')).length} IPs</span></div>
-                </div>
+                  {/* Single Sleek Unified HQ Dept Header Banner */}
+                  <div style={{
+                    backgroundColor: '#fff',
+                    borderRadius: '12px',
+                    border: '1px solid #e2e8f0',
+                    padding: '10px 14px',
+                    marginBottom: '12px',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px'
+                  }}>
+                    {/* Row 1: Back button + Dept Title + Network Badges */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <button
+                          onClick={() => setSelectedDept(null)}
+                          style={{
+                            border: '1px solid #cbd5e1',
+                            backgroundColor: '#f8fafc',
+                            color: '#1e293b',
+                            borderRadius: '7px',
+                            padding: '5px 12px',
+                            fontSize: '11.5px',
+                            fontWeight: '700',
+                            cursor: 'pointer',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '5px',
+                            transition: 'all 0.15s ease'
+                          }}
+                          title="ត្រឡប់ទៅបញ្ជីនាយកដ្ឋាន"
+                        >
+                          <span style={{ fontSize: '13px' }}>←</span> ត្រឡប់ក្រោយ (Back)
+                        </button>
+                        <div style={{ fontSize: '15px', fontWeight: '900', color: '#0f172a' }}>
+                          🏢 {selectedDept.name_en}{selectedDept.sheet_name ? ` (${selectedDept.sheet_name})` : ''}
+                        </div>
+                      </div>
 
-                {/* Subnet Toolbar */}
-                <div className="subnet-actions-bar">
-                  <div className="panel-actions">
-                    <button 
-                      className={`btn-toggle ${subnetViewMode === 'allocated' ? 'active' : ''}`}
-                      onClick={() => setSubnetViewMode('allocated')}
-                    >
-                      📋 Occupied IPs Only (Table / បញ្ជីប្រើប្រាស់)
-                    </button>
-                    <button 
-                      className={`btn-toggle ${subnetViewMode === 'grid' ? 'active' : ''}`}
-                      onClick={() => setSubnetViewMode('grid')}
-                    >
-                      🔳 Full Grid (254 IPs / ប្លង់សរុប)
-                    </button>
-                    {hasPermission('ipam', 'write') && (
-                      <button 
-                        className="btn btn-primary"
-                        style={{
-                          padding: '8px 16px',
-                          borderRadius: '6px',
-                          border: 'none',
-                          fontSize: '11px',
-                          fontWeight: '800',
-                          cursor: 'pointer',
-                          backgroundColor: '#2563eb',
-                          color: '#fff',
-                          boxShadow: '0 4px 10px rgba(37, 99, 235, 0.25)',
-                          marginLeft: '8px',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px'
-                        }}
-                        onClick={() => {
-                          const firstAvail = selectedDeptData.find(node => node.status === 'Available' && node.status !== 'AVAILABLE' && node.position !== 'Gateway Router');
-                          setEditingData({
-                            dept_id: selectedDept.id,
-                            ip: firstAvail ? firstAvail.ip : '',
-                            user_name_kh: '',
-                            user_name_en: '',
-                            position: '',
-                            old_ip: '',
-                            status: 'USING',
-                            internet_permission: '',
-                            group_system: '',
-                            other: '',
-                            isNew: true
-                          });
-                          setEditingModal('hq_ip');
-                        }}
-                      >
-                        <span>➕</span> បន្ថែមអ្នកប្រើប្រាស់ (Add User)
-                      </button>
-                    )}
+                      {/* Network Badges */}
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', fontSize: '11px' }}>
+                        <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontFamily: 'var(--font-mono)' }}>
+                          <strong>Subnet:</strong> {selectedDept.subnet}/24
+                        </span>
+                        <span style={{ backgroundColor: '#f1f5f9', padding: '4px 8px', borderRadius: '6px', border: '1px solid #e2e8f0', color: '#334155', fontFamily: 'var(--font-mono)' }}>
+                          <strong>Gateway:</strong> {selectedDept.gateway}
+                        </span>
+                        {selectedDept.vlan_id && (
+                          <span style={{ backgroundColor: '#eff6ff', padding: '4px 8px', borderRadius: '6px', border: '1px solid #bfdbfe', color: '#2563eb', fontWeight: '800' }}>
+                            🏷️ VLAN: {selectedDept.vlan_id}
+                          </span>
+                        )}
+                        <span style={{ backgroundColor: '#fef2f2', padding: '4px 8px', borderRadius: '6px', border: '1px solid #fecaca', color: '#dc2626', fontWeight: '800' }}>
+                          🔴 ប្រើអស់: {selectedDeptData.filter(x => (x.user_name_kh && x.user_name_kh.trim() !== '') || (x.user_name_en && x.user_name_en.trim() !== '') || (x.position && x.position.trim() !== '')).length} IPs
+                        </span>
+                        <span style={{ backgroundColor: '#ecfdf5', padding: '4px 8px', borderRadius: '6px', border: '1px solid #a7f3d0', color: '#16a34a', fontWeight: '800' }}>
+                          🟢 នៅសល់: {selectedDeptData.length - selectedDeptData.filter(x => (x.user_name_kh && x.user_name_kh.trim() !== '') || (x.user_name_en && x.user_name_en.trim() !== '') || (x.position && x.position.trim() !== '')).length} IPs
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Row 2: View Switchers + Add User + Search Filter */}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap', paddingTop: '8px', borderTop: '1px solid #f1f5f9' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <div style={{ display: 'inline-flex', gap: '2px', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                          <button
+                            className={`btn-toggle ${subnetViewMode === 'allocated' ? 'active' : ''}`}
+                            onClick={() => setSubnetViewMode('allocated')}
+                            style={{
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: subnetViewMode === 'allocated' ? '800' : '600',
+                              cursor: 'pointer',
+                              backgroundColor: subnetViewMode === 'allocated' ? '#2563eb' : 'transparent',
+                              color: subnetViewMode === 'allocated' ? '#fff' : '#64748b'
+                            }}
+                          >
+                            📋 Occupied IPs Only (Table / បញ្ជីប្រើប្រាស់)
+                          </button>
+                          <button
+                            className={`btn-toggle ${subnetViewMode === 'grid' ? 'active' : ''}`}
+                            onClick={() => setSubnetViewMode('grid')}
+                            style={{
+                              border: 'none',
+                              padding: '5px 12px',
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              fontWeight: subnetViewMode === 'grid' ? '800' : '600',
+                              cursor: 'pointer',
+                              backgroundColor: subnetViewMode === 'grid' ? '#2563eb' : 'transparent',
+                              color: subnetViewMode === 'grid' ? '#fff' : '#64748b'
+                            }}
+                          >
+                            🔳 Full Grid (254 IPs / ប្លង់សរុប)
+                          </button>
+                        </div>
+
+                        {hasPermission('ipam', 'write') && (
+                          <button
+                            className="btn btn-primary"
+                            style={{
+                              padding: '5px 12px',
+                              borderRadius: '6px',
+                              border: 'none',
+                              fontSize: '11px',
+                              fontWeight: '800',
+                              cursor: 'pointer',
+                              backgroundColor: '#2563eb',
+                              color: '#fff',
+                              boxShadow: '0 2px 6px rgba(37, 99, 235, 0.25)',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              height: '28px'
+                            }}
+                            onClick={() => {
+                              const firstAvail = selectedDeptData.find(node => node.status === 'Available' && node.status !== 'AVAILABLE' && node.position !== 'Gateway Router');
+                              setEditingData({
+                                dept_id: selectedDept.id,
+                                ip: firstAvail ? firstAvail.ip : '',
+                                user_name_kh: '',
+                                user_name_en: '',
+                                position: '',
+                                old_ip: '',
+                                status: 'USING',
+                                internet_permission: '',
+                                group_system: '',
+                                other: '',
+                                isNew: true
+                              });
+                              setEditingModal('hq_ip');
+                            }}
+                          >
+                            <span>➕</span> បន្ថែមអ្នកប្រើប្រាស់ (Add User)
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Search box */}
+                      <div className="search-container" style={{ width: '220px', margin: 0 }}>
+                        <span className="search-icon-left" style={{ fontSize: '11px' }}>🔍</span>
+                        <input
+                          type="text"
+                          className="search-input"
+                          placeholder="Filter IP, User name, Position..."
+                          value={subnetSearch}
+                          onChange={(e) => setSubnetSearch(e.target.value)}
+                          style={{ height: '28px', fontSize: '11px', paddingLeft: '26px' }}
+                        />
+                      </div>
+                    </div>
                   </div>
-                  
-                  <div className="subnet-inner-search">
-                    <span className="subnet-inner-search-icon">🔍</span>
-                    <input
-                      type="text"
-                      placeholder="Filter IP, User name, Position..."
-                      value={subnetSearch}
-                      onChange={(e) => setSubnetSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
+
+                  <div className="panel" style={{ padding: '12px' }}>
 
                 {/* Grid vs Table view */}
                 {subnetViewMode === 'grid' ? (
