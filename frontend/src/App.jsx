@@ -131,7 +131,8 @@ export default function App() {
   const [ipamStatusFilter, setIpamStatusFilter] = useState('all'); // 'all' | 'online' | 'warning' | 'offline'
   const [ipamUtilFilter, setIpamUtilFilter] = useState('all'); // 'all' | 'high' | 'normal' | 'unused'
   const [ipamSearchQuery, setIpamSearchQuery] = useState('');
-  const [ipamSortOrder, setIpamSortOrder] = useState('name-asc'); // 'name-asc' | 'name-desc' | 'pct-desc'
+  const [ipamSortOrder, setIpamSortOrder] = useState('no-asc'); // 'no-asc' | 'no-desc' | 'name-asc' | 'name-desc' | 'pct-desc' | 'used-desc'
+  const [ipamBranchTypeFilter, setIpamBranchTypeFilter] = useState('all'); // 'all' | 'branches' | 'aeon' | 'hospitals'
   const [ipamShowFilters, setIpamShowFilters] = useState(false);
   const [ipamSubnetFilter, setIpamSubnetFilter] = useState('');
   const [ipamGatewayFilter, setIpamGatewayFilter] = useState('');
@@ -11276,25 +11277,58 @@ export default function App() {
 
         {/* Consolidated IPAM Tab (Branches & HQ) */}
         {activeTab === 'ipam' && (() => {
-          // 1. Calculate dynamic statistics
-          const list = ipamCategory === 'branches' ? branches : hqDepts;
+          // 1. Deduplicate and calculate dynamic statistics
+          const rawList = ipamCategory === 'branches' ? branches : hqDepts;
+          const seenKeys = new Set();
+          const list = [];
+          for (const item of rawList) {
+            const key = item.id ? `id-${item.id}` : `${item.subnet || ''}-${item.no || item.name_en || ''}`;
+            if (!seenKeys.has(key)) {
+              seenKeys.add(key);
+              list.push(item);
+            }
+          }
+
           const totalSubnets = list.length;
           const totalUsedIps = list.reduce((sum, item) => sum + (item.used_ips || 0), 0);
           const totalMaxIps = list.reduce((sum, item) => sum + (item.total_ips || 0), 0);
           const totalAvailableIps = totalMaxIps - totalUsedIps;
           const avgUtilization = totalMaxIps > 0 ? ((totalUsedIps / totalMaxIps) * 100).toFixed(1) : '0';
 
+          // Branch category counts
+          const branchCounts = {
+            all: branches.length,
+            branches: branches.filter(b => {
+              const isAeon = (b.name_en || '').toLowerCase().includes('aeon') || (b.name_kh || '').includes('អ៊ីអន') || b.no >= 42;
+              const isHospital = (b.name_kh || '').includes('មន្ទីរពេទ្យ') || (b.name_kh || '').includes('មជ្ឈមណ្ឌលជាតិ') || (b.no >= 36 && b.no <= 41);
+              return !isAeon && !isHospital;
+            }).length,
+            hospitals: branches.filter(b => (b.name_kh || '').includes('មន្ទីរពេទ្យ') || (b.name_kh || '').includes('មជ្ឈមណ្ឌលជាតិ') || (b.no >= 36 && b.no <= 41)).length,
+            aeon: branches.filter(b => (b.name_en || '').toLowerCase().includes('aeon') || (b.name_kh || '').includes('អ៊ីអន') || b.no >= 42).length
+          };
+
           // 2. Filter and Sort the subnets
           const getFilteredSubnets = () => {
             return list.filter(item => {
-              // Search Filter
+              // Branch Category Filter
+              if (ipamCategory === 'branches' && ipamBranchTypeFilter !== 'all') {
+                const isAeon = (item.name_en || '').toLowerCase().includes('aeon') || (item.name_kh || '').includes('អ៊ីអន') || item.no >= 42;
+                const isHospital = (item.name_kh || '').includes('មន្ទីរពេទ្យ') || (item.name_kh || '').includes('មជ្ឈមណ្ឌលជាតិ') || (item.no >= 36 && item.no <= 41);
+                const isNormalBranch = !isAeon && !isHospital;
+                if (ipamBranchTypeFilter === 'branches' && !isNormalBranch) return false;
+                if (ipamBranchTypeFilter === 'hospitals' && !isHospital) return false;
+                if (ipamBranchTypeFilter === 'aeon' && !isAeon) return false;
+              }
+
+              // Search Filter (name kh/en, subnet, gateway, or branch number)
               if (ipamSearchQuery) {
-                const q = ipamSearchQuery.toLowerCase().trim();
+                const q = ipamSearchQuery.toLowerCase().trim().replace(/^#/, '');
                 const nameKh = (item.name_kh || '').toLowerCase();
                 const nameEn = (item.name_en || '').toLowerCase();
                 const subnet = (item.subnet || '').toLowerCase();
                 const gw = (item.gateway || '').toLowerCase();
-                if (!nameKh.includes(q) && !nameEn.includes(q) && !subnet.includes(q) && !gw.includes(q)) {
+                const noStr = String(item.no || '');
+                if (!nameKh.includes(q) && !nameEn.includes(q) && !subnet.includes(q) && !gw.includes(q) && noStr !== q) {
                   return false;
                 }
               }
@@ -11318,9 +11352,9 @@ export default function App() {
               }
 
               // Status Filter
-              const pct = Math.round((item.used_ips / item.total_ips) * 100);
+              const pct = Math.round(((item.used_ips || 0) / (item.total_ips || 1)) * 100);
               let statusText = 'online';
-              if (item.used_ips === 0) statusText = 'offline';
+              if ((item.used_ips || 0) === 0) statusText = 'offline';
               else if (pct >= 99) statusText = 'warning';
 
               if (ipamStatusFilter !== 'all' && statusText !== ipamStatusFilter) {
@@ -11336,22 +11370,31 @@ export default function App() {
 
               return true;
             }).sort((a, b) => {
+              if (ipamSortOrder === 'no-asc') {
+                return (a.no || 0) - (b.no || 0);
+              }
+              if (ipamSortOrder === 'no-desc') {
+                return (b.no || 0) - (a.no || 0);
+              }
               if (ipamSortOrder === 'name-asc') {
-                const nameA = (a.name_en || a.name_kh || '').toLowerCase();
-                const nameB = (b.name_en || b.name_kh || '').toLowerCase();
+                const nameA = (a.name_kh || a.name_en || '').toLowerCase();
+                const nameB = (b.name_kh || b.name_en || '').toLowerCase();
                 return nameA.localeCompare(nameB);
               }
               if (ipamSortOrder === 'name-desc') {
-                const nameA = (a.name_en || a.name_kh || '').toLowerCase();
-                const nameB = (b.name_en || b.name_kh || '').toLowerCase();
+                const nameA = (a.name_kh || a.name_en || '').toLowerCase();
+                const nameB = (b.name_kh || b.name_en || '').toLowerCase();
                 return nameB.localeCompare(nameA);
               }
               if (ipamSortOrder === 'pct-desc') {
-                const pctA = a.used_ips / a.total_ips;
-                const pctB = b.used_ips / b.total_ips;
+                const pctA = (a.used_ips || 0) / (a.total_ips || 1);
+                const pctB = (b.used_ips || 0) / (b.total_ips || 1);
                 return pctB - pctA;
               }
-              return 0;
+              if (ipamSortOrder === 'used-desc') {
+                return (b.used_ips || 0) - (a.used_ips || 0);
+              }
+              return (a.no || 0) - (b.no || 0);
             });
           };
 
@@ -11807,6 +11850,54 @@ export default function App() {
                     </div>
                   </div>
 
+                  {/* Branch Category Filter Pills */}
+                  {ipamCategory === 'branches' && (
+                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
+                      <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#64748b', marginRight: '4px' }}>
+                        ជម្រើសមើល:
+                      </span>
+                      {[
+                        { id: 'all', label: 'ទាំងអស់', count: branchCounts.all, icon: '🏢' },
+                        { id: 'branches', label: 'សាខាខេត្ត-ខណ្ឌ', count: branchCounts.branches, icon: '📍' },
+                        { id: 'hospitals', label: 'មន្ទីរពេទ្យជាតិ', count: branchCounts.hospitals, icon: '🏥' },
+                        { id: 'aeon', label: 'ផ្សារទំនើប AEON', count: branchCounts.aeon, icon: '🛒' }
+                      ].map(tab => (
+                        <button
+                          key={tab.id}
+                          onClick={() => setIpamBranchTypeFilter(tab.id)}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            padding: '6px 14px',
+                            borderRadius: '20px',
+                            border: ipamBranchTypeFilter === tab.id ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
+                            backgroundColor: ipamBranchTypeFilter === tab.id ? '#eff6ff' : '#fff',
+                            color: ipamBranchTypeFilter === tab.id ? '#1d4ed8' : '#475569',
+                            fontWeight: ipamBranchTypeFilter === tab.id ? '800' : '600',
+                            fontSize: '12px',
+                            cursor: 'pointer',
+                            boxShadow: ipamBranchTypeFilter === tab.id ? '0 2px 4px rgba(37,99,235,0.12)' : 'none',
+                            transition: 'all 0.15s ease'
+                          }}
+                        >
+                          <span>{tab.icon}</span>
+                          <span>{tab.label}</span>
+                          <span style={{
+                            backgroundColor: ipamBranchTypeFilter === tab.id ? '#2563eb' : '#f1f5f9',
+                            color: ipamBranchTypeFilter === tab.id ? '#fff' : '#64748b',
+                            borderRadius: '10px',
+                            padding: '1px 7px',
+                            fontSize: '10.5px',
+                            fontWeight: '800'
+                          }}>
+                            {tab.count}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
                   {/* Filter Toolbar (Search, Status dropdown, Utilization dropdown, More filters button, Refresh, Add button) */}
                   <div className="panel" style={{ padding: '14px 20px', marginBottom: '24px', borderRadius: '12px', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'nowrap' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexGrow: 1 }}>
@@ -11986,49 +12077,58 @@ export default function App() {
                       {/* Sort Dropdown */}
                       <select
                         className="form-input"
-                        style={{ width: '180px', padding: '6px 10px', height: '34px', fontSize: '11px', fontWeight: '800', margin: 0 }}
+                        style={{ width: '205px', padding: '6px 10px', height: '34px', fontSize: '11px', fontWeight: '800', margin: 0 }}
                         value={ipamSortOrder}
                         onChange={(e) => setIpamSortOrder(e.target.value)}
                       >
-                        <option value="name-asc">Sort by: Name (A-Z)</option>
-                        <option value="name-desc">Sort by: Name (Z-A)</option>
-                        <option value="pct-desc">Sort by: Utilization (High-Low)</option>
+                        <option value="no-asc">តម្រៀប: លេខសាខា (#1 - #44)</option>
+                        <option value="no-desc">តម្រៀប: លេខសាខា (#44 - #1)</option>
+                        <option value="name-asc">តម្រៀប: ឈ្មោះ (ក-អ / A-Z)</option>
+                        <option value="name-desc">តម្រៀប: ឈ្មោះ (អ-ក / Z-A)</option>
+                        <option value="pct-desc">តម្រៀប: អត្រាប្រើប្រាស់ (ខ្ពស់-ទាប)</option>
+                        <option value="used-desc">តម្រៀប: ចំនួន IP ប្រើច្រើន</option>
                       </select>
                     </div>
                   </div>
 
                   {/* Main Subnets Rendering */}
                   {ipamViewMode === 'grid' ? (
-                    /* Redesigned Grid view (4 columns) */
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px' }} className="fade-in">
+                    /* Redesigned Responsive Grid View */
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '16px' }} className="fade-in">
                       {filteredSubnets.map((item, idx) => {
-                        const pct = Math.round((item.used_ips / item.total_ips) * 100);
+                        const totalIps = item.total_ips || 254;
+                        const usedIps = item.used_ips || 0;
+                        const freeIps = Math.max(0, totalIps - usedIps);
+                        const pct = Math.round((usedIps / totalIps) * 100);
                         let statusText = 'សកម្ម';
                         let statusColor = '#10b981'; // green
-                        if (item.used_ips === 0) {
+                        let statusBg = '#d1fae5';
+                        if (usedIps === 0) {
                           statusText = 'មិនទាន់ប្រើ';
-                          statusColor = '#94a3b8'; // grey
-                        } else if (pct >= 99) {
+                          statusColor = '#64748b'; // slate
+                          statusBg = '#f1f5f9';
+                        } else if (pct >= 95) {
                           statusText = 'ជិតពេញ';
-                          statusColor = '#f59e0b'; // orange
+                          statusColor = '#f59e0b'; // amber
+                          statusBg = '#fef3c7';
                         }
 
                         return (
                           <div 
-                            key={item.id} 
+                            key={item.id || `${item.subnet}-${idx}`} 
                             style={{
                               backgroundColor: '#fff',
-                              border: '1.5px solid var(--border-color)',
-                              borderBottom: `4.5px solid ${statusColor}`,
+                              border: '1px solid #e2e8f0',
+                              borderTop: `4px solid ${statusColor}`,
                               borderRadius: '12px',
-                              padding: '16px',
-                              boxShadow: 'var(--shadow-sm)',
+                              padding: '14px 16px',
+                              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                               cursor: 'pointer',
-                              transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                              transition: 'all 0.2s ease',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
-                              height: '140px'
+                              minHeight: '148px'
                             }}
                             className="subnet-grid-card"
                             onClick={() => {
@@ -12041,45 +12141,87 @@ export default function App() {
                           >
                             <div>
                               {/* Title line */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                  <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#eff6ff', color: '#0b45b5', fontSize: '10px', fontWeight: '800' }}>
-                                    {item.no || (idx + 1)}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                                  <span style={{ 
+                                    display: 'inline-flex', 
+                                    alignItems: 'center', 
+                                    justifyContent: 'center', 
+                                    minWidth: '34px', 
+                                    height: '24px', 
+                                    padding: '0 6px',
+                                    borderRadius: '6px', 
+                                    backgroundColor: '#eff6ff', 
+                                    color: '#1d4ed8', 
+                                    fontSize: '11px', 
+                                    fontWeight: '800',
+                                    fontFamily: 'var(--font-mono)',
+                                    flexShrink: 0
+                                  }}>
+                                    #{String(item.no || (idx + 1)).padStart(2, '0')}
                                   </span>
-                                  <span style={{ fontWeight: '800', fontSize: '12.5px', color: 'var(--text-primary)' }}>
-                                    {ipamCategory === 'branches' ? `${item.name_kh} (${item.name_en})` : `${item.name_en}${item.sheet_name ? ` (${item.sheet_name})` : ''}`}
-                                  </span>
+                                  <div style={{ minWidth: 0, flex: 1 }}>
+                                    <div style={{ 
+                                      fontWeight: '800', 
+                                      fontSize: '13px', 
+                                      color: '#0f172a', 
+                                      whiteSpace: 'nowrap', 
+                                      overflow: 'hidden', 
+                                      textOverflow: 'ellipsis' 
+                                    }} title={ipamCategory === 'branches' ? `${item.name_kh || ''} (${item.name_en || ''})` : `${item.name_en || ''}`}>
+                                      {ipamCategory === 'branches' ? (item.name_kh || item.name_en) : item.name_en}
+                                    </div>
+                                    {ipamCategory === 'branches' && item.name_en && item.name_kh && (
+                                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                        {item.name_en}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                                 <span style={{ 
-                                  fontSize: '9px', 
+                                  fontSize: '9.5px', 
                                   fontWeight: '800', 
-                                  padding: '1px 6px', 
-                                  borderRadius: '10px', 
-                                  backgroundColor: statusText === 'សកម្ម' ? '#e6f4ea' : statusText === 'ជិតពេញ' ? '#fef3c7' : '#f1f5f9',
-                                  color: statusText === 'សកម្ម' ? '#137333' : statusText === 'ជិតពេញ' ? '#b06000' : '#475569'
+                                  padding: '2px 8px', 
+                                  borderRadius: '12px', 
+                                  backgroundColor: statusBg,
+                                  color: statusColor,
+                                  whiteSpace: 'nowrap',
+                                  flexShrink: 0
                                 }}>
                                   {statusText}
                                 </span>
                               </div>
 
-                              {/* IP Subnet / GW details */}
-                              <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                                <div style={{ fontFamily: 'var(--font-mono)' }}>{item.subnet}/24</div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px', fontSize: '10.5px' }}>
-                                  <span>GW: {item.gateway}</span>
-                                  <span style={{ fontWeight: '800', color: 'var(--text-primary)' }}>
-                                    ប្រើ: {item.used_ips} | សល់: {item.total_ips - item.used_ips}
+                              {/* IP Subnet & Gateway Box */}
+                              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px', marginTop: '6px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: '700', color: '#1e293b' }}>
+                                    {item.subnet}/24
+                                  </span>
+                                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#64748b' }}>
+                                    GW: {item.gateway || 'N/A'}
+                                  </span>
+                                </div>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                                  <span style={{ color: '#475569' }}>
+                                    ប្រើ: <strong style={{ color: '#0f172a' }}>{usedIps}</strong> / {totalIps}
+                                  </span>
+                                  <span style={{ color: '#64748b' }}>
+                                    សល់: <strong style={{ color: '#16a34a' }}>{freeIps}</strong>
                                   </span>
                                 </div>
                               </div>
                             </div>
 
-                            {/* Card Footer Progress */}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px' }}>
-                              <div style={{ flex: 1, height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', overflow: 'hidden', marginRight: '8px' }}>
-                                <div style={{ width: `${pct}%`, height: '100%', backgroundColor: statusColor, borderRadius: '2px' }}></div>
+                            {/* Card Footer Progress Bar */}
+                            <div style={{ marginTop: '10px' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+                                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>អត្រាប្រើប្រាស់</span>
+                                <span style={{ fontSize: '11px', fontWeight: '800', color: statusColor }}>{pct}%</span>
                               </div>
-                              <span style={{ fontSize: '11px', fontWeight: '800', color: statusColor }}>{pct}%</span>
+                              <div style={{ height: '5px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
+                                <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', backgroundColor: statusColor, borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
+                              </div>
                             </div>
                           </div>
                         );
