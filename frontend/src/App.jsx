@@ -98,22 +98,31 @@ export default function App() {
   const [searchResults, setSearchResults] = useState([]);
   const [showSearchDropdown, setShowSearchDropdown] = useState(false);
   
-  // Dashboard & global stats
-  const [dashboardStats, setDashboardStats] = useState(null);
+  // Helper for safe JSON parse from localStorage for instant 0ms rendering
+  const getCachedJson = (key, defaultVal) => {
+    try {
+      const v = localStorage.getItem(key);
+      if (v) return JSON.parse(v);
+    } catch (e) {}
+    return defaultVal;
+  };
+
+  // Dashboard & global stats (instant 0ms display from cache)
+  const [dashboardStats, setDashboardStats] = useState(() => getCachedJson('nssf_soc_dashboard_stats', null));
   
-  // Tab data states
-  const [branches, setBranches] = useState([]);
+  // Tab data states (instant 0ms display from cache)
+  const [branches, setBranches] = useState(() => getCachedJson('nssf_soc_branches', []));
   const [selectedBranch, setSelectedBranch] = useState(null);
   const [selectedBranchData, setSelectedBranchData] = useState([]); // includes 254 IPs
   
-  const [hqDepts, setHqDepts] = useState([]);
+  const [hqDepts, setHqDepts] = useState(() => getCachedJson('nssf_soc_hq', []));
   const [selectedDept, setSelectedDept] = useState(null);
   const [selectedDeptData, setSelectedDeptData] = useState([]); // includes 254 IPs
   
-  const [vpnUsers, setVpnUsers] = useState([]);
-  const [hospitalVpns, setHospitalVpns] = useState([]);
-  const [publicIPs, setPublicIPs] = useState([]);
-  const [switches, setSwitches] = useState([]);
+  const [vpnUsers, setVpnUsers] = useState(() => getCachedJson('nssf_soc_vpn', []));
+  const [hospitalVpns, setHospitalVpns] = useState(() => getCachedJson('nssf_soc_hospital_vpns', []));
+  const [publicIPs, setPublicIPs] = useState(() => getCachedJson('nssf_soc_public_ips', []));
+  const [switches, setSwitches] = useState(() => getCachedJson('nssf_soc_switches', []));
   
   // Google Drive state variables
   const [driveFiles, setDriveFiles] = useState([]);
@@ -2775,15 +2784,15 @@ export default function App() {
     const year = now.getFullYear();
     const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
     setLastUpdated(`${day} ${month} ${year} ${time}`);
-    fetchDashboardStats();
+    fetchDashboardStats(true);
     fetchSyncStatus();
     if (activeTab === 'ipam') {
-      fetchBranches();
-      fetchHqDepts();
+      fetchBranches(true);
+      fetchHqDepts(true);
     }
-    else if (activeTab === 'vpn') fetchVpnUsers();
+    else if (activeTab === 'vpn') fetchVpnUsers(true);
     else if (activeTab === 's2s' || activeTab === 'banks') {
-      fetchHospitalVpns();
+      fetchHospitalVpns(true);
       fetchDriveFiles();
     }
     else if (activeTab === 'public') fetchPublicIPs();
@@ -2792,64 +2801,31 @@ export default function App() {
     else if (activeTab === 'users' && hasPermission('user_management', 'read')) fetchUsersList();
     else if (activeTab === 'shift' || activeTab === 'shift_generator') fetchShiftSchedule();
     else if (activeTab === 'dev_requests') fetchDevRequests();
-    else fetchDashboardStats();
   };
 
   // Fetch Dashboard Stats
-  const fetchDashboardStats = async () => {
+  const fetchDashboardStats = async (forceRefresh = false) => {
     try {
-      const res = await fetch(`${API_BASE}/dashboard?t=${Date.now()}`, { cache: 'no-store' });
+      const url = forceRefresh ? `${API_BASE}/dashboard?force_refresh=true&t=${Date.now()}` : `${API_BASE}/dashboard`;
+      const res = await fetch(url, forceRefresh ? { cache: 'no-store' } : {});
       if (res.ok) {
         const data = await res.json();
         setDashboardStats(data);
-      } else {
-        setDashboardStats({
-          counts: {
-            branches: 25,
-            hq_departments: 12,
-            vpn_users: 85,
-            s2s_vpns: 18,
-            bank_vpns: 8,
-            public_ips: 42,
-            switches: 30,
-            storage_files: 15
-          },
-          allocations: {
-            active_vpn_users: 85,
-            active_s2s_tunnels: 18,
-            ip_branch_assigned: 1540,
-            ip_hq_assigned: 620
-          },
-          recent_activity: []
-        });
+        try {
+          localStorage.setItem('nssf_soc_dashboard_stats', JSON.stringify(data));
+        } catch (e) {}
       }
     } catch (err) {
       console.error('Error fetching dashboard stats:', err);
-      setDashboardStats({
-        counts: {
-          branches: 25,
-          hq_departments: 12,
-          vpn_users: 85,
-          s2s_vpns: 18,
-          bank_vpns: 8,
-          public_ips: 42,
-          switches: 30,
-          storage_files: 15
-        },
-        allocations: {
-          active_vpn_users: 85,
-          active_s2s_tunnels: 18,
-          ip_branch_assigned: 1540,
-          ip_hq_assigned: 620
-        },
-        recent_activity: []
-      });
     }
   };
 
   useEffect(() => {
-    triggerRefresh();
-    fetchDriveFiles();
+    // Defer non-critical Google drive files fetch so initial dashboard render is instant
+    const t = setTimeout(() => {
+      fetchDriveFiles();
+    }, 1500);
+    return () => clearTimeout(t);
   }, []);
 
   // Fetch Tab Specific Data
@@ -3021,11 +2997,15 @@ export default function App() {
     }
   };
 
-  const fetchBranches = async () => {
+  const fetchBranches = async (force = false) => {
     try {
-      const res = await fetch(`${API_BASE}/branches?t=${Date.now()}`, { cache: 'no-store' });
+      const url = force ? `${API_BASE}/branches?t=${Date.now()}` : `${API_BASE}/branches`;
+      const res = await fetch(url, force ? { cache: 'no-store' } : {});
       const data = await res.json();
       setBranches(data);
+      try {
+        localStorage.setItem('nssf_soc_branches', JSON.stringify(data));
+      } catch (e) {}
     } catch (err) {
       console.error(err);
     }
@@ -3033,7 +3013,7 @@ export default function App() {
 
   const fetchBranchDetails = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/branches/${id}?t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE}/branches/${id}`);
       const data = await res.json();
       setSelectedBranch(data.branch);
       setSelectedBranchData(data.ips || []);
@@ -3043,11 +3023,15 @@ export default function App() {
     }
   };
 
-  const fetchHqDepts = async () => {
+  const fetchHqDepts = async (force = false) => {
     try {
-      const res = await fetch(`${API_BASE}/hq?t=${Date.now()}`, { cache: 'no-store' });
+      const url = force ? `${API_BASE}/hq?t=${Date.now()}` : `${API_BASE}/hq`;
+      const res = await fetch(url, force ? { cache: 'no-store' } : {});
       const data = await res.json();
       setHqDepts(data);
+      try {
+        localStorage.setItem('nssf_soc_hq', JSON.stringify(data));
+      } catch (e) {}
     } catch (err) {
       console.error(err);
     }
@@ -3055,7 +3039,7 @@ export default function App() {
 
   const fetchDeptDetails = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/hq/${id}?t=${Date.now()}`, { cache: 'no-store' });
+      const res = await fetch(`${API_BASE}/hq/${id}`);
       const data = await res.json();
       setSelectedDept(data.department);
       setSelectedDeptData(data.ips || []);
@@ -3065,21 +3049,29 @@ export default function App() {
     }
   };
 
-  const fetchVpnUsers = async () => {
+  const fetchVpnUsers = async (force = false) => {
     try {
-      const res = await fetch(`${API_BASE}/vpn?t=${Date.now()}`, { cache: 'no-store' });
+      const url = force ? `${API_BASE}/vpn?t=${Date.now()}` : `${API_BASE}/vpn`;
+      const res = await fetch(url, force ? { cache: 'no-store' } : {});
       const data = await res.json();
       setVpnUsers(data);
+      try {
+        localStorage.setItem('nssf_soc_vpn', JSON.stringify(data));
+      } catch (e) {}
     } catch (err) {
       console.error(err);
     }
   };
 
-  const fetchHospitalVpns = async () => {
+  const fetchHospitalVpns = async (force = false) => {
     try {
-      const res = await fetch(`${API_BASE}/hospital_vpns?t=${Date.now()}`, { cache: 'no-store' });
+      const url = force ? `${API_BASE}/hospital_vpns?t=${Date.now()}` : `${API_BASE}/hospital_vpns`;
+      const res = await fetch(url, force ? { cache: 'no-store' } : {});
       const data = await res.json();
       setHospitalVpns(data);
+      try {
+        localStorage.setItem('nssf_soc_hospital_vpns', JSON.stringify(data));
+      } catch (e) {}
     } catch (err) {
       console.error(err);
     }

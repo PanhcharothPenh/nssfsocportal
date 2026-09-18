@@ -4,7 +4,7 @@ import sqlite3
 import time
 import requests
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Request, Body, BackgroundTasks, Form
+from fastapi import FastAPI, HTTPException, Query, UploadFile, File, Request, Body, BackgroundTasks, Form, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Dict, Any, Optional, List
@@ -662,10 +662,12 @@ _dashboard_cache = {
 }
 
 @app.get("/api/dashboard")
-def get_dashboard_stats(force_refresh: bool = False):
+def get_dashboard_stats(response: Response, force_refresh: bool = False):
     global _dashboard_cache
     import time
     now = time.time()
+    response.headers["Cache-Control"] = "public, max-age=15, s-maxage=30, stale-while-revalidate=60"
+    
     if not force_refresh and _dashboard_cache["data"] and now < _dashboard_cache["expires_at"]:
         return _dashboard_cache["data"]
 
@@ -673,84 +675,67 @@ def get_dashboard_stats(force_refresh: bool = False):
     cursor = conn.cursor()
     
     try:
-        # Core counts
-        cursor.execute("SELECT COUNT(*) FROM branches")
-        total_branches = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM hq_departments")
-        total_hq_depts = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM vpn_remote_users")
-        total_vpn_users = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns")
-        total_s2s_vpns = cursor.fetchone()[0]
-        
-        cursor.execute("SELECT COUNT(*) FROM switches")
-        total_switches = cursor.fetchone()[0]
-        
-        # IP Allocations overview
+        # Consolidated query: fetch all 11 counts in one single database round-trip
         cursor.execute("""
-            SELECT COUNT(*) FROM branch_ips 
-            WHERE (user_name IS NOT NULL AND user_name != '' AND user_name != 'None')
-               OR (position IS NOT NULL AND position != '' AND position != 'None')
+            SELECT
+                (SELECT COUNT(*) FROM branches) AS total_branches,
+                (SELECT COUNT(*) FROM hq_departments) AS total_hq_depts,
+                (SELECT COUNT(*) FROM vpn_remote_users) AS total_vpn_users,
+                (SELECT COUNT(*) FROM hospital_vpns) AS total_s2s_vpns,
+                (SELECT COUNT(*) FROM switches) AS total_switches,
+                (SELECT COUNT(*) FROM branch_ips 
+                 WHERE (user_name IS NOT NULL AND user_name != '' AND user_name != 'None')
+                    OR (position IS NOT NULL AND position != '' AND position != 'None')) AS allocated_branch_ips,
+                (SELECT COUNT(*) FROM hq_ips 
+                 WHERE (user_name_kh IS NOT NULL AND user_name_kh != '' AND user_name_kh != 'None')
+                    OR (user_name_en IS NOT NULL AND user_name_en != '' AND user_name_en != 'None')
+                    OR (position IS NOT NULL AND position != '' AND position != 'None')) AS allocated_hq_ips,
+                (SELECT COUNT(*) FROM vpn_remote_users WHERE status LIKE '%active%' OR status LIKE '%using%') AS active_vpn_users,
+                (SELECT COUNT(*) FROM hospital_vpns WHERE vpn_type != 'Close' AND (reopen_requested IS NULL OR reopen_requested = 0)) AS open_s2s_tunnels,
+                (SELECT COUNT(*) FROM hospital_vpns WHERE vpn_type = 'Close' AND (reopen_requested IS NULL OR reopen_requested = 0)) AS closed_s2s_tunnels,
+                (SELECT COUNT(*) FROM hospital_vpns WHERE reopen_requested = 1) AS reopen_s2s_tunnels
         """)
-        allocated_branch_ips = cursor.fetchone()[0]
+        row = cursor.fetchone()
         
-        cursor.execute("""
-            SELECT COUNT(*) FROM hq_ips 
-            WHERE (user_name_kh IS NOT NULL AND user_name_kh != '' AND user_name_kh != 'None')
-               OR (user_name_en IS NOT NULL AND user_name_en != '' AND user_name_en != 'None')
-               OR (position IS NOT NULL AND position != '' AND position != 'None')
-        """)
-        allocated_hq_ips = cursor.fetchone()[0]
-        
-        # Subnet list with utilization
-        cursor.execute("SELECT id, name_kh, name_en, subnet, gateway FROM branches")
-        branches = [dict(r) for r in cursor.fetchall()]
-        
-        cursor.execute("""
-            SELECT branch_id, COUNT(*) FROM branch_ips 
-            WHERE (user_name IS NOT NULL AND user_name != '' AND user_name != 'None')
-               OR (position IS NOT NULL AND position != '' AND position != 'None')
-            GROUP BY branch_id
-        """)
-        branch_counts = {row[0]: row[1] for row in cursor.fetchall()}
-        for b in branches:
-            b['used_ips'] = branch_counts.get(b['id'], 0)
-            b['total_ips'] = 254
-            
-        cursor.execute("SELECT id, name_en, vlan_id, subnet, gateway FROM hq_departments")
-        depts = [dict(r) for r in cursor.fetchall()]
-        
-        cursor.execute("""
-            SELECT dept_id, COUNT(*) FROM hq_ips 
-            WHERE (user_name_kh IS NOT NULL AND user_name_kh != '' AND user_name_kh != 'None')
-               OR (user_name_en IS NOT NULL AND user_name_en != '' AND user_name_en != 'None')
-               OR (position IS NOT NULL AND position != '' AND position != 'None')
-            GROUP BY dept_id
-        """)
-        dept_counts = {row[0]: row[1] for row in cursor.fetchall()}
-        for d in depts:
-            d['used_ips'] = dept_counts.get(d['id'], 0)
-            d['total_ips'] = 254
-
-        # Active VPN users count (approx based on Status)
-        cursor.execute("SELECT COUNT(*) FROM vpn_remote_users WHERE status LIKE '%active%' OR status LIKE '%using%'")
-        active_vpn_users = cursor.fetchone()[0]
-        
-        # S2S VPN stats breakdown (Hospital & Bank VPNs)
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE vpn_type != 'Close' AND (reopen_requested IS NULL OR reopen_requested = 0)")
-        open_s2s_tunnels = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE vpn_type = 'Close' AND (reopen_requested IS NULL OR reopen_requested = 0)")
-        closed_s2s_tunnels = cursor.fetchone()[0]
-
-        cursor.execute("SELECT COUNT(*) FROM hospital_vpns WHERE reopen_requested = 1")
-        reopen_s2s_tunnels = cursor.fetchone()[0]
-
+        total_branches = row[0] or 0
+        total_hq_depts = row[1] or 0
+        total_vpn_users = row[2] or 0
+        total_s2s_vpns = row[3] or 0
+        total_switches = row[4] or 0
+        allocated_branch_ips = row[5] or 0
+        allocated_hq_ips = row[6] or 0
+        active_vpn_users = row[7] or 0
+        open_s2s_tunnels = row[8] or 0
+        closed_s2s_tunnels = row[9] or 0
+        reopen_s2s_tunnels = row[10] or 0
         active_s2s_tunnels = open_s2s_tunnels
-        
+
+        # Branch preview query (only top 8 branches with counts in 1 join)
+        cursor.execute("""
+            SELECT b.id, b.name_kh, b.name_en, b.subnet, b.gateway,
+                   COUNT(bi.id) AS used_ips
+            FROM branches b
+            LEFT JOIN branch_ips bi ON b.id = bi.branch_id AND (
+                (bi.user_name IS NOT NULL AND bi.user_name != '' AND bi.user_name != 'None')
+                OR (bi.position IS NOT NULL AND bi.position != '' AND bi.position != 'None')
+            )
+            GROUP BY b.id, b.name_kh, b.name_en, b.subnet, b.gateway, b.no
+            ORDER BY b.no ASC
+            LIMIT 8
+        """)
+        branch_rows = cursor.fetchall()
+        branches = []
+        for r in branch_rows:
+            branches.append({
+                "id": r[0],
+                "name_kh": r[1],
+                "name_en": r[2],
+                "subnet": r[3],
+                "gateway": r[4],
+                "used_ips": r[5] or 0,
+                "total_ips": 254
+            })
+
         conn.close()
         
         res_data = {
@@ -770,8 +755,8 @@ def get_dashboard_stats(force_refresh: bool = False):
                 "closed_s2s_tunnels": closed_s2s_tunnels,
                 "reopen_s2s_tunnels": reopen_s2s_tunnels
             },
-            "branch_list": branches[:8], # limit dashboard preview
-            "hq_list": depts[:8]
+            "branch_list": branches,
+            "hq_list": []
         }
         
         _dashboard_cache["data"] = res_data
@@ -883,7 +868,8 @@ def global_search(q: str = Query(..., min_length=1)):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/branches")
-def get_branches():
+def get_branches(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=15, s-maxage=30, stale-while-revalidate=60"
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -1258,7 +1244,8 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/hq")
-def get_hq_depts():
+def get_hq_depts(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=15, s-maxage=30, stale-while-revalidate=60"
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -1508,7 +1495,8 @@ def get_switches():
 
 @app.get("/api/vpn")
 @app.get("/api/vpn_users")
-def get_vpn_users():
+def get_vpn_users(response: Response):
+    response.headers["Cache-Control"] = "public, max-age=15, s-maxage=30, stale-while-revalidate=60"
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -1759,7 +1747,8 @@ def delete_vpn_user(id: int, request: Request):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/hospital_vpns")
-def get_hospital_vpns(type: Optional[str] = None):
+def get_hospital_vpns(response: Response, type: Optional[str] = None):
+    response.headers["Cache-Control"] = "public, max-age=15, s-maxage=30, stale-while-revalidate=60"
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
