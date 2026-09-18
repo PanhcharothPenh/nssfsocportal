@@ -11394,54 +11394,217 @@ export default function App() {
 
           return (
             <>
-              {/* Segmented sub-tab controls at the top */}
-              <div className="tab-segmented-control-container" style={{ marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <div className="tab-segmented-control" style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                  <button
-                    className={`tab-btn ${ipamCategory === 'branches' ? 'active' : ''}`}
-                    style={{
-                      padding: '8px 20px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      fontSize: '12px',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      backgroundColor: ipamCategory === 'branches' ? '#2563eb' : 'transparent',
-                      color: ipamCategory === 'branches' ? '#fff' : '#64748b',
-                      boxShadow: ipamCategory === 'branches' ? '0 4px 10px rgba(37, 99, 235, 0.25)' : 'none',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={() => {
-                      setIpamCategory('branches');
-                      setSelectedBranch(null);
-                      setSelectedDept(null);
-                    }}
-                  >
-                    🏢 សាខា (NSSF Branches)
-                  </button>
-                  <button
-                    className={`tab-btn ${ipamCategory === 'hq' ? 'active' : ''}`}
-                    style={{
-                      padding: '8px 20px',
-                      borderRadius: '6px',
-                      border: 'none',
-                      fontSize: '12px',
-                      fontWeight: '800',
-                      cursor: 'pointer',
-                      backgroundColor: ipamCategory === 'hq' ? '#2563eb' : 'transparent',
-                      color: ipamCategory === 'hq' ? '#fff' : '#64748b',
-                      boxShadow: ipamCategory === 'hq' ? '0 4px 10px rgba(37, 99, 235, 0.25)' : 'none',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onClick={() => {
-                      setIpamCategory('hq');
-                      setSelectedBranch(null);
-                      setSelectedDept(null);
-                    }}
-                  >
-                    🏢 ស្នាក់ការកណ្តាល (HQ Departments)
-                  </button>
+              {/* Unified Top Control Bar (Branch/HQ + Category Pills + Search + Sort + Actions) */}
+              <div style={{
+                backgroundColor: '#fff',
+                borderRadius: '12px',
+                border: '1px solid #e2e8f0',
+                padding: '6px 12px',
+                marginBottom: '14px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: '10px',
+                flexWrap: 'wrap',
+                boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+              }}>
+                {/* Left: Branch / HQ Tabs + Sub-category Pills + Search + Status */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '320px' }}>
+                  {/* Branch vs HQ Selector */}
+                  <div style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <button
+                      className={`tab-btn ${ipamCategory === 'branches' ? 'active' : ''}`}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11.5px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        backgroundColor: ipamCategory === 'branches' ? '#2563eb' : 'transparent',
+                        color: ipamCategory === 'branches' ? '#fff' : '#64748b',
+                        boxShadow: ipamCategory === 'branches' ? '0 1px 4px rgba(37, 99, 235, 0.25)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onClick={() => {
+                        setIpamCategory('branches');
+                        setSelectedBranch(null);
+                        setSelectedDept(null);
+                      }}
+                    >
+                      🏢 សាខា (Branches)
+                    </button>
+                    <button
+                      className={`tab-btn ${ipamCategory === 'hq' ? 'active' : ''}`}
+                      style={{
+                        padding: '6px 14px',
+                        borderRadius: '6px',
+                        border: 'none',
+                        fontSize: '11.5px',
+                        fontWeight: '800',
+                        cursor: 'pointer',
+                        backgroundColor: ipamCategory === 'hq' ? '#2563eb' : 'transparent',
+                        color: ipamCategory === 'hq' ? '#fff' : '#64748b',
+                        boxShadow: ipamCategory === 'hq' ? '0 1px 4px rgba(37, 99, 235, 0.25)' : 'none',
+                        transition: 'all 0.15s ease'
+                      }}
+                      onClick={() => {
+                        setIpamCategory('hq');
+                        setSelectedBranch(null);
+                        setSelectedDept(null);
+                      }}
+                    >
+                      🏢 ស្នាក់ការកណ្តាល (HQ)
+                    </button>
+                  </div>
+
+                  {!selectedBranch && !selectedDept && (
+                    <>
+                      {/* Divider */}
+                      <div style={{ width: '1px', height: '22px', backgroundColor: '#e2e8f0', margin: '0 2px' }} />
+
+                      {/* Sub-tabs: Branch types (35 / 3 / 6 / 44) */}
+                      {ipamCategory === 'branches' ? (
+                        <div style={{ display: 'inline-flex', gap: '3px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          {[
+                            { id: 'branches', label: 'សាខា (35)' },
+                            { id: 'aeon', label: 'AEON (3)' },
+                            { id: 'hospitals', label: 'មន្ទីរពេទ្យ (6)' },
+                            { id: 'all', label: 'ទាំងអស់ (44)' }
+                          ].map(tab => (
+                            <button
+                              key={tab.id}
+                              onClick={() => setIpamBranchTypeFilter(tab.id)}
+                              style={{
+                                border: 'none',
+                                padding: '4px 8px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: ipamBranchTypeFilter === tab.id ? '800' : '600',
+                                cursor: 'pointer',
+                                backgroundColor: ipamBranchTypeFilter === tab.id ? '#2563eb' : 'transparent',
+                                color: ipamBranchTypeFilter === tab.id ? '#fff' : '#64748b',
+                                boxShadow: ipamBranchTypeFilter === tab.id ? '0 1px 3px rgba(37,99,235,0.25)' : 'none',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {tab.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '12px', fontWeight: '800', color: '#1e293b', padding: '0 4px' }}>
+                          នាយកដ្ឋានសរុប ({totalSubnets})
+                        </span>
+                      )}
+
+                      {/* Search box */}
+                      <div className="search-container" style={{ width: '190px', margin: 0 }}>
+                        <span className="search-icon-left" style={{ fontSize: '11px' }}>🔍</span>
+                        <input
+                          type="text"
+                          className="search-input"
+                          placeholder={ipamCategory === 'branches' ? "ស្វែងរកសាខា, IP, Gateway..." : "ស្វែងរកនាយកដ្ឋាន, IP..."}
+                          value={ipamSearchQuery}
+                          onChange={(e) => setIpamSearchQuery(e.target.value)}
+                          style={{ height: '30px', fontSize: '11px', paddingLeft: '26px' }}
+                        />
+                      </div>
+
+                      {/* Status Dropdown */}
+                      <select
+                        className="form-input"
+                        style={{ width: '85px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
+                        value={ipamStatusFilter}
+                        onChange={(e) => setIpamStatusFilter(e.target.value)}
+                      >
+                        <option value="all">ស្ថានភាព</option>
+                        <option value="online">សកម្ម</option>
+                        <option value="warning">ជិតពេញ</option>
+                        <option value="offline">មិនទាន់ប្រើ</option>
+                      </select>
+                    </>
+                  )}
                 </div>
+
+                {/* Right: Sort, View mode & Action Buttons */}
+                {!selectedBranch && !selectedDept && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                    {/* Sort Dropdown */}
+                    <select
+                      className="form-input"
+                      style={{ width: '155px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
+                      value={ipamSortOrder}
+                      onChange={(e) => setIpamSortOrder(e.target.value)}
+                    >
+                      <option value="no-asc">តម្រៀប: លេខ ({ipamCategory === 'branches' ? '#1 - #44' : `#1 - #${totalSubnets}`})</option>
+                      <option value="no-desc">តម្រៀប: លេខ បញ្ច្រាស</option>
+                      <option value="name-asc">តម្រៀប: ឈ្មោះ (A-Z)</option>
+                      <option value="pct-desc">តម្រៀប: អត្រាប្រើប្រាស់</option>
+                      <option value="used-desc">តម្រៀប: IP ប្រើច្រើន</option>
+                    </select>
+
+                    {/* Grid / Table Toggle */}
+                    <div style={{ display: 'flex', gap: '2px', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                      <button
+                        onClick={() => setIpamViewMode('grid')}
+                        style={{
+                          border: 'none',
+                          padding: '4px 8px',
+                          fontSize: '10.5px',
+                          fontWeight: '700',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          backgroundColor: ipamViewMode === 'grid' ? '#fff' : 'transparent',
+                          color: ipamViewMode === 'grid' ? '#0b45b5' : '#64748b',
+                          boxShadow: ipamViewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                        }}
+                      >
+                        Grid
+                      </button>
+                      <button
+                        onClick={() => setIpamViewMode('table')}
+                        style={{
+                          border: 'none',
+                          padding: '4px 8px',
+                          fontSize: '10.5px',
+                          fontWeight: '700',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          backgroundColor: ipamViewMode === 'table' ? '#fff' : 'transparent',
+                          color: ipamViewMode === 'table' ? '#0b45b5' : '#64748b',
+                          boxShadow: ipamViewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                        }}
+                      >
+                        Table
+                      </button>
+                    </div>
+
+                    {/* Refresh */}
+                    <button className="btn btn-secondary" onClick={triggerRefresh} title="Refresh" style={{ padding: '4px 8px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', margin: 0, borderRadius: '6px' }}>
+                      🔄
+                    </button>
+
+                    {/* Add Button */}
+                    {hasPermission('ipam', 'write') && (
+                      <button
+                        className="btn btn-primary"
+                        onClick={() => {
+                          if (ipamCategory === 'branches') {
+                            setEditingData({ name_kh: '', name_en: '', subnet: '', mask: '255.255.255.0', gateway: '', no_computer: 0, user_name: '', position: '' });
+                            setEditingModal('branch_add');
+                          } else {
+                            setEditingData({ name_en: '', vlan_id: '', subnet: '', mask: '255.255.255.0', gateway: '', gw_device: '', no_computer: 0, user_name_kh: '', user_name_en: '', position: '' });
+                            setEditingModal('hq_add');
+                          }
+                        }}
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', height: '30px', fontSize: '11px', fontWeight: '800', margin: 0 }}
+                      >
+                        {ipamCategory === 'branches' ? '➕ សាខា' : '➕ នាយកដ្ឋាន'}
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Detail view checks */}
@@ -11830,160 +11993,7 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Unified Compact Toolbar (All controls in one clean bar) */}
-                  <div style={{ 
-                    backgroundColor: '#fff', 
-                    borderRadius: '12px', 
-                    border: '1px solid #e2e8f0', 
-                    padding: '8px 12px', 
-                    marginBottom: '14px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    gap: '10px',
-                    flexWrap: 'wrap',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
-                  }}>
-                    {/* Left: Category Pills & Search */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '300px' }}>
-                      {ipamCategory === 'branches' ? (
-                        <div style={{ display: 'inline-flex', gap: '4px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                          {[
-                            { id: 'branches', label: 'សាខា (35)', icon: '📍' },
-                            { id: 'aeon', label: 'AEON (3)', icon: '🛒' },
-                            { id: 'hospitals', label: 'មន្ទីរពេទ្យ (6)', icon: '🏥' },
-                            { id: 'all', label: 'ទាំងអស់ (44)', icon: '🌐' }
-                          ].map(tab => (
-                            <button
-                              key={tab.id}
-                              onClick={() => setIpamBranchTypeFilter(tab.id)}
-                              style={{
-                                border: 'none',
-                                padding: '4px 9px',
-                                borderRadius: '6px',
-                                fontSize: '11px',
-                                fontWeight: ipamBranchTypeFilter === tab.id ? '800' : '600',
-                                cursor: 'pointer',
-                                backgroundColor: ipamBranchTypeFilter === tab.id ? '#2563eb' : 'transparent',
-                                color: ipamBranchTypeFilter === tab.id ? '#fff' : '#64748b',
-                                boxShadow: ipamBranchTypeFilter === tab.id ? '0 1px 3px rgba(37,99,235,0.25)' : 'none',
-                                transition: 'all 0.15s ease'
-                              }}
-                            >
-                              {tab.label}
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#1e293b', marginRight: '4px' }}>
-                          បញ្ជី Subnets ស្នាក់ការកណ្តាល
-                        </span>
-                      )}
 
-                      {/* Search box */}
-                      <div className="search-container" style={{ width: '210px', margin: 0 }}>
-                        <span className="search-icon-left" style={{ fontSize: '11.5px' }}>🔍</span>
-                        <input
-                          type="text"
-                          className="search-input"
-                          placeholder="ស្វែងរកសាខា, IP, Gateway..."
-                          value={ipamSearchQuery}
-                          onChange={(e) => setIpamSearchQuery(e.target.value)}
-                          style={{ height: '30px', fontSize: '11px', paddingLeft: '28px' }}
-                        />
-                      </div>
-
-                      {/* Status Dropdown */}
-                      <select
-                        className="form-input"
-                        style={{ width: '85px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
-                        value={ipamStatusFilter}
-                        onChange={(e) => setIpamStatusFilter(e.target.value)}
-                      >
-                        <option value="all">ស្ថានភាព</option>
-                        <option value="online">សកម្ម</option>
-                        <option value="warning">ជិតពេញ</option>
-                        <option value="offline">មិនទាន់ប្រើ</option>
-                      </select>
-                    </div>
-
-                    {/* Right: Sort, View mode & Action Buttons */}
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-                      {/* Sort Dropdown */}
-                      <select
-                        className="form-input"
-                        style={{ width: '155px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
-                        value={ipamSortOrder}
-                        onChange={(e) => setIpamSortOrder(e.target.value)}
-                      >
-                        <option value="no-asc">តម្រៀប: លេខ (#1 - #44)</option>
-                        <option value="no-desc">តម្រៀប: លេខ (#44 - #1)</option>
-                        <option value="name-asc">តម្រៀប: ឈ្មោះ (A-Z)</option>
-                        <option value="pct-desc">តម្រៀប: អត្រាប្រើប្រាស់</option>
-                        <option value="used-desc">តម្រៀប: IP ប្រើច្រើន</option>
-                      </select>
-
-                      {/* Grid / Table Toggle */}
-                      <div style={{ display: 'flex', gap: '2px', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                        <button
-                          onClick={() => setIpamViewMode('grid')}
-                          style={{
-                            border: 'none',
-                            padding: '4px 8px',
-                            fontSize: '10.5px',
-                            fontWeight: '700',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            backgroundColor: ipamViewMode === 'grid' ? '#fff' : 'transparent',
-                            color: ipamViewMode === 'grid' ? '#0b45b5' : '#64748b',
-                            boxShadow: ipamViewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-                          }}
-                        >
-                          Grid
-                        </button>
-                        <button
-                          onClick={() => setIpamViewMode('table')}
-                          style={{
-                            border: 'none',
-                            padding: '4px 8px',
-                            fontSize: '10.5px',
-                            fontWeight: '700',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            backgroundColor: ipamViewMode === 'table' ? '#fff' : 'transparent',
-                            color: ipamViewMode === 'table' ? '#0b45b5' : '#64748b',
-                            boxShadow: ipamViewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
-                          }}
-                        >
-                          Table
-                        </button>
-                      </div>
-
-                      {/* Refresh */}
-                      <button className="btn btn-secondary" onClick={triggerRefresh} title="Refresh" style={{ padding: '4px 8px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', margin: 0 }}>
-                        🔄
-                      </button>
-
-                      {/* Add Button */}
-                      {hasPermission('ipam', 'write') && (
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => {
-                            if (ipamCategory === 'branches') {
-                              setEditingData({ name_kh: '', name_en: '', subnet: '', mask: '255.255.255.0', gateway: '', no_computer: 0, user_name: '', position: '' });
-                              setEditingModal('branch_add');
-                            } else {
-                              setEditingData({ name_en: '', vlan_id: '', subnet: '', mask: '255.255.255.0', gateway: '', gw_device: '', no_computer: 0, user_name_kh: '', user_name_en: '', position: '' });
-                              setEditingModal('hq_add');
-                            }
-                          }}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', height: '30px', fontSize: '11px', fontWeight: '800', margin: 0 }}
-                        >
-                          {ipamCategory === 'branches' ? '➕ សាខា' : '➕ នាយកដ្ឋាន'}
-                        </button>
-                      )}
-                    </div>
-                  </div>
 
                   {/* Main Subnets Rendering */}
                   {ipamViewMode === 'grid' ? (
