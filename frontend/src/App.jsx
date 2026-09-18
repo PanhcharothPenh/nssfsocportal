@@ -141,7 +141,7 @@ export default function App() {
   const [ipamUtilFilter, setIpamUtilFilter] = useState('all'); // 'all' | 'high' | 'normal' | 'unused'
   const [ipamSearchQuery, setIpamSearchQuery] = useState('');
   const [ipamSortOrder, setIpamSortOrder] = useState('no-asc'); // 'no-asc' | 'no-desc' | 'name-asc' | 'name-desc' | 'pct-desc' | 'used-desc'
-  const [ipamBranchTypeFilter, setIpamBranchTypeFilter] = useState('all'); // 'all' | 'branches' | 'aeon' | 'hospitals'
+  const [ipamBranchTypeFilter, setIpamBranchTypeFilter] = useState('branches'); // 'branches' (35 real branches) | 'aeon' (3) | 'hospitals' (6) | 'all' (44)
   const [ipamShowFilters, setIpamShowFilters] = useState(false);
   const [ipamSubnetFilter, setIpamSubnetFilter] = useState('');
   const [ipamGatewayFilter, setIpamGatewayFilter] = useState('');
@@ -11779,190 +11779,192 @@ export default function App() {
           ) : (
                 /* Subnets Overview Panel (redesigned grid/list) */
                 <>
-                  {/* Dynamic Stats Cards (4 cards) */}
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '24px' }}>
-                    {/* Card 1 */}
-                    <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', margin: 0, borderRadius: '14px', borderBottom: '4px solid #2563eb', transition: 'transform 0.15s ease', boxShadow: 'var(--shadow-sm)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '46px', height: '46px', backgroundColor: '#eff6ff', borderRadius: '12px', color: '#2563eb', fontSize: '20px', flexShrink: 0 }}>
+                  {/* Dynamic Stats Cards (4 compact horizontal tiles) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px', marginBottom: '14px' }}>
+                    {/* Tile 1: Total branches / depts */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: '4px solid #2563eb', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                      <div style={{ width: '34px', height: '34px', backgroundColor: '#eff6ff', borderRadius: '8px', color: '#2563eb', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         🏢
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                        <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '800', letterSpacing: '0.3px' }}>
-                          {ipamCategory === 'branches' ? 'សរុបសាខា' : 'សរុបស្នាក់ការកណ្តាល'}
-                        </span>
-                        <span style={{ fontSize: '24px', fontWeight: '900', color: '#1e3a8a', margin: '3px 0' }}>
-                          {totalSubnets}
-                        </span>
-                        <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '600' }}>
-                          {ipamCategory === 'branches' ? 'Total Branches' : 'Total HQ Departments'}
-                        </span>
+                      <div style={{ minWidth: 0, flex: 1, lineHeight: '1.2' }}>
+                        <div style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700' }}>
+                          {ipamCategory === 'branches' ? (ipamBranchTypeFilter === 'branches' ? 'សាខាខេត្ត-ខណ្ឌ' : 'សរុបសាខា') : 'សរុបនាយកដ្ឋាន'}
+                        </div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#1e293b' }}>
+                          {ipamCategory === 'branches' && ipamBranchTypeFilter === 'branches' ? branchCounts.branches : totalSubnets}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Card 2 */}
-                    <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', margin: 0, borderRadius: '14px', borderBottom: '4px solid #10b981', transition: 'transform 0.15s ease', boxShadow: 'var(--shadow-sm)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '46px', height: '46px', backgroundColor: '#e6f4ea', borderRadius: '12px', color: '#10b981', fontSize: '20px', flexShrink: 0 }}>
+                    {/* Tile 2: Used IPs */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: '4px solid #10b981', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                      <div style={{ width: '34px', height: '34px', backgroundColor: '#ecfdf5', borderRadius: '8px', color: '#10b981', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         🖥️
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                        <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '800', letterSpacing: '0.3px' }}>ប្រើប្រាស់ IP</span>
-                        <span style={{ fontSize: '24px', fontWeight: '900', color: '#1e3a8a', margin: '3px 0' }}>
-                          {totalUsedIps.toLocaleString()}
-                        </span>
-                        <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '600' }}>Used IP Addresses</span>
+                      <div style={{ minWidth: 0, flex: 1, lineHeight: '1.2' }}>
+                        <div style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700' }}>IP ប្រើប្រាស់</div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#1e293b' }}>{totalUsedIps.toLocaleString()}</div>
                       </div>
                     </div>
 
-                    {/* Card 3 */}
-                    <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', margin: 0, borderRadius: '14px', borderBottom: '4px solid #f59e0b', transition: 'transform 0.15s ease', boxShadow: 'var(--shadow-sm)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '46px', height: '46px', backgroundColor: '#fff7ed', borderRadius: '12px', color: '#f59e0b', fontSize: '20px', flexShrink: 0 }}>
+                    {/* Tile 3: Available IPs */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: '4px solid #f59e0b', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                      <div style={{ width: '34px', height: '34px', backgroundColor: '#fffbeb', borderRadius: '8px', color: '#f59e0b', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         📋
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                        <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '800', letterSpacing: '0.3px' }}>នៅសល់ IP</span>
-                        <span style={{ fontSize: '24px', fontWeight: '900', color: '#1e3a8a', margin: '3px 0' }}>
-                          {totalAvailableIps.toLocaleString()}
-                        </span>
-                        <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '600' }}>Available IP Addresses</span>
+                      <div style={{ minWidth: 0, flex: 1, lineHeight: '1.2' }}>
+                        <div style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700' }}>IP នៅសល់</div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#1e293b' }}>{totalAvailableIps.toLocaleString()}</div>
                       </div>
                     </div>
 
-                    {/* Card 4 */}
-                    <div className="panel" style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', margin: 0, borderRadius: '14px', borderBottom: '4px solid #8b5cf6', transition: 'transform 0.15s ease', boxShadow: 'var(--shadow-sm)' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '46px', height: '46px', backgroundColor: '#faf5ff', borderRadius: '12px', color: '#8b5cf6', fontSize: '20px', flexShrink: 0 }}>
+                    {/* Tile 4: IP Utilization */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 14px', backgroundColor: '#fff', borderRadius: '10px', border: '1px solid #e2e8f0', borderLeft: '4px solid #8b5cf6', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                      <div style={{ width: '34px', height: '34px', backgroundColor: '#faf5ff', borderRadius: '8px', color: '#8b5cf6', fontSize: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                         📊
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', lineHeight: '1.2' }}>
-                        <span style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '800', letterSpacing: '0.3px' }}>ការប្រើប្រាស់សរុប</span>
-                        <span style={{ fontSize: '24px', fontWeight: '900', color: '#1e3a8a', margin: '3px 0' }}>
-                          {avgUtilization}%
-                        </span>
-                        <span style={{ fontSize: '9.5px', color: '#94a3b8', fontWeight: '600' }}>IP Utilization</span>
+                      <div style={{ minWidth: 0, flex: 1, lineHeight: '1.2' }}>
+                        <div style={{ fontSize: '10.5px', color: '#64748b', fontWeight: '700' }}>ការប្រើប្រាស់សរុប</div>
+                        <div style={{ fontSize: '18px', fontWeight: '900', color: '#1e293b' }}>{avgUtilization}%</div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Branch Category Filter Pills */}
-                  {ipamCategory === 'branches' && (
-                    <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11.5px', fontWeight: '800', color: '#64748b', marginRight: '4px' }}>
-                        ជម្រើសមើល:
-                      </span>
-                      {[
-                        { id: 'all', label: 'ទាំងអស់', count: branchCounts.all, icon: '🏢' },
-                        { id: 'branches', label: 'សាខាខេត្ត-ខណ្ឌ', count: branchCounts.branches, icon: '📍' },
-                        { id: 'hospitals', label: 'មន្ទីរពេទ្យជាតិ', count: branchCounts.hospitals, icon: '🏥' },
-                        { id: 'aeon', label: 'ផ្សារទំនើប AEON', count: branchCounts.aeon, icon: '🛒' }
-                      ].map(tab => (
-                        <button
-                          key={tab.id}
-                          onClick={() => setIpamBranchTypeFilter(tab.id)}
-                          style={{
-                            display: 'inline-flex',
-                            alignItems: 'center',
-                            gap: '6px',
-                            padding: '6px 14px',
-                            borderRadius: '20px',
-                            border: ipamBranchTypeFilter === tab.id ? '1.5px solid #2563eb' : '1px solid #cbd5e1',
-                            backgroundColor: ipamBranchTypeFilter === tab.id ? '#eff6ff' : '#fff',
-                            color: ipamBranchTypeFilter === tab.id ? '#1d4ed8' : '#475569',
-                            fontWeight: ipamBranchTypeFilter === tab.id ? '800' : '600',
-                            fontSize: '12px',
-                            cursor: 'pointer',
-                            boxShadow: ipamBranchTypeFilter === tab.id ? '0 2px 4px rgba(37,99,235,0.12)' : 'none',
-                            transition: 'all 0.15s ease'
-                          }}
-                        >
-                          <span>{tab.icon}</span>
-                          <span>{tab.label}</span>
-                          <span style={{
-                            backgroundColor: ipamBranchTypeFilter === tab.id ? '#2563eb' : '#f1f5f9',
-                            color: ipamBranchTypeFilter === tab.id ? '#fff' : '#64748b',
-                            borderRadius: '10px',
-                            padding: '1px 7px',
-                            fontSize: '10.5px',
-                            fontWeight: '800'
-                          }}>
-                            {tab.count}
-                          </span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                  {/* Unified Compact Toolbar (All controls in one clean bar) */}
+                  <div style={{ 
+                    backgroundColor: '#fff', 
+                    borderRadius: '12px', 
+                    border: '1px solid #e2e8f0', 
+                    padding: '8px 12px', 
+                    marginBottom: '14px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '10px',
+                    flexWrap: 'wrap',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.02)'
+                  }}>
+                    {/* Left: Category Pills & Search */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap', flex: 1, minWidth: '300px' }}>
+                      {ipamCategory === 'branches' ? (
+                        <div style={{ display: 'inline-flex', gap: '4px', backgroundColor: '#f1f5f9', padding: '3px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                          {[
+                            { id: 'branches', label: 'សាខា (35)', icon: '📍' },
+                            { id: 'aeon', label: 'AEON (3)', icon: '🛒' },
+                            { id: 'hospitals', label: 'មន្ទីរពេទ្យ (6)', icon: '🏥' },
+                            { id: 'all', label: 'ទាំងអស់ (44)', icon: '🌐' }
+                          ].map(tab => (
+                            <button
+                              key={tab.id}
+                              onClick={() => setIpamBranchTypeFilter(tab.id)}
+                              style={{
+                                border: 'none',
+                                padding: '4px 9px',
+                                borderRadius: '6px',
+                                fontSize: '11px',
+                                fontWeight: ipamBranchTypeFilter === tab.id ? '800' : '600',
+                                cursor: 'pointer',
+                                backgroundColor: ipamBranchTypeFilter === tab.id ? '#2563eb' : 'transparent',
+                                color: ipamBranchTypeFilter === tab.id ? '#fff' : '#64748b',
+                                boxShadow: ipamBranchTypeFilter === tab.id ? '0 1px 3px rgba(37,99,235,0.25)' : 'none',
+                                transition: 'all 0.15s ease'
+                              }}
+                            >
+                              {tab.label}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <span style={{ fontSize: '12.5px', fontWeight: '800', color: '#1e293b', marginRight: '4px' }}>
+                          បញ្ជី Subnets ស្នាក់ការកណ្តាល
+                        </span>
+                      )}
 
-                  {/* Filter Toolbar (Search, Status dropdown, Utilization dropdown, More filters button, Refresh, Add button) */}
-                  <div className="panel" style={{ padding: '14px 20px', marginBottom: '24px', borderRadius: '12px', display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '20px', flexWrap: 'nowrap' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexGrow: 1 }}>
-                      {/* Search */}
-                      <div className="search-container" style={{ flexGrow: 1, maxWidth: '280px', margin: 0 }}>
-                        <span className="search-icon-left">🔍</span>
+                      {/* Search box */}
+                      <div className="search-container" style={{ width: '210px', margin: 0 }}>
+                        <span className="search-icon-left" style={{ fontSize: '11.5px' }}>🔍</span>
                         <input
                           type="text"
                           className="search-input"
-                          placeholder="Search branch, network, IP..."
+                          placeholder="ស្វែងរកសាខា, IP, Gateway..."
                           value={ipamSearchQuery}
                           onChange={(e) => setIpamSearchQuery(e.target.value)}
+                          style={{ height: '30px', fontSize: '11px', paddingLeft: '28px' }}
                         />
                       </div>
 
                       {/* Status Dropdown */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>Status:</span>
-                        <select
-                          className="form-input"
-                          style={{ width: '100px', padding: '6px 10px', height: '36px', fontSize: '12px', fontWeight: '800', border: '1.5px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', margin: 0 }}
-                          value={ipamStatusFilter}
-                          onChange={(e) => setIpamStatusFilter(e.target.value)}
-                        >
-                          <option value="all">ទាំងអស់</option>
-                          <option value="online">សកម្ម</option>
-                          <option value="warning">ជិតពេញ</option>
-                          <option value="offline">មិនទាន់ប្រើ</option>
-                        </select>
-                      </div>
-
-                      {/* Utilization Dropdown */}
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>Utilization:</span>
-                        <select
-                          className="form-input"
-                          style={{ width: '110px', padding: '6px 10px', height: '36px', fontSize: '12px', fontWeight: '800', border: '1.5px solid #cbd5e1', borderRadius: '8px', cursor: 'pointer', margin: 0 }}
-                          value={ipamUtilFilter}
-                          onChange={(e) => setIpamUtilFilter(e.target.value)}
-                        >
-                          <option value="all">ទាំងអស់</option>
-                          <option value="high">ខ្ពស់ (&gt;90%)</option>
-                          <option value="normal">ធម្មតា</option>
-                          <option value="unused">មិនទាន់ប្រើ (0%)</option>
-                        </select>
-                      </div>
-
-                      {/* More Filters */}
-                      <button
-                        className="btn btn-secondary"
-                        onClick={() => setIpamShowFilters(!ipamShowFilters)}
-                        style={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '6px',
-                          fontSize: '11px',
-                          padding: '8px 12px',
-                          height: '36px',
-                          fontWeight: '800',
-                          margin: 0,
-                          backgroundColor: ipamShowFilters ? '#eff6ff' : '',
-                          borderColor: ipamShowFilters ? '#2563eb' : '',
-                          color: ipamShowFilters ? '#2563eb' : ''
-                        }}
+                      <select
+                        className="form-input"
+                        style={{ width: '85px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
+                        value={ipamStatusFilter}
+                        onChange={(e) => setIpamStatusFilter(e.target.value)}
                       >
-                        🎛️ More Filters
-                      </button>
+                        <option value="all">ស្ថានភាព</option>
+                        <option value="online">សកម្ម</option>
+                        <option value="warning">ជិតពេញ</option>
+                        <option value="offline">មិនទាន់ប្រើ</option>
+                      </select>
                     </div>
 
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexShrink: 0 }}>
-                      <button className="btn btn-secondary" onClick={triggerRefresh} title="Refresh" style={{ padding: '8px 12px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', margin: 0 }}>
+                    {/* Right: Sort, View mode & Action Buttons */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
+                      {/* Sort Dropdown */}
+                      <select
+                        className="form-input"
+                        style={{ width: '155px', padding: '3px 6px', height: '30px', fontSize: '11px', fontWeight: '700', borderRadius: '6px', margin: 0 }}
+                        value={ipamSortOrder}
+                        onChange={(e) => setIpamSortOrder(e.target.value)}
+                      >
+                        <option value="no-asc">តម្រៀប: លេខ (#1 - #44)</option>
+                        <option value="no-desc">តម្រៀប: លេខ (#44 - #1)</option>
+                        <option value="name-asc">តម្រៀប: ឈ្មោះ (A-Z)</option>
+                        <option value="pct-desc">តម្រៀប: អត្រាប្រើប្រាស់</option>
+                        <option value="used-desc">តម្រៀប: IP ប្រើច្រើន</option>
+                      </select>
+
+                      {/* Grid / Table Toggle */}
+                      <div style={{ display: 'flex', gap: '2px', backgroundColor: '#f1f5f9', padding: '2px', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                        <button
+                          onClick={() => setIpamViewMode('grid')}
+                          style={{
+                            border: 'none',
+                            padding: '4px 8px',
+                            fontSize: '10.5px',
+                            fontWeight: '700',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            backgroundColor: ipamViewMode === 'grid' ? '#fff' : 'transparent',
+                            color: ipamViewMode === 'grid' ? '#0b45b5' : '#64748b',
+                            boxShadow: ipamViewMode === 'grid' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                          }}
+                        >
+                          Grid
+                        </button>
+                        <button
+                          onClick={() => setIpamViewMode('table')}
+                          style={{
+                            border: 'none',
+                            padding: '4px 8px',
+                            fontSize: '10.5px',
+                            fontWeight: '700',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            backgroundColor: ipamViewMode === 'table' ? '#fff' : 'transparent',
+                            color: ipamViewMode === 'table' ? '#0b45b5' : '#64748b',
+                            boxShadow: ipamViewMode === 'table' ? '0 1px 2px rgba(0,0,0,0.05)' : 'none'
+                          }}
+                        >
+                          Table
+                        </button>
+                      </div>
+
+                      {/* Refresh */}
+                      <button className="btn btn-secondary" onClick={triggerRefresh} title="Refresh" style={{ padding: '4px 8px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '30px', margin: 0 }}>
                         🔄
                       </button>
+
+                      {/* Add Button */}
                       {hasPermission('ipam', 'write') && (
                         <button
                           className="btn btn-primary"
@@ -11975,118 +11977,18 @@ export default function App() {
                               setEditingModal('hq_add');
                             }
                           }}
-                          style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', padding: '8px 16px', height: '36px', fontSize: '11px', fontWeight: '800', margin: 0 }}
+                          style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', padding: '4px 10px', height: '30px', fontSize: '11px', fontWeight: '800', margin: 0 }}
                         >
-                          {ipamCategory === 'branches' ? '➕ Add Branch' : '➕ Add HQ Dept'}
+                          {ipamCategory === 'branches' ? '➕ សាខា' : '➕ នាយកដ្ឋាន'}
                         </button>
                       )}
                     </div>
                   </div>
 
-                  {ipamShowFilters && (
-                    <div className="panel fade-in" style={{ padding: '16px 20px', marginBottom: '24px', borderRadius: '12px', display: 'flex', gap: '16px', alignItems: 'center', backgroundColor: '#f8fafc', border: '1.5px dashed #cbd5e1' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>Subnet Search:</span>
-                        <input
-                          type="text"
-                          className="form-input"
-                          placeholder="e.g. 192.168.1"
-                          style={{ width: '150px', padding: '6px 10px', height: '34px', fontSize: '11px', margin: 0 }}
-                          value={ipamSubnetFilter}
-                          onChange={(e) => setIpamSubnetFilter(e.target.value)}
-                        />
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '800' }}>Gateway Search:</span>
-                        <input
-                          type="text"
-                          className="form-input"
-                          placeholder="e.g. 192.168.1.1"
-                          style={{ width: '150px', padding: '6px 10px', height: '34px', fontSize: '11px', margin: 0 }}
-                          value={ipamGatewayFilter}
-                          onChange={(e) => setIpamGatewayFilter(e.target.value)}
-                        />
-                      </div>
-                      <button
-                        className="btn btn-secondary"
-                        style={{ height: '34px', fontSize: '11px', padding: '0 12px', margin: 0 }}
-                        onClick={() => {
-                          setIpamSearchQuery('');
-                          setIpamStatusFilter('all');
-                          setIpamUtilFilter('all');
-                          setIpamSubnetFilter('');
-                          setIpamGatewayFilter('');
-                        }}
-                      >
-                        Reset Filters
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Section Title, View Toggles & Sorter */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                    <div style={{ fontSize: '14px', fontWeight: '800', color: 'var(--text-primary)' }}>
-                      {ipamCategory === 'branches' ? 'List of NSSF Branches Subnets' : 'List of HQ Departments Subnets'}
-                    </div>
-                    
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      {/* View Mode Toggle Toggles */}
-                      <div style={{ display: 'flex', gap: '4px', backgroundColor: 'var(--bg-secondary)', padding: '3px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                        <button
-                          onClick={() => setIpamViewMode('grid')}
-                          style={{
-                            border: 'none',
-                            padding: '6px 12px',
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            backgroundColor: ipamViewMode === 'grid' ? '#fff' : 'transparent',
-                            color: ipamViewMode === 'grid' ? '#0b45b5' : 'var(--text-secondary)',
-                            boxShadow: ipamViewMode === 'grid' ? 'var(--shadow-sm)' : 'none'
-                          }}
-                        >
-                          Grid View
-                        </button>
-                        <button
-                          onClick={() => setIpamViewMode('table')}
-                          style={{
-                            border: 'none',
-                            padding: '6px 12px',
-                            fontSize: '11px',
-                            fontWeight: '800',
-                            borderRadius: '6px',
-                            cursor: 'pointer',
-                            backgroundColor: ipamViewMode === 'table' ? '#fff' : 'transparent',
-                            color: ipamViewMode === 'table' ? '#0b45b5' : 'var(--text-secondary)',
-                            boxShadow: ipamViewMode === 'table' ? 'var(--shadow-sm)' : 'none'
-                          }}
-                        >
-                          Table View
-                        </button>
-                      </div>
-
-                      {/* Sort Dropdown */}
-                      <select
-                        className="form-input"
-                        style={{ width: '205px', padding: '6px 10px', height: '34px', fontSize: '11px', fontWeight: '800', margin: 0 }}
-                        value={ipamSortOrder}
-                        onChange={(e) => setIpamSortOrder(e.target.value)}
-                      >
-                        <option value="no-asc">តម្រៀប: លេខសាខា (#1 - #44)</option>
-                        <option value="no-desc">តម្រៀប: លេខសាខា (#44 - #1)</option>
-                        <option value="name-asc">តម្រៀប: ឈ្មោះ (ក-អ / A-Z)</option>
-                        <option value="name-desc">តម្រៀប: ឈ្មោះ (អ-ក / Z-A)</option>
-                        <option value="pct-desc">តម្រៀប: អត្រាប្រើប្រាស់ (ខ្ពស់-ទាប)</option>
-                        <option value="used-desc">តម្រៀប: ចំនួន IP ប្រើច្រើន</option>
-                      </select>
-                    </div>
-                  </div>
-
                   {/* Main Subnets Rendering */}
                   {ipamViewMode === 'grid' ? (
-                    /* Redesigned Responsive Grid View */
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(290px, 1fr))', gap: '16px' }} className="fade-in">
+                    /* Compact Responsive Grid View */
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '12px' }} className="fade-in">
                       {filteredSubnets.map((item, idx) => {
                         const totalIps = item.total_ips || 254;
                         const usedIps = item.used_ips || 0;
@@ -12105,22 +12007,26 @@ export default function App() {
                           statusBg = '#fef3c7';
                         }
 
+                        const displayName = ipamCategory === 'branches' 
+                          ? `${item.name_kh || ''}${item.name_en && item.name_en !== item.name_kh ? ` (${item.name_en})` : ''}` 
+                          : (item.name_en || '');
+
                         return (
                           <div 
                             key={item.id || `${item.subnet}-${idx}`} 
                             style={{
                               backgroundColor: '#fff',
                               border: '1px solid #e2e8f0',
-                              borderTop: `4px solid ${statusColor}`,
-                              borderRadius: '12px',
-                              padding: '14px 16px',
-                              boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                              borderTop: `3.5px solid ${statusColor}`,
+                              borderRadius: '10px',
+                              padding: '10px 12px',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
                               cursor: 'pointer',
-                              transition: 'all 0.2s ease',
+                              transition: 'all 0.15s ease',
                               display: 'flex',
                               flexDirection: 'column',
                               justifyContent: 'space-between',
-                              minHeight: '148px'
+                              minHeight: '112px'
                             }}
                             className="subnet-grid-card"
                             onClick={() => {
@@ -12132,49 +12038,42 @@ export default function App() {
                             }}
                           >
                             <div>
-                              {/* Title line */}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
-                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: 0, flex: 1 }}>
+                              {/* Top Title Line (Compact Single-line) */}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', minWidth: 0, flex: 1 }}>
                                   <span style={{ 
                                     display: 'inline-flex', 
                                     alignItems: 'center', 
                                     justifyContent: 'center', 
-                                    minWidth: '34px', 
-                                    height: '24px', 
-                                    padding: '0 6px',
-                                    borderRadius: '6px', 
+                                    minWidth: '28px', 
+                                    height: '20px', 
+                                    padding: '0 4px',
+                                    borderRadius: '5px', 
                                     backgroundColor: '#eff6ff', 
                                     color: '#1d4ed8', 
-                                    fontSize: '11px', 
+                                    fontSize: '10.5px', 
                                     fontWeight: '800',
                                     fontFamily: 'var(--font-mono)',
                                     flexShrink: 0
                                   }}>
                                     #{String(item.no || (idx + 1)).padStart(2, '0')}
                                   </span>
-                                  <div style={{ minWidth: 0, flex: 1 }}>
-                                    <div style={{ 
-                                      fontWeight: '800', 
-                                      fontSize: '13px', 
-                                      color: '#0f172a', 
-                                      whiteSpace: 'nowrap', 
-                                      overflow: 'hidden', 
-                                      textOverflow: 'ellipsis' 
-                                    }} title={ipamCategory === 'branches' ? `${item.name_kh || ''} (${item.name_en || ''})` : `${item.name_en || ''}`}>
-                                      {ipamCategory === 'branches' ? (item.name_kh || item.name_en) : item.name_en}
-                                    </div>
-                                    {ipamCategory === 'branches' && item.name_en && item.name_kh && (
-                                      <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '500', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                        {item.name_en}
-                                      </div>
-                                    )}
-                                  </div>
+                                  <span style={{ 
+                                    fontWeight: '800', 
+                                    fontSize: '12px', 
+                                    color: '#0f172a', 
+                                    whiteSpace: 'nowrap', 
+                                    overflow: 'hidden', 
+                                    textOverflow: 'ellipsis' 
+                                  }} title={displayName}>
+                                    {displayName}
+                                  </span>
                                 </div>
                                 <span style={{ 
-                                  fontSize: '9.5px', 
+                                  fontSize: '9px', 
                                   fontWeight: '800', 
-                                  padding: '2px 8px', 
-                                  borderRadius: '12px', 
+                                  padding: '1.5px 6px', 
+                                  borderRadius: '10px', 
                                   backgroundColor: statusBg,
                                   color: statusColor,
                                   whiteSpace: 'nowrap',
@@ -12184,17 +12083,17 @@ export default function App() {
                                 </span>
                               </div>
 
-                              {/* IP Subnet & Gateway Box */}
-                              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '8px 10px', marginTop: '6px' }}>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', fontWeight: '700', color: '#1e293b' }}>
+                              {/* IP Subnet & Gateway Compact Box */}
+                              <div style={{ backgroundColor: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '5px 8px', marginBottom: '6px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2px' }}>
+                                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', fontWeight: '700', color: '#1e293b' }}>
                                     {item.subnet}/24
                                   </span>
-                                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: '#64748b' }}>
+                                  <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: '#64748b' }}>
                                     GW: {item.gateway || 'N/A'}
                                   </span>
                                 </div>
-                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '11px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '10.5px' }}>
                                   <span style={{ color: '#475569' }}>
                                     ប្រើ: <strong style={{ color: '#0f172a' }}>{usedIps}</strong> / {totalIps}
                                   </span>
@@ -12206,13 +12105,13 @@ export default function App() {
                             </div>
 
                             {/* Card Footer Progress Bar */}
-                            <div style={{ marginTop: '10px' }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                                <span style={{ fontSize: '10px', color: '#64748b', fontWeight: '600' }}>អត្រាប្រើប្រាស់</span>
-                                <span style={{ fontSize: '11px', fontWeight: '800', color: statusColor }}>{pct}%</span>
+                            <div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '3px' }}>
+                                <span style={{ fontSize: '9.5px', color: '#64748b', fontWeight: '600' }}>ការប្រើប្រាស់</span>
+                                <span style={{ fontSize: '10px', fontWeight: '800', color: statusColor }}>{pct}%</span>
                               </div>
-                              <div style={{ height: '5px', backgroundColor: '#e2e8f0', borderRadius: '3px', overflow: 'hidden' }}>
-                                <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', backgroundColor: statusColor, borderRadius: '3px', transition: 'width 0.3s ease' }}></div>
+                              <div style={{ height: '4px', backgroundColor: '#e2e8f0', borderRadius: '2px', overflow: 'hidden' }}>
+                                <div style={{ width: `${Math.min(pct, 100)}%`, height: '100%', backgroundColor: statusColor, borderRadius: '2px', transition: 'width 0.3s ease' }}></div>
                               </div>
                             </div>
                           </div>
