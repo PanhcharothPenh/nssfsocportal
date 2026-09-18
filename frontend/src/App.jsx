@@ -2797,7 +2797,7 @@ export default function App() {
   // Fetch Dashboard Stats
   const fetchDashboardStats = async () => {
     try {
-      const res = await fetch(`${API_BASE}/dashboard`);
+      const res = await fetch(`${API_BASE}/dashboard?t=${Date.now()}`, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
         setDashboardStats(data);
@@ -3022,7 +3022,7 @@ export default function App() {
 
   const fetchBranches = async () => {
     try {
-      const res = await fetch(`${API_BASE}/branches`);
+      const res = await fetch(`${API_BASE}/branches?t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       setBranches(data);
     } catch (err) {
@@ -3032,7 +3032,7 @@ export default function App() {
 
   const fetchBranchDetails = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/branches/${id}`);
+      const res = await fetch(`${API_BASE}/branches/${id}?t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       setSelectedBranch(data.branch);
       setSelectedBranchData(data.ips || []);
@@ -3044,7 +3044,7 @@ export default function App() {
 
   const fetchHqDepts = async () => {
     try {
-      const res = await fetch(`${API_BASE}/hq`);
+      const res = await fetch(`${API_BASE}/hq?t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       setHqDepts(data);
     } catch (err) {
@@ -3054,7 +3054,7 @@ export default function App() {
 
   const fetchDeptDetails = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/hq/${id}`);
+      const res = await fetch(`${API_BASE}/hq/${id}?t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       setSelectedDept(data.department);
       setSelectedDeptData(data.ips || []);
@@ -3066,7 +3066,7 @@ export default function App() {
 
   const fetchVpnUsers = async () => {
     try {
-      const res = await fetch(`${API_BASE}/vpn`);
+      const res = await fetch(`${API_BASE}/vpn?t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       setVpnUsers(data);
     } catch (err) {
@@ -3076,7 +3076,7 @@ export default function App() {
 
   const fetchHospitalVpns = async () => {
     try {
-      const res = await fetch(`${API_BASE}/hospital_vpns`);
+      const res = await fetch(`${API_BASE}/hospital_vpns?t=${Date.now()}`, { cache: 'no-store' });
       const data = await res.json();
       setHospitalVpns(data);
     } catch (err) {
