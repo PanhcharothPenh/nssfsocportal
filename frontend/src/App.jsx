@@ -10282,34 +10282,36 @@ export default function App() {
           </button>
           <div className="page-title">
             <h1 style={{ margin: 0 }}>
-              {activeTab === 'dashboard' && 'មជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC) & ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក'}
+              {activeTab === 'dashboard' && 'ផ្ទាំងគ្រប់គ្រងមជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)'}
               {activeTab === 'ipam' && 'ការគ្រប់គ្រងអាសយដ្ឋាន IP & VLAN (IPAM)'}
               {activeTab === 'vpn' && 'គណនី VPN Remote Access'}
-              {activeTab === 's2s' && 'ស្ថានភាព VPN មន្ទីរពេទ្យឯកជន S2S (Hospital S2S Tunnels)'}
-              {activeTab === 'banks' && 'ស្ថានភាព VPN ធនាគារដៃគូ (Bank S2S Links)'}
-              {activeTab === 'public' && 'តារាង IP Public & DNS Host Mapping'}
+              {activeTab === 's2s' && 'ស្ថានភាព VPN មន្ទីរពេទ្យឯកជន S2S'}
+              {activeTab === 'banks' && 'ស្ថានភាព VPN ធនាគារដៃគូ (Bank S2S)'}
+              {activeTab === 'public' && 'តារាង IP Public & DNS Mapping'}
               {activeTab === 'switches' && 'បញ្ជីឧបករណ៍ Switch តាមសាខា'}
-              {activeTab === 'storage' && 'ប្រព័ន្ធផ្ទុកឯកសាររួម File Storage'}
-              {activeTab === 'kanban' && 'ប្រព័ន្ធគ្រប់គ្រងកិច្ចការងារ Bitrix (Task Management & Kanban Board)'}
-              {activeTab === 'workflow' && 'ប្រព័ន្ធបង្កើត និងកំណត់រចនាសម្ព័ន្ធ Workflow (Visual Workflow & Approval Builder)'}
-              {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើអេឡិចត្រូនិក (Electronic Request Management System)'}
-              {activeTab === 'dev_requests' && 'តារាងការស្នើសុំ ខាង Developer'}
-              {(activeTab === 'pdf_hub' || activeTab === 'forms') && 'ប្រព័ន្ធទម្រង់ PDF តាមប្រភេទ (Categorized PDF Form Hub)'}
-              {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ និងអនុញ្ញាតចេញក្រៅ (Leave & Out of Office Requests)'}
-              {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់ (Night Shift Standby Roster)'}
-              {activeTab === 'shift_generator' && 'ប្រព័ន្ធ Random & គ្រប់គ្រងកាលវិភាគប្រចាំការ (Shift Schedule Generator)'}
+              {activeTab === 'storage' && 'ប្រព័ន្ធផ្ទុកឯកសារ File Storage'}
+              {activeTab === 'kanban' && 'ប្រព័ន្ធគ្រប់គ្រងកិច្ចការងារ Task Kanban'}
+              {activeTab === 'workflow' && 'ប្រព័ន្ធរចនាសម្ព័ន្ធ Visual Workflow'}
+              {activeTab === 'tickets' && 'ប្រព័ន្ធគ្រប់គ្រងសំណើការងារ'}
+              {activeTab === 'dev_requests' && 'តារាងការស្នើសុំ Developer'}
+              {(activeTab === 'pdf_hub' || activeTab === 'forms') && 'ប្រព័ន្ធទម្រង់ PDF តាមប្រភេទ'}
+              {activeTab === 'leave' && 'ទម្រង់សុំច្បាប់ & អនុញ្ញាតចេញក្រៅ'}
+              {activeTab === 'shift' && 'កាលវិភាគវេនប្រចាំការយប់'}
+              {activeTab === 'shift_generator' && 'ប្រព័ន្ធគ្រប់គ្រងកាលវិភាគប្រចាំការ'}
             </h1>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
             {/* Search bar */}
             {!isGuest && (
               <div className="search-container hide-on-mobile">
-                <span className="search-icon-left">🔍</span>
+                <span className="search-icon-left" style={{ display: 'flex', alignItems: 'center', color: '#64748b' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                </span>
                 <input
                   type="text"
                   className="search-input"
-                  placeholder="Search user, IP, MAC, branch..."
+                  placeholder="ស្វែងរក IP, ឈ្មោះ, MAC..."
                   value={searchQuery}
                   onChange={handleSearchChange}
                   onFocus={() => setShowSearchDropdown(searchResults.length > 0)}
@@ -10336,22 +10338,25 @@ export default function App() {
                 type="button"
                 className="btn"
                 onClick={handleInstallPwa}
-                title="Add to Home Screen / ដំឡើងកម្មវិធីលើទូរស័ព្ទ"
+                title="ដំឡើងកម្មវិធីលើទូរស័ព្ទ / Add to Home Screen"
                 style={{
-                  borderRadius: '20px',
-                  padding: '6px 12px',
-                  fontWeight: '800',
+                  height: '36px',
+                  padding: '0 12px',
+                  borderRadius: '8px',
+                  fontWeight: '700',
                   fontSize: '11.5px',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
                   backgroundColor: '#f0fdf4',
                   color: '#15803d',
                   border: '1px solid #bbf7d0',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                📲 <span>ដំឡើង App</span>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"></rect><line x1="12" y1="18" x2="12.01" y2="18"></line></svg>
+                <span>ដំឡើង App</span>
               </button>
             )}
 
@@ -10365,20 +10370,22 @@ export default function App() {
                   setActiveTab('dashboard');
                 }}
                 style={{
-                  borderRadius: '20px',
-                  padding: '6px 14px',
-                  fontWeight: '800',
+                  height: '36px',
+                  padding: '0 14px',
+                  borderRadius: '8px',
+                  fontWeight: '700',
                   fontSize: '12px',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
                   gap: '6px',
                   backgroundColor: '#2563eb',
                   color: '#fff',
                   border: 'none',
-                  cursor: 'pointer'
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
                 }}
               >
-                🔑 <span>ចូលគណនី Admin</span>
+                <span>ចូលគណនី Admin</span>
               </button>
             )}
 
@@ -10386,27 +10393,44 @@ export default function App() {
               <button
                 className="btn btn-secondary hide-on-mobile"
                 onClick={() => handleMenuClick('forms')}
-                style={{ borderRadius: '20px', padding: '6px 14px', fontWeight: '800', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '6px', backgroundColor: '#eff6ff', color: '#1d4ed8', borderColor: '#bfdbfe', cursor: 'pointer' }}
+                style={{
+                  height: '36px',
+                  padding: '0 12px',
+                  borderRadius: '8px',
+                  fontWeight: '700',
+                  fontSize: '11.5px',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  backgroundColor: '#eff6ff',
+                  color: '#1d4ed8',
+                  border: '1px solid #bfdbfe',
+                  cursor: 'pointer',
+                  whiteSpace: 'nowrap'
+                }}
               >
-                📄 ទម្រង់ឯកសារស្នើសុំផ្សេងៗ
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+                <span>ទម្រង់ស្នើសុំ</span>
               </button>
             )}
 
             {/* Google Sheets Sync Status & Trigger */}
             {!isGuest && (
-              <div className="hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className="hide-on-mobile" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <div style={{
+                  height: '36px',
                   fontSize: '11px',
                   fontWeight: '700',
-                  padding: '6px 12px',
-                  borderRadius: '20px',
+                  padding: '0 10px',
+                  borderRadius: '8px',
                   backgroundColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#e6f4ea' : '#f1f5f9',
                   color: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#137333' : '#475569',
                   border: '1px solid',
                   borderColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#a3cfbb' : '#cbd5e1',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '6px'
+                  gap: '6px',
+                  whiteSpace: 'nowrap'
                 }}>
                   <span style={{
                     width: '6px',
@@ -10414,24 +10438,28 @@ export default function App() {
                     borderRadius: '50%',
                     backgroundColor: syncStatus.use_google_sheets && syncStatus.has_credentials_file ? '#10b981' : '#94a3b8'
                   }}></span>
-                  {syncStatus.use_google_sheets && syncStatus.has_credentials_file ? 'Google Sheets សកម្ម' : 'Local Excel Mode'}
+                  <span>{syncStatus.use_google_sheets && syncStatus.has_credentials_file ? 'Sheets សកម្ម' : 'Excel Mode'}</span>
                 </div>
                 {syncStatus.use_google_sheets && syncStatus.has_credentials_file && !isViewer && (
                   <button
                     className="btn btn-secondary"
                     style={{
-                      padding: '6px 12px',
+                      height: '36px',
+                      padding: '0 10px',
+                      borderRadius: '8px',
                       fontSize: '11px',
                       fontWeight: '700',
-                      display: 'flex',
+                      display: 'inline-flex',
                       alignItems: 'center',
-                      gap: '4px',
-                      height: '32px'
+                      gap: '5px',
+                      whiteSpace: 'nowrap'
                     }}
                     onClick={handlePullSync}
                     disabled={isSyncing}
+                    title="ទាញយកទិន្នន័យពី Google Sheets"
                   >
-                    {isSyncing ? 'កំពុងទាញយក...' : '🔄 Sync ពី Google Sheets'}
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/></svg>
+                    <span>{isSyncing ? 'Syncing...' : 'Sync'}</span>
                   </button>
                 )}
               </div>
