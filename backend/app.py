@@ -1644,8 +1644,41 @@ def get_hospital_vpns(type: Optional[str] = None):
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
+def _bg_notify_and_sync_hospital_vpn(id: int, v_data_dict: dict, editor: Optional[str], client_ip: Optional[str]):
+    # Trigger Telegram Audit Notification (safely in background)
+    try:
+        try:
+            from backend.telegram import notify_data_change
+        except ImportError:
+            from api.telegram import notify_data_change
+        notify_data_change(
+            action_title="ធ្វើបច្ចុប្បន្នភាព Hospital/Bank VPN (Hospital VPN Update)",
+            details={
+                "ឈ្មោះមន្ទីរពេទ្យ/ធនាគារ": v_data_dict.get("name"),
+                "LAN IP": v_data_dict.get("lan_ip"),
+                "Public IP": v_data_dict.get("public_ip"),
+                "ISP": v_data_dict.get("isp"),
+                "ប្រភេទ (VPN Type)": v_data_dict.get("vpn_type") or "S2S",
+                "ស្ថានភាព (Status)": v_data_dict.get("status")
+            },
+            editor_username=editor,
+            client_ip=client_ip
+        )
+    except Exception as t_err:
+        print("Telegram notification error in background:", t_err)
+
+    # Sync to Excel / Google Sheets (safely in background)
+    try:
+        try:
+            from syncer import sync_hospital_vpn_to_excel
+        except ImportError:
+            from backend.syncer import sync_hospital_vpn_to_excel
+        sync_hospital_vpn_to_excel(id, v_data_dict)
+    except Exception as sync_e:
+        print("Sync to Excel error in background:", sync_e)
+
 @app.post("/api/hospital_vpns/{id}")
-def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request):
+def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request, background_tasks: BackgroundTasks):
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -1684,48 +1717,15 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request):
         conn.commit()
         conn.close()
         
-        # Trigger Telegram Audit Notification (safely)
-        try:
-            try:
-                from backend.telegram import notify_data_change
-            except ImportError:
-                from api.telegram import notify_data_change
-            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
-            client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
-            notify_data_change(
-                action_title="ធ្វើបច្ចុប្បន្នភាព Hospital/Bank VPN (Hospital VPN Update)",
-                details={
-                    "ឈ្មោះមន្ទីរពេទ្យ/ធនាគារ": v_data.name,
-                    "LAN IP": v_data.lan_ip,
-                    "Public IP": v_data.public_ip,
-                    "ISP": v_data.isp,
-                    "ប្រភេទ (VPN Type)": getattr(v_data, 'vpn_type', None) or "S2S",
-                    "ស្ថានភាព (Status)": v_data.status
-                },
-                editor_username=editor,
-                client_ip=client_ip
-            )
-        except Exception as t_err:
-            print("Telegram notification error:", t_err)
-        
-        # Sync to Excel (safely)
-        excel_sync_msg = "skipped"
-        try:
-            updates = v_data.dict(exclude_unset=True)
-            try:
-                from syncer import sync_hospital_vpn_to_excel
-            except ImportError:
-                from backend.syncer import sync_hospital_vpn_to_excel
-            success, msg = sync_hospital_vpn_to_excel(id, updates)
-            excel_sync_msg = "success" if success else f"failed ({msg})"
-        except Exception as sync_e:
-            print("Sync to Excel error:", sync_e)
-            excel_sync_msg = f"failed ({sync_e})"
+        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+        client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
+        v_dict = v_data.dict(exclude_unset=True)
+        background_tasks.add_task(_bg_notify_and_sync_hospital_vpn, id, v_dict, editor, client_ip)
         
         return {
             "status": "success",
             "db_update": "success",
-            "excel_sync": excel_sync_msg
+            "excel_sync": "queued"
         }
     except HTTPException:
         raise

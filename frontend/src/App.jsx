@@ -4210,21 +4210,23 @@ export default function App() {
           reference_doc: editingData.reference_doc || '',
           vpn_type: editingData.vpn_type || 'S2S'
         };
+        // Optimistic instant UI update (Zero-lag)
+        setHospitalVpns(prev => prev.map(v => v.id === editingData.id ? { ...v, ...payload } : v));
+        setEditingModal(null);
+        setModalError(null);
+
         const res = await fetch(`${API_BASE}/hospital_vpns/${editingData.id}`, {
           method: 'POST',
           headers: jsonHeaders,
           body: JSON.stringify(payload)
         });
         if (res.ok) {
-          await fetchHospitalVpns();
-          await fetchDashboardStats();
-          setEditingModal(null);
-          setModalError(null);
-          alert('✅ រក្សាទុក និងធ្វើសមកាលកម្មទិន្នន័យបានជោគជ័យ!');
+          fetchHospitalVpns();
+          fetchDashboardStats();
         } else {
           const err = await res.json().catch(() => ({ detail: 'Error updating S2S VPN' }));
-          setModalError(err.detail || 'Error updating S2S VPN');
           alert(`❌ មានបញ្ហាក្នុងការរក្សាទុក ៖ ${err.detail || 'កំហុសបច្ចេកទេស'}`);
+          fetchHospitalVpns();
         }
       } else if (editingModal === 'branch_add') {
         const res = await fetch(`${API_BASE}/branches`, {
