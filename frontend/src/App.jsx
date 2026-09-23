@@ -4077,17 +4077,21 @@ export default function App() {
     setEditingData({ ...ipNode });
   };
 
+  const getAuthHeaders = () => {
+    const rawUsername = currentLoginUser?.username || currentLoginUser?.full_name || 'Admin';
+    const rawFullname = currentLoginUser?.full_name || currentLoginUser?.username || 'Admin';
+    return {
+      'Content-Type': 'application/json',
+      'x-editor-username': encodeURIComponent(String(rawUsername)),
+      'x-editor-fullname': encodeURIComponent(String(rawFullname))
+    };
+  };
+
   const handleModalSave = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     
-    const editorUsername = currentLoginUser?.username || currentLoginUser?.full_name || 'Admin';
-    const editorFullname = currentLoginUser?.full_name || currentLoginUser?.username || 'Admin';
-    const jsonHeaders = {
-      'Content-Type': 'application/json',
-      'x-editor-username': editorUsername,
-      'x-editor-fullname': editorFullname
-    };
+    const jsonHeaders = getAuthHeaders();
 
     try {
       if (editingModal === 'branch_ip') {
@@ -4350,6 +4354,7 @@ export default function App() {
     };
     
     try {
+      const jsonHeaders = getAuthHeaders();
       const res = await fetch(`${API_BASE}/hospital_vpns/${vpn.id}`, {
         method: 'POST',
         headers: jsonHeaders,

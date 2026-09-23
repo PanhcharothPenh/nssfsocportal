@@ -86,6 +86,17 @@ async def add_no_cache_headers(request: Request, call_next):
         response.headers["Expires"] = "0"
     return response
 
+import urllib.parse
+
+def get_editor_from_request(request: Optional[Request]) -> Optional[str]:
+    if not request:
+        return "Admin"
+    raw = request.headers.get("x-editor-fullname") or request.headers.get("x-editor-username") or request.headers.get("x-user-fullname") or "Admin"
+    try:
+        return urllib.parse.unquote(raw)
+    except Exception:
+        return raw
+
 def ensure_user_columns_exist(conn=None):
     should_close = False
     if conn is None:
@@ -1226,7 +1237,7 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, backgro
         conn.commit()
         conn.close()
         
-        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+        editor = get_editor_from_request(request)
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         branch_name = f"{branch_row['name_kh']} ({branch_row['name_en']})"
         updates = ip_data.dict(exclude_unset=True)
@@ -1481,7 +1492,7 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, background_task
         conn.commit()
         conn.close()
         
-        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+        editor = get_editor_from_request(request)
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         dept_name = f"{dept_row['name_en']} (VLAN {dept_row['vlan_id']})"
         updates = ip_data.dict(exclude_unset=True)
@@ -1607,7 +1618,7 @@ def create_vpn_user(v_data: VPNUserUpdate, request: Request = None):
             editor = None
             client_ip = None
             if request:
-                editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+                editor = get_editor_from_request(request)
                 client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             notify_data_change(
                 action_title="ចុះឈ្មោះអ្នកប្រើប្រាស់ VPN ថ្មី (New VPN User)",
@@ -1688,7 +1699,7 @@ def update_vpn_user(id: int, v_data: VPNUserUpdate, request: Request, background
         
         # Trigger Telegram Audit Notification
         try:
-            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+            editor = get_editor_from_request(request)
             client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             notify_data_change(
                 action_title="ធ្វើបច្ចុប្បន្នភាព Remote VPN User (VPN User Update)",
@@ -1758,7 +1769,7 @@ def delete_vpn_user(id: int, request: Request):
         conn.close()
         
         try:
-            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+            editor = get_editor_from_request(request)
             client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
             user_name = user_rec['name'] if hasattr(user_rec, 'keys') and 'name' in user_rec else (user_rec[1] if isinstance(user_rec, (tuple, list)) and len(user_rec) > 1 else '')
             user_uname = user_rec['username'] if hasattr(user_rec, 'keys') and 'username' in user_rec else (user_rec[2] if isinstance(user_rec, (tuple, list)) and len(user_rec) > 2 else '')
@@ -1888,7 +1899,7 @@ def update_hospital_vpn(id: int, v_data: HospitalVPNUpdate, request: Request, ba
         conn.commit()
         conn.close()
         
-        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+        editor = get_editor_from_request(request)
         client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
         v_dict = {
             "name": name,
