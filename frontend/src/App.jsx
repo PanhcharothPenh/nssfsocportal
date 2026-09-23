@@ -6570,7 +6570,7 @@ export default function App() {
       { key: 'kanban', name: 'កិច្ចការ Bitrix (Kanban)', desc: 'គ្រប់គ្រងកិច្ចការ Task, Board & Deadlines', icon: '📋' },
       { key: 'workflow', name: 'Workflow Builder', desc: 'បង្កើត និងកំណត់រចនាសម្ព័ន្ធដំណាក់កាលអនុម័ត', icon: '🔄' },
       { key: 'pdf_hub', name: 'PDF Form Hub', desc: 'ទម្រង់ឯកសារស្នើសុំ PDF តាមប្រភេទ', icon: '📄' },
-      { key: 'ipam', name: 'IPAM / IP Address', desc: 'គ្រប់គ្រង subnet និងទីតាំងឧបករណ៍', icon: '🏢' },
+      { key: 'ipam', name: 'IP HQ-Branch', desc: 'គ្រប់គ្រង subnet និងទីតាំងឧបករណ៍ HQ និងសាខា', icon: '🏢' },
       { key: 'vpn_remote', name: 'VPN Remote Access', desc: 'គណនីបុគ្គលិកភ្ជាប់ VPN ពីក្រៅ', icon: '🔑' },
       { key: 'hospital_vpn', name: 'Hospital VPNs', desc: 'ការភ្ជាប់ VPN មន្ទីរពេទ្យ / ឯកសារយោង', icon: '🏥' },
       { key: 'bank_vpn', name: 'Bank VPNs', desc: 'ការភ្ជាប់ VPN ធនាគារដៃគូ', icon: '🏦' },
@@ -10101,7 +10101,7 @@ export default function App() {
                   <span className="menu-icon" style={{ fontSize: '14px', display: 'flex', alignItems: 'center' }}>
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
                   </span>
-                  <span>IPAM / IP Address</span>
+                  <span>IP HQ-Branch</span>
                 </li>
               )}
               {hasPermission('vpn_remote', 'read') && (
@@ -10254,7 +10254,7 @@ export default function App() {
           <div className="page-title">
             <h1 style={{ margin: 0 }}>
               {activeTab === 'dashboard' && 'ផ្ទាំងគ្រប់គ្រងមជ្ឈមណ្ឌលប្រតិបត្តិការសន្តិសុខ (SOC)'}
-              {activeTab === 'ipam' && 'ការគ្រប់គ្រងអាសយដ្ឋាន IP & VLAN (IPAM)'}
+              {activeTab === 'ipam' && 'ការគ្រប់គ្រងអាសយដ្ឋាន IP HQ & Branch'}
               {activeTab === 'vpn' && 'គណនី VPN Remote Access'}
               {activeTab === 's2s' && 'ស្ថានភាព VPN មន្ទីរពេទ្យឯកជន S2S'}
               {activeTab === 'banks' && 'ស្ថានភាព VPN ធនាគារដៃគូ (Bank S2S)'}
@@ -11043,7 +11043,7 @@ export default function App() {
                           <line x1="6" y1="18" x2="6.01" y2="18"></line>
                         </svg>
                       </div>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>IPAM Subnets</span>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: '#334155', textAlign: 'center', lineHeight: '1.2' }}>IP HQ-Branch</span>
                     </div>
 
                     {/* Tile 2: VPN Remote */}
