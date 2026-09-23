@@ -4091,7 +4091,13 @@ export default function App() {
 
     try {
       if (editingModal === 'branch_ip') {
-        const res = await fetch(`${API_BASE}/branches/${editingData.branch_id}/ips?ip=${editingData.ip}`, {
+        const targetBranchId = editingData.branch_id || selectedBranch?.id;
+        if (!targetBranchId) {
+          alert('❌ មិនមានសាខាដែលបានជ្រើសរើស (Branch ID missing)');
+          setIsSubmitting(false);
+          return;
+        }
+        const res = await fetch(`${API_BASE}/branches/${targetBranchId}/ips?ip=${editingData.ip}`, {
           method: 'POST',
           headers: jsonHeaders,
           body: JSON.stringify({
@@ -4105,12 +4111,23 @@ export default function App() {
           })
         });
         if (res.ok) {
-          fetchBranchDetails(editingData.branch_id);
+          fetchBranchDetails(targetBranchId);
           fetchDashboardStats();
           setEditingModal(null);
+          setModalError(null);
+        } else {
+          const err = await res.json().catch(() => ({ detail: 'កំហុសក្នុងការរក្សាទុក' }));
+          setModalError(err.detail || 'កំហុសក្នុងការរក្សាទុក');
+          alert(`❌ មានបញ្ហាក្នុងការរក្សាទុក ៖ ${err.detail || 'កំហុសក្នុងការរក្សាទុក'}`);
         }
       } else if (editingModal === 'hq_ip') {
-        const res = await fetch(`${API_BASE}/hq/${editingData.dept_id}/ips?ip=${editingData.ip}`, {
+        const targetDeptId = editingData.dept_id || selectedDept?.id;
+        if (!targetDeptId) {
+          alert('❌ មិនមាននាយកដ្ឋានដែលបានជ្រើសរើស (Dept ID missing)');
+          setIsSubmitting(false);
+          return;
+        }
+        const res = await fetch(`${API_BASE}/hq/${targetDeptId}/ips?ip=${editingData.ip}`, {
           method: 'POST',
           headers: jsonHeaders,
           body: JSON.stringify({
@@ -4128,9 +4145,14 @@ export default function App() {
           })
         });
         if (res.ok) {
-          fetchDeptDetails(editingData.dept_id);
+          fetchDeptDetails(targetDeptId);
           fetchDashboardStats();
           setEditingModal(null);
+          setModalError(null);
+        } else {
+          const err = await res.json().catch(() => ({ detail: 'កំហុសក្នុងការរក្សាទុក' }));
+          setModalError(err.detail || 'កំហុសក្នុងការរក្សាទុក');
+          alert(`❌ មានបញ្ហាក្នុងការរក្សាទុក ៖ ${err.detail || 'កំហុសក្នុងការរក្សាទុក'}`);
         }
       } else if (editingModal === 'vpn_user') {
         const res = await fetch(`${API_BASE}/vpn/${editingData.id}`, {
@@ -4241,8 +4263,9 @@ export default function App() {
           fetchDashboardStats();
           setEditingModal(null);
         } else {
-          const err = await res.json();
+          const err = await res.json().catch(() => ({ detail: 'Error adding branch' }));
           setModalError(err.detail || 'Error adding branch');
+          alert(`❌ មានបញ្ហាក្នុងការបន្ថែមសាខា ៖ ${err.detail || 'Error adding branch'}`);
         }
       } else if (editingModal === 'hq_add') {
         const res = await fetch(`${API_BASE}/hq`, {
@@ -4265,13 +4288,16 @@ export default function App() {
           fetchHqDepts();
           fetchDashboardStats();
           setEditingModal(null);
+          setModalError(null);
         } else {
-          const err = await res.json();
+          const err = await res.json().catch(() => ({ detail: 'Error adding HQ department' }));
           setModalError(err.detail || 'Error adding HQ department');
+          alert(`❌ មានបញ្ហាក្នុងការបន្ថែមនាយកដ្ឋាន ៖ ${err.detail || 'Error adding HQ department'}`);
         }
       }
     } catch (err) {
       console.error('Error saving data:', err);
+      alert(`❌ មានបញ្ហាបច្ចេកទេស ឬ បណ្តាញអ៊ីនធឺណិត ៖ ${err.message || 'Network error'}`);
     } finally {
       setIsSubmitting(false);
     }

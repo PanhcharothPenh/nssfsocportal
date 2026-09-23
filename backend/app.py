@@ -1134,8 +1134,32 @@ def get_branch_details(id: int):
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
+def _bg_notify_and_sync_branch_ip(branch_id: int, branch_name: str, ip: str, ip_data_dict: dict, updates: dict, editor: Optional[str], client_ip: Optional[str]):
+    try:
+        notify_data_change(
+            action_title="ធ្វើបច្ចុប្បន្នភាព IP តាមសាខា (Branch IP Update)",
+            details={
+                "សាខា (Branch)": branch_name,
+                "IP Address": ip,
+                "ឈ្មោះអ្នកប្រើប្រាស់ (User Name)": ip_data_dict.get("user_name"),
+                "តួនាទី (Position)": ip_data_dict.get("position"),
+                "MAC Address": ip_data_dict.get("mac_address"),
+                "ប្រភេទឧបករណ៍ (Device)": ip_data_dict.get("device_type"),
+                "ស្ថានភាព (Status)": ip_data_dict.get("status")
+            },
+            editor_username=editor,
+            client_ip=client_ip
+        )
+    except Exception as t_err:
+        print("Telegram notification error in background:", t_err)
+
+    try:
+        sync_branch_ip_to_excel(branch_id, ip, updates)
+    except Exception as sync_e:
+        print("Sync branch IP to Excel error in background:", sync_e)
+
 @app.post("/api/branches/{id}/ips")
-def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str = Query(...)):
+def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, background_tasks: BackgroundTasks = None, ip: str = Query(...)):
     global _dashboard_cache
     _dashboard_cache["expires_at"] = 0
     _dashboard_cache["data"] = None
@@ -1150,13 +1174,13 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
             conn.close()
             raise HTTPException(status_code=404, detail="Branch not found")
             
-        # Check if entry already exists in DB
-        cursor.execute("SELECT * FROM branch_ips WHERE ip = ?", (ip,))
+        # Check if entry already exists in DB for this branch and IP
+        cursor.execute("SELECT * FROM branch_ips WHERE branch_id = ? AND ip = ?", (id, ip))
         row = cursor.fetchone()
         
         is_cleared = (ip_data.status in ['Available', 'AVAILABLE']) and not (ip_data.user_name and str(ip_data.user_name).strip())
         if is_cleared:
-            cursor.execute("DELETE FROM branch_ips WHERE ip = ?", (ip,))
+            cursor.execute("DELETE FROM branch_ips WHERE branch_id = ? AND ip = ?", (id, ip))
         elif row:
             ex = dict(row)
             user_name = ip_data.user_name if ip_data.user_name is not None else ex.get('user_name')
@@ -1170,7 +1194,7 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
             cursor.execute("""
             UPDATE branch_ips
             SET user_name = ?, position = ?, mac_address = ?, device_type = ?, status = ?, internet_permission = ?, other = ?
-            WHERE ip = ?
+            WHERE branch_id = ? AND ip = ?
             """, (
                 user_name,
                 position,
@@ -1179,6 +1203,7 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
                 status,
                 internet_permission,
                 other,
+                id,
                 ip
             ))
         else:
@@ -1201,36 +1226,29 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
         conn.commit()
         conn.close()
         
-        # Trigger Telegram Audit Notification
-        try:
-            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
-            client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
-            branch_name = f"{branch_row['name_kh']} ({branch_row['name_en']})"
-            notify_data_change(
-                action_title="ធ្វើបច្ចុប្បន្នភាព IP តាមសាខា (Branch IP Update)",
-                details={
-                    "សាខា (Branch)": branch_name,
-                    "IP Address": ip,
-                    "ឈ្មោះអ្នកប្រើប្រាស់ (User Name)": ip_data.user_name,
-                    "តួនាទី (Position)": ip_data.position,
-                    "MAC Address": ip_data.mac_address,
-                    "ប្រភេទឧបករណ៍ (Device)": ip_data.device_type,
-                    "ស្ថានភាព (Status)": ip_data.status
-                },
-                editor_username=editor,
-                client_ip=client_ip
-            )
-        except Exception as t_err:
-            print("Telegram notification error:", t_err)
-        
-        # Now sync with the Excel file using the helper
+        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+        client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
+        branch_name = f"{branch_row['name_kh']} ({branch_row['name_en']})"
         updates = ip_data.dict(exclude_unset=True)
-        success, msg = sync_branch_ip_to_excel(id, ip, updates)
+
+        if background_tasks is not None:
+            background_tasks.add_task(
+                _bg_notify_and_sync_branch_ip,
+                id, branch_name, ip, ip_data.dict(), updates, editor, client_ip
+            )
+        else:
+            import threading
+            threading.Thread(
+                target=_bg_notify_and_sync_branch_ip,
+                args=(id, branch_name, ip, ip_data.dict(), updates, editor, client_ip),
+                daemon=True
+            ).start()
         
         return {
             "status": "success",
             "db_update": "success",
-            "excel_sync": "success" if success else f"failed ({msg})"
+            "excel_sync": "queued",
+            "message": "Saved successfully"
         }
     except HTTPException:
         raise
@@ -1239,8 +1257,6 @@ def update_branch_ip(id: int, ip_data: BranchIPUpdate, request: Request, ip: str
             conn.close()
         except Exception:
             pass
-        raise HTTPException(status_code=500, detail=str(e))
-        conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.get("/api/hq")
@@ -1363,8 +1379,30 @@ def get_hq_dept_details(id: int):
         conn.close()
         raise HTTPException(status_code=500, detail=str(e))
 
+def _bg_notify_and_sync_hq_ip(dept_id: int, dept_name: str, ip: str, ip_data_dict: dict, updates: dict, editor: Optional[str], client_ip: Optional[str]):
+    try:
+        notify_data_change(
+            action_title="ធ្វើបច្ចុប្បន្នភាព IP តាមនាយកដ្ឋាន HQ (HQ IP Update)",
+            details={
+                "នាយកដ្ឋាន (Department)": dept_name,
+                "IP Address": ip,
+                "ឈ្មោះបុគ្គលិក (User Name)": ip_data_dict.get("user_name_kh") or ip_data_dict.get("user_name_en"),
+                "តួនាទី (Position)": ip_data_dict.get("position"),
+                "ស្ថានភាព (Status)": ip_data_dict.get("status")
+            },
+            editor_username=editor,
+            client_ip=client_ip
+        )
+    except Exception as t_err:
+        print("Telegram notification error in background:", t_err)
+
+    try:
+        sync_hq_ip_to_excel(dept_id, ip, updates)
+    except Exception as sync_e:
+        print("Sync HQ IP to Excel error in background:", sync_e)
+
 @app.post("/api/hq/{id}/ips")
-def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query(...)):
+def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, background_tasks: BackgroundTasks = None, ip: str = Query(...)):
     global _dashboard_cache
     _dashboard_cache["expires_at"] = 0
     _dashboard_cache["data"] = None
@@ -1380,12 +1418,12 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
             raise HTTPException(status_code=404, detail="Department not found")
             
         # Check if entry already exists in DB
-        cursor.execute("SELECT * FROM hq_ips WHERE ip = ?", (ip,))
+        cursor.execute("SELECT * FROM hq_ips WHERE dept_id = ? AND ip = ?", (id, ip))
         row = cursor.fetchone()
         
         is_cleared = (ip_data.status in ['Available', 'AVAILABLE']) and not (ip_data.user_name_en and str(ip_data.user_name_en).strip()) and not (ip_data.user_name_kh and str(ip_data.user_name_kh).strip())
         if is_cleared:
-            cursor.execute("DELETE FROM hq_ips WHERE ip = ?", (ip,))
+            cursor.execute("DELETE FROM hq_ips WHERE dept_id = ? AND ip = ?", (id, ip))
         elif row:
             ex = dict(row)
             user_name_kh = ip_data.user_name_kh if ip_data.user_name_kh is not None else ex.get('user_name_kh')
@@ -1403,7 +1441,7 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
             cursor.execute("""
             UPDATE hq_ips
             SET user_name_kh = ?, user_name_en = ?, position = ?, old_ip = ?, subnet_mask = ?, gateway = ?, status = ?, internet_permission = ?, group_system = ?, verify_update = ?, other = ?
-            WHERE ip = ?
+            WHERE dept_id = ? AND ip = ?
             """, (
                 user_name_kh,
                 user_name_en,
@@ -1416,6 +1454,7 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
                 group_system,
                 verify_update,
                 other,
+                id,
                 ip
             ))
         else:
@@ -1442,34 +1481,29 @@ def update_hq_ip(id: int, ip_data: HQIPUpdate, request: Request, ip: str = Query
         conn.commit()
         conn.close()
         
-        # Trigger Telegram Audit Notification
-        try:
-            editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
-            client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
-            dept_name = f"{dept_row['name_en']} (VLAN {dept_row['vlan_id']})"
-            notify_data_change(
-                action_title="ធ្វើបច្ចុប្បន្នភាព IP តាមនាយកដ្ឋាន HQ (HQ IP Update)",
-                details={
-                    "នាយកដ្ឋាន (Department)": dept_name,
-                    "IP Address": ip,
-                    "ឈ្មោះបុគ្គលិក (User Name)": ip_data.user_name_kh or ip_data.user_name_en,
-                    "តួនាទី (Position)": ip_data.position,
-                    "ស្ថានភាព (Status)": ip_data.status
-                },
-                editor_username=editor,
-                client_ip=client_ip
-            )
-        except Exception as t_err:
-            print("Telegram notification error:", t_err)
-        
-        # Now sync with the Excel file using the helper
+        editor = request.headers.get("x-editor-username") or request.headers.get("x-editor-fullname") or request.headers.get("x-user-fullname")
+        client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else None)
+        dept_name = f"{dept_row['name_en']} (VLAN {dept_row['vlan_id']})"
         updates = ip_data.dict(exclude_unset=True)
-        success, msg = sync_hq_ip_to_excel(id, ip, updates)
+
+        if background_tasks is not None:
+            background_tasks.add_task(
+                _bg_notify_and_sync_hq_ip,
+                id, dept_name, ip, ip_data.dict(), updates, editor, client_ip
+            )
+        else:
+            import threading
+            threading.Thread(
+                target=_bg_notify_and_sync_hq_ip,
+                args=(id, dept_name, ip, ip_data.dict(), updates, editor, client_ip),
+                daemon=True
+            ).start()
         
         return {
             "status": "success",
             "db_update": "success",
-            "excel_sync": "success" if success else f"failed ({msg})"
+            "excel_sync": "queued",
+            "message": "Saved successfully"
         }
     except HTTPException:
         raise
