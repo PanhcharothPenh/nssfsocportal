@@ -63,6 +63,7 @@ except ImportError:
         )
 
 from fastapi.middleware.gzip import GZipMiddleware
+from starlette.concurrency import run_in_threadpool
 
 app = FastAPI(title="NSSF SOC Network API", version="1.0.0")
 
@@ -3620,9 +3621,9 @@ def fetch_custom_shift_schedule_from_sqlite():
 
 @app.get("/api/shift/today")
 def get_today_shift():
-    from datetime import datetime, timedelta
+    from datetime import timedelta
     schedule = fetch_shift_schedule_from_firestore()
-    now = datetime.now()
+    now = get_ict_now()
     today_str = now.strftime("%Y-%m-%d")
     tmr_str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
     today_names = schedule.get(today_str, [])
@@ -3973,12 +3974,24 @@ def save_shift_schedule(payload: ShiftSavePayload):
 
 @app.api_route("/api/shift/notify-today", methods=["GET", "POST"])
 @app.api_route("/api/shift/notify-tomorrow", methods=["GET", "POST"])
-def notify_today_shift_staff(request: Request, day: str = Query("today")):
-    from datetime import datetime, timedelta
+async def notify_today_shift_staff(request: Request, day: str = Query("today")):
+    # The portal posts {"target": "today" | "tomorrow"}; cron jobs use the path or ?day=.
+    target = day
+    if request.method == "POST":
+        try:
+            body = await request.json()
+            if isinstance(body, dict) and body.get("target"):
+                target = str(body["target"])
+        except Exception:
+            pass
+    is_tomorrow = "tomorrow" in request.url.path or target.lower() == "tomorrow"
+    return await run_in_threadpool(_notify_shift_staff, is_tomorrow)
+
+def _notify_shift_staff(is_tomorrow: bool):
+    from datetime import timedelta
     import requests
-    
-    is_tomorrow = "tomorrow" in request.url.path or day.lower() == "tomorrow"
-    now = datetime.now()
+
+    now = get_ict_now()
     if is_tomorrow:
         target_date = now + timedelta(days=1)
         day_label_kh = "ថ្ងៃស្អែក"
@@ -4219,6 +4232,65 @@ def generate_ticket_timeline(ticket):
 @app.post("/api/tickets/check-due-alerts")
 def api_check_due_alerts():
     return check_ticket_due_alerts()
+
+@app.get("/api/tickets/reports")
+def get_tickets_reports(period: str = "monthly", year: Optional[int] = None, month: Optional[int] = None):
+    now = get_ict_now()
+    year = year or now.year
+    month = month or now.month
+    if period == "monthly":
+        prefix = f"{year:04d}-{month:02d}"
+    elif period == "yearly":
+        prefix = f"{year:04d}"
+    else:
+        prefix = ""
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM tickets ORDER BY id DESC")
+    rows = cursor.fetchall()
+    conn.close()
+    
+    tickets = [dict(r) for r in rows] if rows else []
+    # created_at is text in SQLite and a timestamp in Postgres; both start with YYYY-MM-DD.
+    tickets = [t for t in tickets if str(t.get('created_at') or '').startswith(prefix)]
+    
+    total = len(tickets)
+    pending_approval = sum(1 for t in tickets if t['status'] in ('pending_l1', 'pending_l2'))
+    approved = sum(1 for t in tickets if t['status'] == 'approved')
+    in_progress = sum(1 for t in tickets if t['status'] == 'in_progress')
+    completed = sum(1 for t in tickets if t['status'] == 'completed')
+    rejected = sum(1 for t in tickets if t['status'] == 'rejected')
+    
+    prio_counts = {
+        "Urgent": sum(1 for t in tickets if t['priority'] == 'Urgent'),
+        "High": sum(1 for t in tickets if t['priority'] == 'High'),
+        "Medium": sum(1 for t in tickets if t['priority'] == 'Medium'),
+        "Low": sum(1 for t in tickets if t['priority'] == 'Low')
+    }
+    
+    cat_counts = {}
+    for t in tickets:
+        c = t.get('category') or 'Incident'
+        cat_counts[c] = cat_counts.get(c, 0) + 1
+        
+    return {
+        "status": "success",
+        "period": period,
+        "year": year,
+        "month": month if period == "monthly" else None,
+        "summary": {
+            "total": total,
+            "pending_approval": pending_approval,
+            "approved": approved,
+            "in_progress": in_progress,
+            "completed": completed,
+            "rejected": rejected,
+            "completion_rate": round((completed / total * 100), 1) if total > 0 else 0.0
+        },
+        "by_priority": prio_counts,
+        "by_category": cat_counts
+    }
 
 @app.get("/api/tickets/{ticket_id}")
 def get_ticket_detail(ticket_id: int):
@@ -5259,51 +5331,6 @@ def view_ticket_attachment(ticket_id: int):
 </body>
 </html>"""
     return HTMLResponse(content=html_content)
-
-@app.get("/api/tickets/reports")
-def get_tickets_reports(period: str = "monthly", year: int = 2026, month: int = 7):
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute("SELECT * FROM tickets ORDER BY id DESC")
-    rows = cursor.fetchall()
-    conn.close()
-    
-    tickets = [dict(r) for r in rows] if rows else []
-    
-    total = len(tickets)
-    pending_approval = sum(1 for t in tickets if t['status'] in ('pending_l1', 'pending_l2'))
-    approved = sum(1 for t in tickets if t['status'] == 'approved')
-    in_progress = sum(1 for t in tickets if t['status'] == 'in_progress')
-    completed = sum(1 for t in tickets if t['status'] == 'completed')
-    rejected = sum(1 for t in tickets if t['status'] == 'rejected')
-    
-    prio_counts = {
-        "Urgent": sum(1 for t in tickets if t['priority'] == 'Urgent'),
-        "High": sum(1 for t in tickets if t['priority'] == 'High'),
-        "Medium": sum(1 for t in tickets if t['priority'] == 'Medium'),
-        "Low": sum(1 for t in tickets if t['priority'] == 'Low')
-    }
-    
-    cat_counts = {}
-    for t in tickets:
-        c = t.get('category') or 'Incident'
-        cat_counts[c] = cat_counts.get(c, 0) + 1
-        
-    return {
-        "status": "success",
-        "period": period,
-        "summary": {
-            "total": total,
-            "pending_approval": pending_approval,
-            "approved": approved,
-            "in_progress": in_progress,
-            "completed": completed,
-            "rejected": rejected,
-            "completion_rate": round((completed / total * 100), 1) if total > 0 else 0.0
-        },
-        "by_priority": prio_counts,
-        "by_category": cat_counts
-    }
 
 # Developer Requests (Google Sheet Integration)
 @app.get("/api/dev-requests")

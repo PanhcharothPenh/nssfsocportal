@@ -2913,15 +2913,18 @@ export default function App() {
         body: JSON.stringify({ target: target })
       });
       const data = await res.json();
-      if (res.ok && data.status === 'success') {
-        if (target === 'all_month') {
-          setShiftNotifyResult({ type: 'success', message: `បានបញ្ជូនតារាងវេនប្រចាំការពេញមួយខែទៅកាន់ Telegram រួចរាល់!` });
-        } else {
-          const dayKh = target === 'tomorrow' ? 'ថ្ងៃស្អែក' : 'ថ្ងៃនេះ';
-          setShiftNotifyResult({ type: 'success', message: `បានបញ្ជូនសាររំលឹកវេនប្រចាំការ${dayKh} ទៅកាន់ Telegram រួចរាល់!` });
-        }
+      const dayKh = target === 'tomorrow' ? 'ថ្ងៃស្អែក' : 'ថ្ងៃនេះ';
+      const notified = data.notified_users || [];
+      const failed = (data.failed_users || []).map((f) => f.user || f.shift_name).filter(Boolean);
+      if (res.ok && data.status === 'success' && notified.length > 0) {
+        const missed = failed.length ? ` (មិនទាន់បានផ្ញើ៖ ${failed.join(', ')})` : '';
+        setShiftNotifyResult({ type: 'success', message: `បានបញ្ជូនសាររំលឹកវេនប្រចាំការ${dayKh} ទៅ ${notified.join(', ')}${missed}` });
+      } else if (res.ok && data.status === 'success') {
+        setShiftNotifyResult({ type: 'error', message: `មិនអាចផ្ញើសាររំលឹក${dayKh}ទៅនរណាម្នាក់បានទេ៖ ${failed.join(', ') || '—'} (ពិនិត្យ Telegram ក្នុងគណនីអ្នកប្រើ)` });
+      } else if (res.ok && String(data.status || '').startsWith('no_shift')) {
+        setShiftNotifyResult({ type: 'error', message: `មិនមានវេនប្រចាំការ${dayKh} (${(data.message || '').match(/\d{4}-\d{2}-\d{2}/)?.[0] || ''}) ទេ។` });
       } else {
-        setShiftNotifyResult({ type: 'error', message: data.detail || 'បរាជ័យក្នុងការបញ្ជូនសារ។' });
+        setShiftNotifyResult({ type: 'error', message: data.detail || data.message || 'បរាជ័យក្នុងការបញ្ជូនសារ។' });
       }
     } catch (err) {
       setShiftNotifyResult({ type: 'error', message: 'មានកំហុសក្នុងការតភ្ជាប់ទៅកាន់ប្រព័ន្ធ។' });
