@@ -3,6 +3,7 @@ import nssfLogo from './assets/nssf_logo.png';
 import NssfFormGenerator from './components/NssfFormGenerator';
 import PdfFormAutoFillHub from './components/PdfFormAutoFillHub';
 import DirectPdfAutoFiller from './components/DirectPdfAutoFiller';
+import { saveSessionToken, clearSession } from './session.js';
 
 const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
   ? 'http://127.0.0.1:8000/api'
@@ -835,6 +836,7 @@ export default function App() {
           setTwoFAResendCooldown(30);
           return;
         }
+        saveSessionToken(data.token);
         setCurrentLoginUser(data.user);
         localStorage.setItem('currentLoginUser', JSON.stringify(data.user));
         // Retrieve and restore user's signature if it exists
@@ -881,6 +883,7 @@ export default function App() {
       });
       if (res.ok) {
         const data = await res.json();
+        saveSessionToken(data.token);
         setCurrentLoginUser(data.user);
         localStorage.setItem('currentLoginUser', JSON.stringify(data.user));
         const savedSig = localStorage.getItem('sig_' + data.user.username);
@@ -988,8 +991,9 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    fetch(`${API_BASE}/auth/logout`, { method: 'POST' }).catch(() => {});
+    clearSession();
     setCurrentLoginUser(null);
-    localStorage.removeItem('currentLoginUser');
     setIs2FARequired(false);
     setTwoFAToken('');
     setTwoFAOtpInput('');
@@ -1035,6 +1039,7 @@ export default function App() {
                 telegramLoginPollInterval.current = null;
                 setTelegramPollingActive(false);
                 
+                saveSessionToken(statusData.token);
                 setCurrentLoginUser(statusData.user);
                 localStorage.setItem('currentLoginUser', JSON.stringify(statusData.user));
                 
@@ -1132,14 +1137,10 @@ export default function App() {
     }
   };
 
-  const handleAutoTelegramLogin = async (chatId, username) => {
+  const handleAutoTelegramLogin = async (initData) => {
     try {
-      const payload = {};
-      if (chatId) {
-        payload.telegram_chat_id = String(chatId);
-      } else if (username) {
-        payload.telegram_username = username.replace(/^@/, '');
-      }
+      // The server checks Telegram's signature on initData before signing anyone in.
+      const payload = { init_data: initData };
 
       const res = await fetch(`${API_BASE}/auth/telegram_login`, {
         method: 'POST',
@@ -1151,6 +1152,7 @@ export default function App() {
 
       if (res.ok) {
         const data = await res.json();
+        saveSessionToken(data.token);
         setCurrentLoginUser(data.user);
         localStorage.setItem('currentLoginUser', JSON.stringify(data.user));
         
@@ -1178,13 +1180,8 @@ export default function App() {
         console.error('Could not expand Telegram WebApp:', err);
       }
       
-      const user = tg.initDataUnsafe?.user;
-      if (user) {
-        const username = user.username || '';
-        const chatId = user.id ? String(user.id) : '';
-        if (chatId || username) {
-          handleAutoTelegramLogin(chatId, username);
-        }
+      if (tg.initData) {
+        handleAutoTelegramLogin(tg.initData);
       }
     }
   }, []);
@@ -1215,6 +1212,7 @@ export default function App() {
 
       if (res.ok) {
         const data = await res.json();
+        saveSessionToken(data.token);
         setCurrentLoginUser(data.user);
         localStorage.setItem('currentLoginUser', JSON.stringify(data.user));
         
@@ -1536,7 +1534,7 @@ export default function App() {
     } else if (activeTab === 'dev_requests') {
       fetchDevRequests();
     }
-  }, [activeTab]);
+  }, [activeTab, currentLoginUser?.id]);
 
   async function compressImageIfNeeded(file) {
     if (!file || !file.type.startsWith('image/')) return file;
@@ -2420,7 +2418,7 @@ export default function App() {
 
   useEffect(() => {
     fetchDbSettings();
-  }, []);
+  }, [currentLoginUser?.id]);
 
   const handleUpdateProfilePassword = async (e) => {
     e.preventDefault();
@@ -2826,7 +2824,7 @@ export default function App() {
       fetchDriveFiles();
     }, 1500);
     return () => clearTimeout(t);
-  }, []);
+  }, [currentLoginUser?.id]);
 
   // Fetch Tab Specific Data
   useEffect(() => {
@@ -2858,7 +2856,7 @@ export default function App() {
     }
     // reset inner filters
     setSubnetSearch('');
-  }, [activeTab]);
+  }, [activeTab, currentLoginUser?.id]);
 
   const fetchShiftSchedule = async () => {
     setIsShiftLoading(true);
@@ -16967,7 +16965,7 @@ export default function App() {
                         ticketDetailModal.ticket.attachment_url.startsWith('http')
                           ? ticketDetailModal.ticket.attachment_url
                           : (ticketDetailModal.ticket.attachment_url.startsWith('/api')
-                              ? `https://nssfsocportal.vercel.app${ticketDetailModal.ticket.attachment_url}`
+                              ? `${API_BASE.replace(/\/api\/?$/, '')}${ticketDetailModal.ticket.attachment_url}`
                               : `${API_BASE}${ticketDetailModal.ticket.attachment_url.startsWith('/') ? '' : '/'}${ticketDetailModal.ticket.attachment_url}`)
                       }
                       target="_blank"

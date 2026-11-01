@@ -1220,90 +1220,57 @@ def process_telegram_incoming_update(update: dict):
         )
         return
 
-    # Handle Web Login via Telegram (supports 6-digit PIN code, /start <token>, plain /start, /login, or Start button)
-    import re
-    digits_match = re.search(r'\b\d{6}\b', (text or "").replace(" ", "").replace("-", ""))
-    is_login_cmd = (t_lower in ["/start", "start", "/login", "login", "ចូលប្រព័ន្ធ", "login soc"]) or (text and text.strip().startswith("/start")) or bool(digits_match)
-
-    if is_login_cmd:
-        token = None
-        if digits_match:
-            token = digits_match.group(0)
-        elif text and len(text.strip().split()) > 1:
-            token = text.strip().split()[1].strip()
-            
+    # Handle Web Login via Telegram: the web page opens t.me/<bot>?start=<code>, so the bot receives "/start <code>".
+    # Only that exact pending code is approved, and only for a Telegram account already linked to a portal user.
+    start_parts = (text or "").strip().split()
+    if len(start_parts) == 2 and start_parts[0].lower() == "/start":
+        token = start_parts[1].strip()
         try:
             from database import get_db_connection
             conn = get_db_connection()
             cursor = conn.cursor()
-            
-            # If token found, check if it exists in login_sessions
-            if token:
-                cursor.execute("SELECT token FROM login_sessions WHERE token = ?", (token,))
-                if not cursor.fetchone():
-                    token = None
-                    
-            # If still no token matched, grab the latest active pending session
-            if not token:
-                cursor.execute("SELECT token FROM login_sessions WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1")
-                p_row = cursor.fetchone()
-                if p_row:
-                    token = p_row['token']
-
-            if token:
+            cursor.execute("SELECT token FROM login_sessions WHERE token = ? AND status = 'pending'", (token,))
+            if cursor.fetchone():
                 tg_username = from_user.get("username") or ""
-                first_name = from_user.get("first_name") or ""
-                last_name = from_user.get("last_name") or ""
-                tg_full_name = f"{first_name} {last_name}".strip()
-                
-                cursor.execute("""
-                    SELECT * FROM users 
-                    WHERE (telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?))
-                       OR telegram_chat_id = ?
-                       OR LOWER(username) = LOWER(?)
-                    ORDER BY id ASC
-                """, (tg_username, str(chat_id), tg_username))
-                matched_user = cursor.fetchone()
-                
+                tg_user_id = str(from_user.get("id") or "")
+
+                matched_user = None
+                if tg_user_id:
+                    cursor.execute("SELECT * FROM users WHERE telegram_chat_id = ?", (tg_user_id,))
+                    matched_user = cursor.fetchone()
                 if not matched_user and tg_username:
-                    cursor.execute("SELECT * FROM users WHERE LOWER(full_name) LIKE LOWER(?)", (f"%{tg_username}%",))
+                    # Telegram usernames are unique, so an admin-entered @username links that account.
+                    cursor.execute("SELECT * FROM users WHERE telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?)", (tg_username,))
                     matched_user = cursor.fetchone()
-                    
-                if not matched_user:
-                    cursor.execute("SELECT * FROM users ORDER BY id ASC LIMIT 1")
-                    matched_user = cursor.fetchone()
-                    
+
                 if matched_user:
                     user_dict = dict(matched_user)
-                    cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (str(chat_id), user_dict['id']))
-                    cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status, username) VALUES (?, ?, ?)",
-                                   (token, 'authorized', user_dict['username']))
+                    if tg_user_id:
+                        cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (tg_user_id, user_dict['id']))
+                    cursor.execute("UPDATE login_sessions SET status = 'authorized', username = ? WHERE token = ?",
+                                   (user_dict['username'], token))
                     conn.commit()
                     conn.close()
-                    
-                    welcome_name = user_dict.get('full_name') or user_dict.get('username') or tg_full_name or "User"
+
+                    welcome_name = user_dict.get('full_name') or user_dict.get('username') or "User"
                     msg = (
                         f"🎉 <b>ការចូលគណនីទទួលបានជោគជ័យ (Login Authorized)!</b>\n\n"
                         f"សួស្តី <b>{welcome_name}</b> 👋\n\n"
-                        f"កូដចូលប្រព័ន្ធ <code>{token}</code> ត្រូវបានផ្ទៀងផ្ទាត់ដោយជោគជ័យ។\n"
                         f"ផ្ទាំង Web Browser របស់អ្នកត្រូវបានដោះសោរ និងបើកដំណើរការរួចរាល់ហើយ!"
                     )
-                    reply_kb = {
-                        "inline_keyboard": [
-                            [
-                                {
-                                    "text": "🌐 បើកវេបសាយ NSSF SOC Portal",
-                                    "url": "https://nssfsocportal.vercel.app"
-                                }
-                            ]
-                        ]
-                    }
-                    send_telegram_message(msg, chat_id=chat_id, reply_markup=reply_kb)
+                    send_telegram_message(msg, chat_id=chat_id)
                     return
-                else:
-                    conn.close()
-            else:
+
+                cursor.execute("UPDATE login_sessions SET status = 'rejected' WHERE token = ?", (token,))
+                conn.commit()
                 conn.close()
+                send_telegram_message(
+                    "⛔ <b>គណនី Telegram នេះមិនទាន់បានភ្ជាប់ជាមួយ NSSF SOC Portal ទេ។</b>\n"
+                    "សូមទាក់ទងអ្នកគ្រប់គ្រងដើម្បីភ្ជាប់គណនី។ (This Telegram account is not linked to a portal user.)",
+                    chat_id=chat_id
+                )
+                return
+            conn.close()
         except Exception as e_tg_auth:
             print("Error in Telegram Webhook token authorization:", e_tg_auth)
 
