@@ -894,6 +894,36 @@ def get_system_status_direct_telegram():
     return get_cached_report("status", _fetch)
 
 
+def is_authorized_telegram_chat(chat_id, from_user_id) -> bool:
+    """
+    The bot answers with internal network data, so it only serves the configured
+    SOC group chat and Telegram accounts linked to a portal user.
+    """
+    try:
+        _, group_chat = get_telegram_config()
+        if group_chat and str(chat_id).strip() == str(group_chat).strip():
+            return True
+        from database import get_db_connection
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT key, value FROM settings WHERE key IN ('telegram_chat_id', 'telegram_notify_group')")
+        allowed_groups = {str(r['value']).strip() for r in cursor.fetchall() if r['value']}
+        if str(chat_id).strip() in allowed_groups:
+            conn.close()
+            return True
+        ids = [str(x) for x in (from_user_id, chat_id) if x]
+        found = False
+        for tid in ids:
+            cursor.execute("SELECT id FROM users WHERE telegram_chat_id = ?", (tid,))
+            if cursor.fetchone():
+                found = True
+                break
+        conn.close()
+        return found
+    except Exception as e:
+        print("Telegram chat authorization check failed:", e)
+        return False
+
 def process_telegram_incoming_update(update: dict):
     """
     Processes incoming messages and inline button callback queries from Telegram Webhook / Polling and replies with Gemini AI!
@@ -906,6 +936,8 @@ def process_telegram_incoming_update(update: dict):
         chat_id = str(msg.get("chat", {}).get("id"))
         from_user = callback_query.get("from", {})
         username = from_user.get("username") or from_user.get("first_name") or "User"
+        if not is_authorized_telegram_chat(chat_id, from_user.get("id")):
+            return
 
         cb_map = {
             "btn_hospital": "មន្ទីរពេទ្យទាំងអស់",
@@ -1042,7 +1074,7 @@ def process_telegram_incoming_update(update: dict):
 
         # Check if this is a reply to our TICKET approval comment prompt
         reply_to = message.get("reply_to_message")
-        if reply_to and reply_to.get("text") and "✍️ [TICKET #" in reply_to.get("text"):
+        if reply_to and reply_to.get("text") and "✍️ [TICKET #" in reply_to.get("text") and is_authorized_telegram_chat(chat_id, from_user.get("id")):
             try:
                 user_msg_id = message.get("message_id")
                 prompt_msg_id = reply_to.get("message_id")
@@ -1220,16 +1252,13 @@ def process_telegram_incoming_update(update: dict):
         )
         return
 
-    # Handle Web Login via Telegram (supports 6-digit PIN code, /start <token>, plain /start, /login, or Start button)
-    import re
-    digits_match = re.search(r'\b\d{6}\b', (text or "").replace(" ", "").replace("-", ""))
-    is_login_cmd = (t_lower in ["/start", "start", "/login", "login", "ចូលប្រព័ន្ធ", "login soc"]) or (text and text.strip().startswith("/start")) or bool(digits_match)
+    # Handle Web Login via Telegram: "/start <token>" from the login link
+    is_login_cmd = (t_lower in ["/start", "start", "/login", "login", "ចូលប្រព័ន្ធ", "login soc"]) or (text and text.strip().startswith("/start"))
 
-    if is_login_cmd:
+    # Login approvals only from a private chat with the bot, never from a group
+    if is_login_cmd and not is_group:
         token = None
-        if digits_match:
-            token = digits_match.group(0)
-        elif text and len(text.strip().split()) > 1:
+        if text and len(text.strip().split()) > 1:
             token = text.strip().split()[1].strip()
             
         try:
@@ -1237,18 +1266,11 @@ def process_telegram_incoming_update(update: dict):
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # If token found, check if it exists in login_sessions
+            # Only an exact, pending session token may be approved; never guess one
             if token:
-                cursor.execute("SELECT token FROM login_sessions WHERE token = ?", (token,))
+                cursor.execute("SELECT token FROM login_sessions WHERE token = ? AND status = 'pending'", (token,))
                 if not cursor.fetchone():
                     token = None
-                    
-            # If still no token matched, grab the latest active pending session
-            if not token:
-                cursor.execute("SELECT token FROM login_sessions WHERE status = 'pending' ORDER BY created_at DESC LIMIT 1")
-                p_row = cursor.fetchone()
-                if p_row:
-                    token = p_row['token']
 
             if token:
                 tg_username = from_user.get("username") or ""
@@ -1256,26 +1278,19 @@ def process_telegram_incoming_update(update: dict):
                 last_name = from_user.get("last_name") or ""
                 tg_full_name = f"{first_name} {last_name}".strip()
                 
+                # Match only accounts an admin linked to this Telegram account
+                tg_user_id = str(from_user.get("id") or chat_id)
                 cursor.execute("""
                     SELECT * FROM users 
-                    WHERE (telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?))
-                       OR telegram_chat_id = ?
-                       OR LOWER(username) = LOWER(?)
+                    WHERE telegram_chat_id = ?
+                       OR (telegram_username IS NOT NULL AND telegram_username != '' AND LOWER(telegram_username) = LOWER(?))
                     ORDER BY id ASC
-                """, (tg_username, str(chat_id), tg_username))
+                """, (tg_user_id, tg_username or "-"))
                 matched_user = cursor.fetchone()
-                
-                if not matched_user and tg_username:
-                    cursor.execute("SELECT * FROM users WHERE LOWER(full_name) LIKE LOWER(?)", (f"%{tg_username}%",))
-                    matched_user = cursor.fetchone()
-                    
-                if not matched_user:
-                    cursor.execute("SELECT * FROM users ORDER BY id ASC LIMIT 1")
-                    matched_user = cursor.fetchone()
                     
                 if matched_user:
                     user_dict = dict(matched_user)
-                    cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (str(chat_id), user_dict['id']))
+                    cursor.execute("UPDATE users SET telegram_chat_id = ? WHERE id = ?", (tg_user_id, user_dict['id']))
                     cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status, username) VALUES (?, ?, ?)",
                                    (token, 'authorized', user_dict['username']))
                     conn.commit()
@@ -1301,11 +1316,23 @@ def process_telegram_incoming_update(update: dict):
                     send_telegram_message(msg, chat_id=chat_id, reply_markup=reply_kb)
                     return
                 else:
+                    cursor.execute("INSERT OR REPLACE INTO login_sessions (token, status) VALUES (?, ?)", (token, 'rejected'))
+                    conn.commit()
                     conn.close()
+                    send_telegram_message("⛔ This Telegram account is not linked to any NSSF SOC Portal user.", chat_id=chat_id)
+                    return
             else:
                 conn.close()
         except Exception as e_tg_auth:
             print("Error in Telegram Webhook token authorization:", e_tg_auth)
+
+    if not is_authorized_telegram_chat(chat_id, (from_user or {}).get("id")):
+        if not is_group:
+            send_telegram_message(
+                "⛔ This bot only serves linked NSSF SOC Portal accounts. Ask an administrator to link your Telegram account.",
+                chat_id=chat_id
+            )
+        return
 
     if t_lower in ["/start", "/help", "/menu", "start", "help", "menu"]:
         reply_msg = (

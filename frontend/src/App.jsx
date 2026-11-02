@@ -3,6 +3,7 @@ import nssfLogo from './assets/nssf_logo.png';
 import NssfFormGenerator from './components/NssfFormGenerator';
 import PdfFormAutoFillHub from './components/PdfFormAutoFillHub';
 import DirectPdfAutoFiller from './components/DirectPdfAutoFiller';
+import { withAccessToken } from './apiAuth';
 
 const API_BASE = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1')
   ? 'http://127.0.0.1:8000/api'
@@ -1132,21 +1133,15 @@ export default function App() {
     }
   };
 
-  const handleAutoTelegramLogin = async (chatId, username) => {
+  const handleAutoTelegramLogin = async (initData) => {
     try {
-      const payload = {};
-      if (chatId) {
-        payload.telegram_chat_id = String(chatId);
-      } else if (username) {
-        payload.telegram_username = username.replace(/^@/, '');
-      }
-
-      const res = await fetch(`${API_BASE}/auth/telegram_login`, {
+      // initData is signed by Telegram; the server verifies it with the bot token
+      const res = await fetch(`${API_BASE}/auth/telegram_webapp_login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ init_data: initData }),
       });
 
       if (res.ok) {
@@ -1178,13 +1173,8 @@ export default function App() {
         console.error('Could not expand Telegram WebApp:', err);
       }
       
-      const user = tg.initDataUnsafe?.user;
-      if (user) {
-        const username = user.username || '';
-        const chatId = user.id ? String(user.id) : '';
-        if (chatId || username) {
-          handleAutoTelegramLogin(chatId, username);
-        }
+      if (tg.initData && tg.initDataUnsafe?.user) {
+        handleAutoTelegramLogin(tg.initData);
       }
     }
   }, []);
@@ -1782,7 +1772,7 @@ export default function App() {
       alert("⚠️ មិនមានលេខកូដសំបុត្រ ឬឯកសារ!");
       return;
     }
-    const targetUrl = `${API_BASE}/tickets/${tId}/view`;
+    const targetUrl = withAccessToken(`${API_BASE}/tickets/${tId}/view`);
     const win = window.open(targetUrl, '_blank');
     if (!win) {
       window.location.href = targetUrl;
@@ -1796,7 +1786,7 @@ export default function App() {
       alert("⚠️ មិនមានលេខកូដសំបុត្រ ឬឯកសារ!");
       return;
     }
-    const targetUrl = `${API_BASE}/tickets/${tId}/attachment`;
+    const targetUrl = withAccessToken(`${API_BASE}/tickets/${tId}/attachment`);
     const win = window.open(targetUrl, '_blank');
     if (!win) {
       window.location.href = targetUrl;
@@ -7432,7 +7422,7 @@ export default function App() {
                       const isPDF = file.mimeType === 'application/pdf' || (file.name && file.name.toLowerCase().endsWith('.pdf'));
                       const isImage = (file.mimeType && file.mimeType.startsWith('image/')) || /\.(jpg|jpeg|png|webp|gif)$/i.test(file.name || '');
                       const rawUrl = file.webViewLink || `/api/drive/files/download/${encodeURIComponent(file.name)}`;
-                      const resolvedUrl = rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl);
+                      const resolvedUrl = withAccessToken(rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl));
                       
                       if (isPDF || isImage) {
                         setPreviewFile({
@@ -12905,7 +12895,7 @@ export default function App() {
                             const normalizeStr = (s) => (s || '').trim().replace(/_/g, ' ').replace(/បញ្ជប់/g, 'បញ្ចប់').toLowerCase();
                             const matchedFile = driveFiles.find(f => f.name === vpn.reference_doc || normalizeStr(f.name) === normalizeStr(vpn.reference_doc));
                             const rawUrl = matchedFile?.webViewLink || `/api/drive/files/download/${encodeURIComponent(vpn.reference_doc)}`;
-                            const resolvedUrl = rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl);
+                            const resolvedUrl = withAccessToken(rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl));
                             const isClickable = true;
 
                             return (
@@ -13020,7 +13010,7 @@ export default function App() {
                                 const normalizeStr = (s) => (s || '').trim().replace(/_/g, ' ').replace(/បញ្ជប់/g, 'បញ្ចប់').toLowerCase();
                                 const matchedFile = driveFiles.find(f => f.name === vpn.reference_doc || normalizeStr(f.name) === normalizeStr(vpn.reference_doc));
                                 const rawUrl = matchedFile?.webViewLink || `/api/drive/files/download/${encodeURIComponent(vpn.reference_doc)}`;
-                                const resolvedUrl = rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl);
+                                const resolvedUrl = withAccessToken(rawUrl.startsWith('http') ? rawUrl : (rawUrl.startsWith('/api') && API_BASE.startsWith('http') ? `${API_BASE.replace(/\/api\/?$/, '')}${rawUrl}` : rawUrl));
 
                                 return (
                                   <span 
@@ -16966,8 +16956,8 @@ export default function App() {
                       href={
                         ticketDetailModal.ticket.attachment_url.startsWith('http')
                           ? ticketDetailModal.ticket.attachment_url
-                          : (ticketDetailModal.ticket.attachment_url.startsWith('/api')
-                              ? `https://nssfsocportal.vercel.app${ticketDetailModal.ticket.attachment_url}`
+                          : withAccessToken(ticketDetailModal.ticket.attachment_url.startsWith('/api')
+                              ? `${API_BASE.replace(/\/api\/?$/, '')}${ticketDetailModal.ticket.attachment_url}`
                               : `${API_BASE}${ticketDetailModal.ticket.attachment_url.startsWith('/') ? '' : '/'}${ticketDetailModal.ticket.attachment_url}`)
                       }
                       target="_blank"

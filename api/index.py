@@ -23,9 +23,11 @@ async def app(scope, receive, send):
         import traceback
         tb = traceback.format_exc()
 
-    # Fallback JSON response containing the traceback
-    response_body = f'{{"status": "error", "message": "Import failed on serverless startup", "error": {repr(import_error)}, "traceback": {repr(tb)}}}'.encode('utf-8')
-    
+    # Log the details server-side only; never send tracebacks to the browser
+    print("Import failed on serverless startup:", import_error)
+    print(tb)
+    response_body = b'{"status": "error", "message": "Service temporarily unavailable"}'
+
     await send({
         'type': 'http.response.start',
         'status': 500,

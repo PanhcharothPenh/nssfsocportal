@@ -68,11 +68,98 @@ app = FastAPI(title="NSSF SOC Network API", version="1.0.0")
 
 app.add_middleware(GZipMiddleware, minimum_size=500)
 
-# CORS middleware for React UI connection
+from fastapi.responses import JSONResponse
+import hmac as _hmac
+from auth_utils import verify_session_token
+
+# Endpoints reachable without a session token
+PUBLIC_API_PATHS = {
+    "/api/auth/login",
+    "/api/auth/verify_2fa",
+    "/api/auth/resend_2fa",
+    "/api/auth/telegram_session/create",
+    "/api/auth/telegram_webapp_login",
+    "/api/auth/telegram_login",       # disabled; returns 410 with a message
+    "/api/telegram/webhook",          # verified with Telegram's secret token header
+    "/api/webhooks/google-sheets",    # verified with GOOGLE_SHEETS_WEBHOOK_SECRET
+}
+PUBLIC_API_PREFIXES = (
+    "/api/auth/telegram_session/status/",
+    "/api/auth/telegram_session/cancel/",
+)
+# Read-only shift roster shown to the "Guest" viewer on the login page
+PUBLIC_GET_PATHS = {
+    "/api/shift/today",
+    "/api/shift/schedule",
+    "/api/shift/custom-schedule",
+}
+# Vercel cron jobs send "Authorization: Bearer $CRON_SECRET"
+CRON_API_PATHS = {
+    "/api/shift/notify-today",
+    "/api/tickets/check-due-alerts",
+}
+# Links opened in a new tab or shown in <img>/<iframe> cannot send headers, so these accept ?access_token=
+def _accepts_query_token(method: str, path: str) -> bool:
+    if method != "GET":
+        return False
+    if path.startswith(("/api/drive/files/download/", "/api/uploads/")):
+        return True
+    return path.startswith("/api/tickets/") and path.endswith(("/view", "/attachment"))
+
+def _is_admin_only(method: str, path: str) -> bool:
+    if path == "/api/settings" and method != "GET":
+        return True
+    if path == "/api/telegram/setup_webhook":
+        return True
+    if path == "/api/users" and method == "POST":
+        return True
+    if path.startswith("/api/users/") and not path.startswith("/api/users/profile/") and not path.startswith("/api/users/telegram_notify/") and method in ("PUT", "DELETE", "PATCH"):
+        return True
+    return False
+
+@app.middleware("http")
+async def require_session(request: Request, call_next):
+    path = request.url.path
+    if request.method == "OPTIONS" or not path.startswith("/api") or path in PUBLIC_API_PATHS or path.startswith(PUBLIC_API_PREFIXES):
+        return await call_next(request)
+    if request.method == "GET" and path in PUBLIC_GET_PATHS:
+        return await call_next(request)
+
+    auth = request.headers.get("authorization", "")
+    token = auth[7:].strip() if auth.lower().startswith("bearer ") else ""
+
+    if path in CRON_API_PATHS:
+        cron_secret = os.getenv("CRON_SECRET")
+        if cron_secret and token and _hmac.compare_digest(token, cron_secret):
+            return await call_next(request)
+
+    if not token and _accepts_query_token(request.method, path):
+        token = request.query_params.get("access_token", "")
+
+    session = verify_session_token(token)
+    if not session:
+        return JSONResponse({"detail": "Authentication required"}, status_code=401)
+    if _is_admin_only(request.method, path) and (session.get("r") or "").lower() != "admin" and (session.get("u") or "").lower() != "admin":
+        return JSONResponse({"detail": "Admin permission required"}, status_code=403)
+
+    request.state.session = session
+    return await call_next(request)
+
+def get_session(request: Request) -> dict:
+    return getattr(request.state, "session", None) or {}
+
+def is_admin_session(session: dict) -> bool:
+    return (session.get("r") or "").lower() == "admin" or (session.get("u") or "").lower() == "admin"
+
+# CORS middleware for React UI connection (added after the auth middleware so it wraps 401 responses too)
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv(
+    "ALLOWED_ORIGINS",
+    "https://soc.p2bkh.tech,https://nssfsocportal.vercel.app,http://localhost:5173,http://127.0.0.1:5173"
+).split(",") if o.strip()]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In development, allow all origins
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -91,6 +178,9 @@ import urllib.parse
 def get_editor_from_request(request: Optional[Request]) -> Optional[str]:
     if not request:
         return "Admin"
+    session = getattr(request.state, "session", None)
+    if session and session.get("n"):
+        return session["n"]
     raw = request.headers.get("x-editor-fullname") or request.headers.get("x-editor-username") or request.headers.get("x-user-fullname") or "Admin"
     try:
         return urllib.parse.unquote(raw)
@@ -434,7 +524,7 @@ def telegram_polling_loop():
                             cursor = conn.cursor()
                             
                             # Find matched user by telegram_username (case-insensitive) or username
-                            cursor.execute("SELECT * FROM users WHERE LOWER(telegram_username) = LOWER(?) OR LOWER(username) = LOWER(?)", (username, username))
+                            cursor.execute("SELECT * FROM users WHERE telegram_chat_id = ? OR (telegram_username IS NOT NULL AND telegram_username != '' AND LOWER(telegram_username) = LOWER(?))", (str(chat_id), username))
                             user = cursor.fetchone()
                             
                             if user:
@@ -509,8 +599,32 @@ def telegram_polling_loop():
             print(f"Error in Telegram polling loop: {e}")
             time.sleep(5)
 
+def register_telegram_webhook(bot_token: str, host: str):
+    """Points the bot's webhook at this deployment, with a secret Telegram echoes back on every call."""
+    from auth_utils import telegram_webhook_secret
+    if not host or "localhost" in host or "127.0.0.1" in host:
+        return None
+    base = f"https://{host}"
+    # Never trust an arbitrary Host header to redirect the bot's updates elsewhere
+    if base not in ALLOWED_ORIGINS:
+        base = os.getenv("PUBLIC_BASE_URL", "https://soc.p2bkh.tech").rstrip("/")
+    try:
+        res = requests.post(f"https://api.telegram.org/bot{bot_token}/setWebhook", json={
+            "url": f"{base}/api/telegram/webhook",
+            "secret_token": telegram_webhook_secret(bot_token)
+        }, timeout=5)
+        return res.json()
+    except Exception as e:
+        print(f"Failed to set Telegram webhook: {e}")
+        return None
+
 @app.post("/api/telegram/webhook")
 async def telegram_webhook(request: Request):
+    from auth_utils import telegram_webhook_secret
+    bot_token, _ = get_telegram_config()
+    received = request.headers.get("x-telegram-bot-api-secret-token", "")
+    if not bot_token or not _hmac.compare_digest(received, telegram_webhook_secret(bot_token)):
+        return JSONResponse({"status": "forbidden"}, status_code=403)
     try:
         payload = await request.json()
         if not payload:
@@ -529,23 +643,13 @@ async def telegram_webhook(request: Request):
 
 @app.post("/api/telegram/setup_webhook")
 def setup_telegram_webhook(request: Request):
-    import requests
-    try:
-        from backend.telegram import get_telegram_config
-    except ImportError:
-        from api.telegram import get_telegram_config
     bot_token, _ = get_telegram_config()
     if not bot_token:
         raise HTTPException(status_code=400, detail="TELEGRAM_BOT_TOKEN not configured")
-    
     host = request.url.netloc
-    if host and "localhost" not in host and "127.0.0.1" not in host:
-        webhook_url = f"https://{host}/api/telegram/webhook"
-    else:
-        webhook_url = "https://nssfsocportal.vercel.app/api/telegram/webhook"
-        
-    res = requests.post(f"https://api.telegram.org/bot{bot_token}/setWebhook", json={"url": webhook_url})
-    return res.json()
+    if not host or "localhost" in host or "127.0.0.1" in host:
+        host = "nssfsocportal.vercel.app"
+    return register_telegram_webhook(bot_token, host) or {"ok": False}
 
 _bg_threads_started = False
 def ensure_background_threads():
@@ -2158,7 +2262,11 @@ def get_notifications():
     return {"status": "success", "notifications": notifications}
 
 @app.post("/api/webhooks/google-sheets")
-def google_sheets_webhook(payload: GoogleSheetWebhookPayload):
+def google_sheets_webhook(payload: GoogleSheetWebhookPayload, request: Request):
+    expected = os.getenv("GOOGLE_SHEETS_WEBHOOK_SECRET", "")
+    received = request.headers.get("x-webhook-secret") or request.query_params.get("secret") or ""
+    if not expected or not _hmac.compare_digest(received, expected):
+        raise HTTPException(status_code=403, detail="Invalid webhook secret")
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -2580,12 +2688,24 @@ def send_telegram(payload: TelegramSendMessagePayload):
 class SettingsUpdatePayload(BaseModel):
     settings: Dict[str, str]
 
+SECRET_SETTING_MARKERS = ("token", "secret", "api_key", "apikey", "password")
+SECRET_MASK = "********"
+
+def is_secret_setting(key: str) -> bool:
+    k = (key or "").lower()
+    return any(m in k for m in SECRET_SETTING_MARKERS)
+
 @app.get("/api/settings")
 def get_settings():
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM settings")
-    settings = {row['key']: row['value'] for row in cursor.fetchall()}
+    settings = {}
+    for row in cursor.fetchall():
+        val = row['value']
+        if is_secret_setting(row['key']) and val:
+            val = SECRET_MASK + str(val)[-4:]
+        settings[row['key']] = val
     conn.close()
     return {"status": "success", "settings": settings}
 
@@ -2595,6 +2715,9 @@ def update_settings(payload: SettingsUpdatePayload):
     cursor = conn.cursor()
     try:
         for key, val in payload.settings.items():
+            # Masked values come back unchanged from the settings form; keep the stored secret
+            if is_secret_setting(key) and str(val or "").startswith(SECRET_MASK):
+                continue
             cursor.execute("INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)", (key, val))
         conn.commit()
         conn.close()
@@ -2661,29 +2784,87 @@ class TelegramLoginPayload(BaseModel):
     telegram_chat_id: Optional[str] = None
     telegram_username: Optional[str] = None
 
+class TelegramWebAppLoginPayload(BaseModel):
+    init_data: str
+
+OTP_TTL_SECONDS = 5 * 60
+MAX_OTP_ATTEMPTS = 5
+
+def ensure_two_fa_table(cursor):
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS two_fa_sessions (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER,
+            username TEXT,
+            otp_code TEXT,
+            client_ip TEXT,
+            attempts INTEGER DEFAULT 0,
+            expires_at INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    is_postgres = cursor.__class__.__name__ == 'PostgresCursorWrapper'
+    for col_name, col_type in [("attempts", "INTEGER DEFAULT 0"), ("expires_at", "INTEGER")]:
+        if is_postgres:
+            cursor.execute(f"ALTER TABLE two_fa_sessions ADD COLUMN IF NOT EXISTS {col_name} {col_type}")
+        else:
+            try:
+                cursor.execute(f"ALTER TABLE two_fa_sessions ADD COLUMN {col_name} {col_type}")
+            except Exception:
+                pass
+
+def build_login_user_payload(user, client_ip=None, last_login=None, must_change=None) -> dict:
+    """User object returned to the browser after any successful login, including its session token."""
+    import json
+    from auth_utils import create_session_token
+    perms = {}
+    if user['permissions']:
+        try:
+            perms = json.loads(user['permissions'])
+        except Exception:
+            pass
+    if must_change is None:
+        if 'must_change_password' in user.keys() and user['must_change_password'] is not None:
+            try:
+                must_change = int(user['must_change_password'])
+            except Exception:
+                must_change = 1 if user['username'].lower() != 'admin' else 0
+        else:
+            must_change = 1 if user['username'].lower() != 'admin' and not user['last_login'] else 0
+    return {
+        "id": user['id'],
+        "username": user['username'],
+        "role": user['role'],
+        "full_name": user['full_name'],
+        "permissions": perms,
+        "email": user['email'],
+        "phone": user['phone'],
+        "department": user['department'],
+        "language": user['language'] or 'English',
+        "timezone": user['timezone'] or '(GMT+07:00) Bangkok',
+        "date_format": user['date_format'] or 'dd/mm/yyyy',
+        "theme": user['theme'] or 'Light',
+        "client_ip": client_ip if client_ip is not None else user['client_ip'],
+        "last_login": last_login if last_login is not None else user['last_login'],
+        "telegram_chat_id": user['telegram_chat_id'],
+        "telegram_username": user['telegram_username'],
+        "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1',
+        "must_change_password": must_change,
+        "session_token": create_session_token(user)
+    }
+
+LOGIN_SESSION_TTL_SECONDS = 10 * 60
+
 @app.post("/api/auth/telegram_session/create")
 def telegram_session_create(request: Request):
-    import random
-    token = str(random.randint(100000, 999999))
+    import secrets
+    # Long random token: it is the only thing that links the browser to the Telegram approval
+    token = secrets.token_urlsafe(24)
     
     # Setup webhook dynamically in Vercel/Production environments
-    try:
-        from backend.telegram import get_telegram_config
-    except ImportError:
-        from api.telegram import get_telegram_config
     bot_token, _ = get_telegram_config()
     if bot_token:
-        host = request.url.netloc
-        if "localhost" not in host and "127.0.0.1" not in host:
-            proto = "https"
-            webhook_url = f"{proto}://{host}/api/telegram/webhook"
-            try:
-                import requests
-                requests.post(f"https://api.telegram.org/bot{bot_token}/setWebhook", json={
-                    "url": webhook_url
-                }, timeout=5)
-            except Exception as e:
-                print(f"Failed to set Telegram webhook: {e}")
+        register_telegram_webhook(bot_token, request.url.netloc)
 
     try:
         conn = get_db_connection()
@@ -2704,6 +2885,21 @@ def telegram_session_create(request: Request):
 
     return {"status": "success", "token": token, "code": token}
 
+def _login_session_expired(session) -> bool:
+    import datetime
+    created = session['created_at']
+    if not created:
+        return False
+    try:
+        if isinstance(created, str):
+            created = datetime.datetime.fromisoformat(created.replace("Z", "+00:00"))
+        if created.tzinfo is None:
+            created = created.replace(tzinfo=datetime.timezone.utc)
+        age = (datetime.datetime.now(datetime.timezone.utc) - created).total_seconds()
+        return age > LOGIN_SESSION_TTL_SECONDS
+    except Exception:
+        return False
+
 @app.get("/api/auth/telegram_session/status/{token}")
 def telegram_session_status(token: str, request: Request):
     conn = get_db_connection()
@@ -2711,7 +2907,10 @@ def telegram_session_status(token: str, request: Request):
     cursor.execute("SELECT * FROM login_sessions WHERE token = ?", (token,))
     session = cursor.fetchone()
     
-    if not session:
+    if not session or _login_session_expired(session):
+        if session:
+            cursor.execute("DELETE FROM login_sessions WHERE token = ?", (token,))
+            conn.commit()
         conn.close()
         raise HTTPException(status_code=404, detail="Session not found")
         
@@ -2725,7 +2924,6 @@ def telegram_session_status(token: str, request: Request):
             conn.close()
             raise HTTPException(status_code=404, detail="User not found")
             
-        import json
         import datetime
         client_ip = request.client.host if request.client else '127.0.0.1'
         last_login = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
@@ -2734,35 +2932,8 @@ def telegram_session_status(token: str, request: Request):
         # Delete session since it's already used to log in!
         cursor.execute("DELETE FROM login_sessions WHERE token = ?", (token,))
         conn.commit()
-        
-        perms = {}
-        if user['permissions']:
-            try:
-                perms = json.loads(user['permissions'])
-            except Exception:
-                pass
-                
-        user_data = {
-            "id": user['id'],
-            "username": user['username'],
-            "role": user['role'],
-            "full_name": user['full_name'],
-            "permissions": perms,
-            "email": user['email'],
-            "phone": user['phone'],
-            "department": user['department'],
-            "language": user['language'] or 'English',
-            "timezone": user['timezone'] or '(GMT+07:00) Bangkok',
-            "date_format": user['date_format'] or 'dd/mm/yyyy',
-            "theme": user['theme'] or 'Light',
-            "client_ip": client_ip,
-            "last_login": last_login,
-            "telegram_chat_id": user['telegram_chat_id'],
-            "telegram_username": user['telegram_username'],
-            "must_change_password": int(user['must_change_password']) if ('must_change_password' in user.keys() and user['must_change_password'] is not None) else (1 if user['username'].lower() != 'admin' and not user['last_login'] else 0)
-        }
         conn.close()
-        return {"status": "authorized", "user": user_data}
+        return {"status": "authorized", "user": build_login_user_payload(user, client_ip=client_ip, last_login=last_login)}
         
     elif session['status'] == 'rejected':
         cursor.execute("DELETE FROM login_sessions WHERE token = ?", (token,))
@@ -2784,62 +2955,39 @@ def telegram_session_cancel(token: str):
 
 @app.post("/api/auth/telegram_login")
 def telegram_login(payload: TelegramLoginPayload, request: Request):
+    # A Telegram username or chat ID is public information and proves nothing,
+    # so it can no longer be used to sign in. Use the bot login or the WebApp login.
+    raise HTTPException(status_code=410, detail="Login by Telegram username is disabled. Please use 'Login with Telegram Bot'.")
+
+@app.post("/api/auth/telegram_webapp_login")
+def telegram_webapp_login(payload: TelegramWebAppLoginPayload, request: Request):
+    import datetime
+    from auth_utils import verify_telegram_init_data
+    bot_token, _ = get_telegram_config()
+    tg_user = verify_telegram_init_data(payload.init_data, bot_token)
+    if not tg_user or not tg_user.get("id"):
+        raise HTTPException(status_code=401, detail="Invalid Telegram WebApp data")
+
     conn = get_db_connection()
     cursor = conn.cursor()
-    import json
-    import datetime
-    
-    user = None
-    if payload.telegram_chat_id:
-        cursor.execute("SELECT * FROM users WHERE telegram_chat_id = ?", (payload.telegram_chat_id.strip(),))
+    cursor.execute("SELECT * FROM users WHERE telegram_chat_id = ?", (str(tg_user["id"]),))
+    user = cursor.fetchone()
+    if not user and tg_user.get("username"):
+        cursor.execute("SELECT * FROM users WHERE telegram_username IS NOT NULL AND LOWER(telegram_username) = LOWER(?)", (tg_user["username"],))
         user = cursor.fetchone()
-    elif payload.telegram_username:
-        cursor.execute("SELECT * FROM users WHERE LOWER(telegram_username) = LOWER(?) OR LOWER(username) = LOWER(?)", (payload.telegram_username.strip(), payload.telegram_username.strip()))
-        user = cursor.fetchone()
-        
     if not user:
         conn.close()
         raise HTTPException(status_code=401, detail="No linked Telegram account found. Please register or link in profile.")
-        
+
     client_ip = request.client.host if request.client else '127.0.0.1'
     last_login = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    
-    cursor.execute("UPDATE users SET client_ip = ?, last_login = ? WHERE id = ?", (client_ip, last_login, user['id']))
+    cursor.execute("UPDATE users SET client_ip = ?, last_login = ?, telegram_chat_id = ? WHERE id = ?", (client_ip, last_login, str(tg_user["id"]), user['id']))
     conn.commit()
-    
     cursor.execute("SELECT * FROM users WHERE id = ?", (user['id'],))
     user = cursor.fetchone()
     conn.close()
-    
-    perms = {}
-    if user['permissions']:
-        try:
-            perms = json.loads(user['permissions'])
-        except Exception:
-            pass
 
-    return {
-        "status": "success",
-        "user": {
-            "id": user['id'],
-            "username": user['username'],
-            "role": user['role'],
-            "full_name": user['full_name'],
-            "permissions": perms,
-            "email": user['email'],
-            "phone": user['phone'],
-            "department": user['department'],
-            "language": user['language'] or 'English',
-            "timezone": user['timezone'] or '(GMT+07:00) Bangkok',
-            "date_format": user['date_format'] or 'dd/mm/yyyy',
-            "theme": user['theme'] or 'Light',
-            "client_ip": user['client_ip'],
-            "last_login": user['last_login'],
-            "telegram_chat_id": user['telegram_chat_id'],
-            "telegram_username": user['telegram_username'],
-            "must_change_password": int(user['must_change_password']) if ('must_change_password' in user.keys() and user['must_change_password'] is not None) else (1 if user['username'].lower() != 'admin' and not user['last_login'] else 0)
-        }
-    }
+    return {"status": "success", "user": build_login_user_payload(user)}
 
 @app.post("/api/users/telegram_notify/{user_id}")
 def send_user_telegram_notification(user_id: int):
@@ -2983,21 +3131,32 @@ async def send_pdf_to_telegram(
 
 @app.post("/api/auth/login")
 def auth_login(payload: UserLoginPayload, request: Request):
-    from auth_utils import verify_password
+    from auth_utils import verify_password, needs_rehash, hash_password, generate_otp, create_session_token
     import json
     import datetime
-    import random
     import uuid
 
     conn = get_db_connection()
     cursor = conn.cursor()
     cursor.execute("SELECT * FROM users WHERE LOWER(username) = LOWER(?)", (payload.username.strip(),))
     user = cursor.fetchone()
-    
+
     if not user or not verify_password(payload.password, user['password_hash']):
         conn.close()
         raise HTTPException(status_code=401, detail="ឈ្មោះអ្នកប្រើប្រាស់ ឬលេខសម្ងាត់មិនត្រឹមត្រូវ!")
-        
+
+    # Upgrade legacy SHA-256 hashes to PBKDF2 now that we have the plain password
+    if needs_rehash(user['password_hash']):
+        try:
+            cursor.execute("UPDATE users SET password_hash = ? WHERE id = ?", (hash_password(payload.password), user['id']))
+            conn.commit()
+        except Exception as e_rehash:
+            print("Password rehash warning:", e_rehash)
+            try:
+                conn.rollback()
+            except Exception:
+                pass
+
     client_ip = request.client.host if request.client else '127.0.0.1'
 
     # If guest user, allow direct login without 2FA
@@ -3034,28 +3193,20 @@ def auth_login(payload: UserLoginPayload, request: Request):
                 "telegram_chat_id": user['telegram_chat_id'],
                 "telegram_username": user['telegram_username'],
                 "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1',
-                "must_change_password": 0
+                "must_change_password": 0,
+                "session_token": create_session_token(user)
             }
         }
 
     # Generate 6-digit OTP code for 2FA
-    otp_code = str(random.randint(100000, 999999))
+    otp_code = generate_otp()
     two_fa_token = str(uuid.uuid4())
 
     try:
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS two_fa_sessions (
-                token TEXT PRIMARY KEY,
-                user_id INTEGER,
-                username TEXT,
-                otp_code TEXT,
-                client_ip TEXT,
-                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-            )
-        """)
+        ensure_two_fa_table(cursor)
         cursor.execute(
-            "INSERT OR REPLACE INTO two_fa_sessions (token, user_id, username, otp_code, client_ip) VALUES (?, ?, ?, ?, ?)",
-            (two_fa_token, user['id'], user['username'], otp_code, client_ip)
+            "INSERT OR REPLACE INTO two_fa_sessions (token, user_id, username, otp_code, client_ip, attempts, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (two_fa_token, user['id'], user['username'], otp_code, client_ip, 0, int(time.time()) + OTP_TTL_SECONDS)
         )
         conn.commit()
     except Exception as e:
@@ -3103,94 +3254,73 @@ def auth_verify_2fa(payload: Verify2FAPayload, request: Request):
     import json
     import datetime
     
+    import hmac
+
     conn = get_db_connection()
     cursor = conn.cursor()
+    ensure_two_fa_table(cursor)
     cursor.execute("SELECT * FROM two_fa_sessions WHERE token = ?", (payload.two_fa_token,))
     session = cursor.fetchone()
-    
-    if not session:
+
+    expired = bool(session) and (
+        int(session['attempts'] or 0) >= MAX_OTP_ATTEMPTS
+        or not session['expires_at']
+        or int(session['expires_at']) < time.time()
+    )
+    if not session or expired:
+        if session:
+            cursor.execute("DELETE FROM two_fa_sessions WHERE token = ?", (payload.two_fa_token,))
+            conn.commit()
         conn.close()
         raise HTTPException(status_code=400, detail="សម័យកាល 2FA មិនត្រឹមត្រូវ ឬបានផុតកំណត់ សូមព្យាយាម Login សារជាថ្មី")
-        
-    if payload.otp_code.strip() != str(session['otp_code']).strip():
+
+    if not hmac.compare_digest(payload.otp_code.strip(), str(session['otp_code']).strip()):
+        cursor.execute("UPDATE two_fa_sessions SET attempts = ? WHERE token = ?", (int(session['attempts'] or 0) + 1, payload.two_fa_token))
+        conn.commit()
         conn.close()
         raise HTTPException(status_code=400, detail="លេខកូដផ្ទៀងផ្ទាត់ 2FA មិនត្រឹមត្រូវឡើយ! សូមពិនិត្យមើលសារលើ Telegram ម្តងទៀត")
-        
+
     cursor.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],))
     user = cursor.fetchone()
     if not user:
         conn.close()
         raise HTTPException(status_code=404, detail="User not found")
-        
+
     client_ip = request.client.host if request.client else (session['client_ip'] or '127.0.0.1')
     last_login = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    
+
     cursor.execute("UPDATE users SET client_ip = ?, last_login = ? WHERE id = ?", (client_ip, last_login, user['id']))
     cursor.execute("DELETE FROM two_fa_sessions WHERE token = ?", (payload.two_fa_token,))
     conn.commit()
     conn.close()
 
-    perms = {}
-    if user['permissions']:
-        try:
-            perms = json.loads(user['permissions'])
-        except Exception:
-            pass
-
-    must_change = 0
-    if 'must_change_password' in user.keys() and user['must_change_password'] is not None:
-        try:
-            must_change = int(user['must_change_password'])
-        except Exception:
-            must_change = 1 if user['username'].lower() != 'admin' else 0
-    elif user['username'].lower() != 'admin' and not user['last_login']:
-        must_change = 1
-
     return {
         "status": "success",
-        "user": {
-            "id": user['id'],
-            "username": user['username'],
-            "role": user['role'],
-            "full_name": user['full_name'],
-            "permissions": perms,
-            "email": user['email'],
-            "phone": user['phone'],
-            "department": user['department'],
-            "language": user['language'] or 'English',
-            "timezone": user['timezone'] or '(GMT+07:00) Bangkok',
-            "date_format": user['date_format'] or 'dd/mm/yyyy',
-            "theme": user['theme'] or 'Light',
-            "client_ip": client_ip,
-            "last_login": last_login,
-            "telegram_chat_id": user['telegram_chat_id'],
-            "telegram_username": user['telegram_username'],
-            "notify_telegram": user['notify_telegram'] if user['notify_telegram'] is not None else '1',
-            "must_change_password": must_change
-        }
+        "user": build_login_user_payload(user, client_ip=client_ip, last_login=last_login)
     }
 
 @app.post("/api/auth/resend_2fa")
 def auth_resend_2fa(payload: Resend2FAPayload, request: Request):
-    import random
-    import datetime
-    
+    from auth_utils import generate_otp
+
     conn = get_db_connection()
     cursor = conn.cursor()
+    ensure_two_fa_table(cursor)
     cursor.execute("SELECT * FROM two_fa_sessions WHERE token = ?", (payload.two_fa_token,))
     session = cursor.fetchone()
-    if not session:
+    if not session or int(session['attempts'] or 0) >= MAX_OTP_ATTEMPTS:
         conn.close()
         raise HTTPException(status_code=400, detail="សម័យកាល 2FA បានផុតកំណត់ សូម Login សារជាថ្មី")
-        
+
     cursor.execute("SELECT * FROM users WHERE id = ?", (session['user_id'],))
     user = cursor.fetchone()
     if not user:
         conn.close()
         raise HTTPException(status_code=404, detail="User not found")
-        
-    new_otp = str(random.randint(100000, 999999))
-    cursor.execute("UPDATE two_fa_sessions SET otp_code = ?, created_at = CURRENT_TIMESTAMP WHERE token = ?", (new_otp, payload.two_fa_token))
+
+    # A new code gets a fresh expiry, but failed attempts carry over
+    new_otp = generate_otp()
+    cursor.execute("UPDATE two_fa_sessions SET otp_code = ?, expires_at = ?, created_at = CURRENT_TIMESTAMP WHERE token = ?", (new_otp, int(time.time()) + OTP_TTL_SECONDS, payload.two_fa_token))
     conn.commit()
     conn.close()
     
@@ -3214,9 +3344,13 @@ def auth_resend_2fa(payload: Resend2FAPayload, request: Request):
     return {"status": "success", "message": "លេខកូដ 2FA ថ្មីត្រូវបានផ្ញើទៅកាន់ Telegram Bot រួចរាល់ហើយ"}
 
 @app.post("/api/auth/change_password")
-def auth_change_password(payload: ChangePasswordPayload):
+def auth_change_password(payload: ChangePasswordPayload, request: Request):
     from auth_utils import verify_password, hash_password
     import datetime
+    session = get_session(request)
+    is_self = str(session.get("uid")) == str(payload.user_id)
+    if not is_self and not is_admin_session(session):
+        raise HTTPException(status_code=403, detail="You can only change your own password")
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
@@ -3224,7 +3358,12 @@ def auth_change_password(payload: ChangePasswordPayload):
         user = cursor.fetchone()
         if not user:
             raise HTTPException(status_code=404, detail="User not found")
-        
+
+        # Users changing their own password must prove the current one, except the
+        # forced first-login change right after a fresh login.
+        forced_change = 'must_change_password' in user.keys() and str(user['must_change_password'] or '0') == '1'
+        if is_self and not forced_change and not payload.old_password:
+            raise HTTPException(status_code=400, detail="សូមបញ្ចូលលេខសម្ងាត់ចាស់ (Current password required)")
         if payload.old_password:
             if not verify_password(payload.old_password, user['password_hash']):
                 raise HTTPException(status_code=400, detail="លេខសម្ងាត់ចាស់មិនត្រឹមត្រូវឡើយ (Incorrect current password)")
@@ -3288,6 +3427,7 @@ def get_users():
                 d['permissions'] = {}
         else:
             d['permissions'] = {}
+        d.pop('password_hash', None)
         users.append(d)
     conn.close()
     return users
@@ -3457,7 +3597,10 @@ def update_user(user_id: int, payload: UserUpdatePayload):
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.put("/api/users/profile/{user_id}")
-def update_user_profile(user_id: int, payload: UserProfileUpdatePayload):
+def update_user_profile(user_id: int, payload: UserProfileUpdatePayload, request: Request):
+    session = get_session(request)
+    if str(session.get("uid")) != str(user_id) and not is_admin_session(session):
+        raise HTTPException(status_code=403, detail="You can only edit your own profile")
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
