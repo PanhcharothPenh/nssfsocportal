@@ -1364,8 +1364,8 @@ def process_telegram_incoming_update(update: dict):
     elif "status" in t_lower or "ស្ថានភាព" in t_lower:
         reply_msg = get_system_status_direct_telegram()
     elif text in ["📅 វេនប្រចាំការយប់នេះ", "📅 វេនប្រចាំការ", "📅 វេនប្រចាំការ (Today & Tmr)", "/shift", "shift", "វេនប្រចាំការ", "វេនស្អែក", "វេនថ្ងៃនេះ"]:
-        from datetime import datetime, timedelta
-        now = datetime.now()
+        from datetime import datetime, timedelta, timezone
+        now = datetime.now(timezone.utc) + timedelta(hours=7)  # Cambodia time; the server runs in UTC
         today_str = now.strftime("%Y-%m-%d")
         tmr_str = (now + timedelta(days=1)).strftime("%Y-%m-%d")
         try:
